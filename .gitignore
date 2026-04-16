@@ -1,0 +1,27 @@
+# ========================
+# Ambientes Virtuais e Keys
+# ========================
+venv/
+.venv/
+env/
+.env
+
+# ========================
+# Cache do Python
+# ========================
+__pycache__/
+*.py[cod]
+*.pyc
+
+# ========================
+# IDEs e Editores
+# ========================
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+.DS_Store
+Thumbs.db
+
+# ========================
+lembrar.txt
