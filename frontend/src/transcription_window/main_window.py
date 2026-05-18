@@ -78,11 +78,93 @@ class MainWindow(QMainWindow):
         self.duration_spin.setValue(0.0)
         self.duration_spin.setToolTip("0 = modo continuo ate clicar em Parar")
 
+        self.vad_combo = QComboBox()
+        self.vad_combo.addItems(["silero", "energy"])
+        self.vad_combo.setCurrentText("silero")
+
+        self.speech_peak_spin = QDoubleSpinBox()
+        self.speech_peak_spin.setRange(0.0001, 0.02)
+        self.speech_peak_spin.setDecimals(4)
+        self.speech_peak_spin.setSingleStep(0.0001)
+        self.speech_peak_spin.setValue(0.0018)
+        self.speech_peak_spin.setToolTip("Usado no VAD por energia e como fallback")
+
+        self.silero_threshold_spin = QDoubleSpinBox()
+        self.silero_threshold_spin.setRange(0.10, 0.95)
+        self.silero_threshold_spin.setDecimals(2)
+        self.silero_threshold_spin.setSingleStep(0.05)
+        self.silero_threshold_spin.setValue(0.50)
+
+        self.silero_min_silence_spin = QSpinBox()
+        self.silero_min_silence_spin.setRange(50, 1200)
+        self.silero_min_silence_spin.setSingleStep(10)
+        self.silero_min_silence_spin.setValue(120)
+
+        self.silero_pad_spin = QSpinBox()
+        self.silero_pad_spin.setRange(0, 300)
+        self.silero_pad_spin.setSingleStep(10)
+        self.silero_pad_spin.setValue(30)
+
+        self.min_speech_window_spin = QDoubleSpinBox()
+        self.min_speech_window_spin.setRange(0.0, 1.5)
+        self.min_speech_window_spin.setDecimals(2)
+        self.min_speech_window_spin.setSingleStep(0.05)
+        self.min_speech_window_spin.setValue(0.20)
+
+        self.min_silence_window_spin = QDoubleSpinBox()
+        self.min_silence_window_spin.setRange(0.1, 2.5)
+        self.min_silence_window_spin.setDecimals(2)
+        self.min_silence_window_spin.setSingleStep(0.05)
+        self.min_silence_window_spin.setValue(0.40)
+
+        self.max_utterance_spin = QDoubleSpinBox()
+        self.max_utterance_spin.setRange(0.8, 12.0)
+        self.max_utterance_spin.setDecimals(1)
+        self.max_utterance_spin.setSingleStep(0.2)
+        self.max_utterance_spin.setValue(3.2)
+
+        self.min_utterance_spin = QDoubleSpinBox()
+        self.min_utterance_spin.setRange(0.2, 3.0)
+        self.min_utterance_spin.setDecimals(1)
+        self.min_utterance_spin.setSingleStep(0.1)
+        self.min_utterance_spin.setValue(0.7)
+
+        self.forced_policy_combo = QComboBox()
+        self.forced_policy_combo.addItems(["protect_boundary", "hard_cut"])
+        self.forced_policy_combo.setCurrentText("protect_boundary")
+
+        self.boundary_overlap_spin = QDoubleSpinBox()
+        self.boundary_overlap_spin.setRange(0.0, 1.2)
+        self.boundary_overlap_spin.setDecimals(2)
+        self.boundary_overlap_spin.setSingleStep(0.05)
+        self.boundary_overlap_spin.setValue(0.45)
+
+        self.tail_guard_words_spin = QSpinBox()
+        self.tail_guard_words_spin.setRange(0, 12)
+        self.tail_guard_words_spin.setValue(4)
+
+        self.forced_extra_tail_spin = QSpinBox()
+        self.forced_extra_tail_spin.setRange(0, 8)
+        self.forced_extra_tail_spin.setValue(1)
+
         form.addRow("Modelo", self.model_combo)
         form.addRow("Dispositivo", self.device_combo)
         form.addRow("Idioma", self.language_combo)
         form.addRow("Contexto", self.context_spin)
         form.addRow("Duracao maxima (s)", self.duration_spin)
+        form.addRow("VAD ativo", self.vad_combo)
+        form.addRow("Limiar pico energia", self.speech_peak_spin)
+        form.addRow("Limiar Silero", self.silero_threshold_spin)
+        form.addRow("Silero min silencio (ms)", self.silero_min_silence_spin)
+        form.addRow("Silero speech pad (ms)", self.silero_pad_spin)
+        form.addRow("Janela minima fala (s)", self.min_speech_window_spin)
+        form.addRow("Janela minima silencio (s)", self.min_silence_window_spin)
+        form.addRow("Enunciado maximo (s)", self.max_utterance_spin)
+        form.addRow("Enunciado minimo (s)", self.min_utterance_spin)
+        form.addRow("Politica forced split", self.forced_policy_combo)
+        form.addRow("Overlap fronteira (s)", self.boundary_overlap_spin)
+        form.addRow("Tail guard (palavras)", self.tail_guard_words_spin)
+        form.addRow("Tail extra forced", self.forced_extra_tail_spin)
 
         button_row = QHBoxLayout()
         button_row.setSpacing(10)
@@ -165,11 +247,14 @@ class MainWindow(QMainWindow):
             """
         )
 
+        self._on_vad_type_changed(self.vad_combo.currentText())
+
     def _connect_signals(self) -> None:
         """Conecta botoes/sinais da UI aos handlers e ao controller."""
         self.start_button.clicked.connect(self._on_start_clicked)
         self.stop_button.clicked.connect(self._on_stop_clicked)
         self.clear_button.clicked.connect(self.output.clear)
+        self.vad_combo.currentTextChanged.connect(self._on_vad_type_changed)
 
         self.controller.transcript_chunk.connect(self._on_transcript_chunk)
         self.controller.status_changed.connect(self._set_status)
@@ -188,7 +273,27 @@ class MainWindow(QMainWindow):
             language=self.language_combo.currentText(),
             context_window=int(self.context_spin.value()),
             max_duration_s=max_duration,
+            vad_type=self.vad_combo.currentText(),
+            speech_peak_threshold=float(self.speech_peak_spin.value()),
+            silero_threshold=float(self.silero_threshold_spin.value()),
+            silero_min_silence_ms=int(self.silero_min_silence_spin.value()),
+            silero_speech_pad_ms=int(self.silero_pad_spin.value()),
+            min_speech_window_s=float(self.min_speech_window_spin.value()),
+            min_silence_window_s=float(self.min_silence_window_spin.value()),
+            max_utterance_s=float(self.max_utterance_spin.value()),
+            min_utterance_s=float(self.min_utterance_spin.value()),
+            boundary_overlap_s=float(self.boundary_overlap_spin.value()),
+            tail_guard_words=int(self.tail_guard_words_spin.value()),
+            forced_split_policy=self.forced_policy_combo.currentText(),
+            forced_split_extra_tail_words=int(self.forced_extra_tail_spin.value()),
         )
+
+    def _on_vad_type_changed(self, vad_type: str) -> None:
+        """Habilita ajustes especificos do Silero apenas quando necessario."""
+        use_silero = vad_type == "silero"
+        self.silero_threshold_spin.setEnabled(use_silero)
+        self.silero_min_silence_spin.setEnabled(use_silero)
+        self.silero_pad_spin.setEnabled(use_silero)
 
     def _on_start_clicked(self) -> None:
         """Inicia sessao com os parametros selecionados."""
@@ -209,6 +314,19 @@ class MainWindow(QMainWindow):
         self.language_combo.setEnabled(not is_running)
         self.context_spin.setEnabled(not is_running)
         self.duration_spin.setEnabled(not is_running)
+        self.vad_combo.setEnabled(not is_running)
+        self.speech_peak_spin.setEnabled(not is_running)
+        self.silero_threshold_spin.setEnabled(not is_running and self.vad_combo.currentText() == "silero")
+        self.silero_min_silence_spin.setEnabled(not is_running and self.vad_combo.currentText() == "silero")
+        self.silero_pad_spin.setEnabled(not is_running and self.vad_combo.currentText() == "silero")
+        self.min_speech_window_spin.setEnabled(not is_running)
+        self.min_silence_window_spin.setEnabled(not is_running)
+        self.max_utterance_spin.setEnabled(not is_running)
+        self.min_utterance_spin.setEnabled(not is_running)
+        self.forced_policy_combo.setEnabled(not is_running)
+        self.boundary_overlap_spin.setEnabled(not is_running)
+        self.tail_guard_words_spin.setEnabled(not is_running)
+        self.forced_extra_tail_spin.setEnabled(not is_running)
 
     def _on_transcript_chunk(self, chunk: str) -> None:
         """Acrescenta novos trechos ao fim do campo de transcricao."""
