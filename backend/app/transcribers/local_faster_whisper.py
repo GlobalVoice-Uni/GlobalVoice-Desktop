@@ -17,9 +17,13 @@ class LocalFasterWhisperTranscriber:
 
     def _resolve_device(self, requested: str) -> str:
         """Mapeia escolha da UI para device suportado pelo WhisperModel."""
-        if requested == "gpu":
+        normalized = (requested or "cpu").strip().lower()
+        if normalized in {"gpu", "cuda"}:
             if not torch.cuda.is_available():
-                raise RuntimeError("GPU solicitada, mas CUDA nao esta disponivel.")
+                raise RuntimeError(
+                    "GPU solicitada, mas CUDA nao esta disponivel neste ambiente "
+                    f"(torch={torch.__version__}, torch_cuda={torch.version.cuda})."
+                )
             return "cuda"
         return "cpu"
 

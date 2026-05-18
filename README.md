@@ -1,6 +1,6 @@
 # GlobalVoice Desktop
 
-Aplicação desktop para transcrição de áudio em tempo real, utilizando Faster-Whisper e interface gráfica em PySide6.
+Aplicação desktop para transcrição de áudio em tempo real, utilizando Faster-Whisper e interface gráfica em PySide6 com home, toolbar e janelas flutuantes.
 
 ## Visão Geral
 
@@ -8,9 +8,9 @@ Aplicação desktop para transcrição de áudio em tempo real, utilizando Faste
 
 - ✅ Transcrição em tempo real via microfone
 - ✅ Execução local com fallback automático entre GPU e CPU
-- ✅ Idiomas: português e inglês
+- ✅ Idiomas: português, inglês e espanhol
 - ✅ Arquitetura desacoplada (frontend/backend/bridge) pronta para evolução
-- ✅ Interface intuitiva em PySide6
+- ✅ Interface em PySide6 com home, toolbar flutuante e painel de configuração por abas
 
 ## Estrutura do Repositório
 
@@ -20,9 +20,12 @@ GlobalVoice-Desktop/
 │   ├── src/
 │   │   ├── transcription_window/  # Pacote principal
 │   │   │   ├── __init__.py
-│   │   │   ├── main_window.py     # Janela principal
-│   │   │   ├── controller.py      # Orquestração em thread
-│   │   │   └── backend_bridge.py  # Contrato de integração
+│   │   │   ├── main_window.py      # Janela principal
+│   │   │   ├── floating_windows.py # Toolbar e janela flutuante de transcrição
+│   │   │   ├── controller.py       # Orquestração em thread
+│   │   │   ├── settings_window.py  # Configurações e teste da transcrição
+│   │   │   ├── settings_store.py   # Persistência local (QSettings)
+│   │   │   └── backend_bridge.py   # Contrato de integração
 │   │   └── main.py
 │   ├── start_frontend.ps1
 │   └── requirements.txt
@@ -33,6 +36,8 @@ GlobalVoice-Desktop/
 │   │   ├── ports.py                      # Protocolos (interfaces)
 │   │   ├── audio/
 │   │   │   └── audio_capture.py          # Captura de microfone
+│   │   ├── detectors/
+│   │   │   └── speech_detectors.py       # VAD e detectores de fala
 │   │   ├── transcribers/
 │   │   │   └── local_faster_whisper.py  # Implementação Faster-Whisper
 │   │   └── sessions/
@@ -129,27 +134,33 @@ _Benchmarks detalhados em [GlobalVoice-ASR-Benchmarks](https://github.com/Global
 ## Uso Básico
 
 1. **Inicie a aplicação**
-2. **Configure**:
-   - Idioma (português ou inglês)
-   - Tamanho do modelo (tiny, base, small)
-   - Dispositivo (GPU/CPU automático)
-3. **Clique "Iniciar"**
-4. **Fale no microfone** — a transcrição aparece em tempo real
-5. **Clique "Parar"** quando terminar
+2. **Na Home, abra as janelas flutuantes em "Iniciar"**
+3. **Na toolbar, ajuste idiomas e controle a sessão**
+4. **Use "Opcoes" para abrir as configurações por abas**
+5. **Fale no microfone** — a transcrição aparece em tempo real
+6. **Clique "Parar" quando terminar**
+
+### O que a UI oferece atualmente
+
+- Home para iniciar e abrir configurações
+- Toolbar flutuante com iniciar/parar/limpar, indicador de status e botão de opções
+- Janela flutuante de transcrição redimensionável
+- Persistência local de parâmetros e dimensões da janela via QSettings
 
 ### Parâmetros Avançados
 
 - **Context Window**: número de chunks anteriores para contexto (melhora continuidade)
 - **Max Duration**: tempo máximo de uma sessão (em segundos)
+- **Silero/VAD**: parâmetros de detecção de fala e silêncio configuráveis
 
 ## Arquitetura
 
 ### Fluxo de Dados
 
 ```
-[Microfone] → [AudioCapture] → [RealtimeSession] → [FasterWhisper] → [Controller] → [MainWindow]
-                                     ↑                                                    ↓
-                                  VAD + Dedupe + Overlap                           [User sees live transcript]
+[Microfone] → [AudioCapture] → [RealtimeSession] → [FasterWhisper] → [Controller] → [MainWindow/FloatingWindows]
+                                 ↑                                                     ↓
+                             VAD + Dedupe + Overlap                           [User sees live transcript]
 ```
 
 ### Pontos-Chave
@@ -174,10 +185,11 @@ _Benchmarks detalhados em [GlobalVoice-ASR-Benchmarks](https://github.com/Global
 
   - Orquestração em thread separada (não bloqueia UI)
   - Sinais Qt para atualização de UI
-- **MainWindow** (`frontend/src/transcription_window/main_window.py`):
+- **MainWindow + FloatingWindows** (`frontend/src/transcription_window/main_window.py` e `frontend/src/transcription_window/floating_windows.py`):
 
-  - Interface PySide6
+  - Home para orquestração das janelas flutuantes
   - Exibição em tempo real da transcrição
+  - Status visual de carregamento/ativo e fechamento interligado entre janelas
 
 ## Roadmap
 
@@ -187,10 +199,12 @@ _Benchmarks detalhados em [GlobalVoice-ASR-Benchmarks](https://github.com/Global
 - [✅] Frontend desktop em PySide6
 - [✅] Suporte GPU com fallback automático
 - [✅] Arquitetura desacoplada (bridge pronta para evolução)
+- [✅] Interface flutuante com toolbar, status e configuração por abas
+- [✅] Integração com Silero VAD na sessão local
 
 ### Fase 2 (Próximos Sprints)
 
-- [ ] Integração de **Silero VAD** para melhor detecção de fala
+- [ ] Comunicação entre duas diferentes maquinas localmente
 - [ ] Testes automatizados (unit + integração)
 - [ ] Suporte a exportação (SRT, JSON, TXT)
 
@@ -263,4 +277,4 @@ _Benchmarks detalhados em [GlobalVoice-ASR-Benchmarks](https://github.com/Global
 ---
 
 **Desenvolvido por GlobalVoice-Uni**
-Última atualização: 15 de abril de 2026
+Última atualização: 18 de maio de 2026

@@ -6,13 +6,14 @@ from typing import Callable, Optional
 import numpy as np
 
 from ..audio.audio_capture import MicrophoneAudioSource
-from ..ports import TranscriberPort
+from ..ports import SpeechDetectorPort, TranscriberPort
+from ..detectors.speech_detectors import EnergySpeechDetector
 
 
 class RealtimeTranscriptionSession:
     """Orquestra captura, segmentacao por fala/silencio e commit de texto.
 
-    A sessao recebe blocos do microfone, fecha enunciados com VAD simples,
+    A sessao recebe blocos do microfone, fecha enunciados por detector de fala,
     chama o transcritor e publica somente texto novo para evitar repeticao.
     """
 
@@ -20,35 +21,53 @@ class RealtimeTranscriptionSession:
         self,
         audio_source: MicrophoneAudioSource,
         transcriber: TranscriberPort,
+        speech_detector: Optional[SpeechDetectorPort] = None,
         language: str = "pt-br",
         context_window: int = 0,
         speech_peak_threshold: float = 0.0018,
         max_silence_inside_utterance_s: float = 0.4,
+        min_speech_window_s: float = 0.2,
+        min_silence_window_s: Optional[float] = None,
         max_utterance_s: float = 3.2,
         min_utterance_s: float = 0.7,
         boundary_overlap_s: float = 0.45,
         tail_guard_words: int = 4,
+        forced_split_policy: str = "protect_boundary",
+        forced_split_extra_tail_words: int = 1,
     ):
         # Dependencias injetadas para facilitar troca de implementacao no futuro.
         self.audio_source = audio_source
         self.transcriber = transcriber
+        self.speech_detector = speech_detector
         self.language = "pt" if language == "pt-br" else language
         self.context_window = max(0, context_window)
 
         # Parametros de segmentacao e protecao de fronteira entre blocos.
         self.speech_peak_threshold = speech_peak_threshold
         self.max_silence_inside_utterance_s = max_silence_inside_utterance_s
+        self.min_speech_window_s = max(0.0, min_speech_window_s)
+        self.min_silence_window_s = max(
+            0.05,
+            (
+                min_silence_window_s
+                if min_silence_window_s is not None
+                else max_silence_inside_utterance_s
+            ),
+        )
         self.max_utterance_s = max_utterance_s
         self.min_utterance_s = min_utterance_s
         self.boundary_overlap_s = boundary_overlap_s
-        self.tail_guard_words = tail_guard_words
+        self.tail_guard_words = max(0, tail_guard_words)
+        self.forced_split_policy = (forced_split_policy or "protect_boundary").strip().lower()
+        self.forced_split_extra_tail_words = max(0, forced_split_extra_tail_words)
 
         self._stop_requested = False
         self._live_words = deque(maxlen=1400)
         self._context_words = deque(maxlen=self.context_window)
         self._full_parts = []
-        self._last_committed_norm = ""
         self._pending_tail_words = []
+        self._pending_tail_overlap_limit = self.tail_guard_words
+        self._min_overlap_words_for_dedupe = 2
 
     def stop(self) -> None:
         """Solicita parada assicrona da sessao em execucao."""
@@ -74,9 +93,17 @@ class RealtimeTranscriptionSession:
         self._reset_state()
         self._stop_requested = False
 
+        detector: SpeechDetectorPort = self.speech_detector or EnergySpeechDetector(
+            peak_threshold=self.speech_peak_threshold
+        )
+        detector.reset()
+
         speech_active = False
         speech_buffers = []
+        speech_candidate_buffers = []
+        speech_candidate_steps = 0
         silence_steps = 0
+        idle_silence_steps = 0
         carryover_audio = np.zeros(0, dtype=np.float32)
 
         if on_status:
@@ -85,9 +112,13 @@ class RealtimeTranscriptionSession:
         started_at = time.time()
 
         with self.audio_source:
-            max_silence_steps = max(
+            min_speech_steps = max(
                 1,
-                int(self.max_silence_inside_utterance_s / self.audio_source.step_duration_s),
+                int(np.ceil(self.min_speech_window_s / self.audio_source.step_duration_s)),
+            )
+            min_silence_steps = max(
+                1,
+                int(np.ceil(self.min_silence_window_s / self.audio_source.step_duration_s)),
             )
             max_utt_samples = int(self.max_utterance_s * self.audio_source.target_sample_rate)
             min_utt_samples = int(self.min_utterance_s * self.audio_source.target_sample_rate)
@@ -104,34 +135,59 @@ class RealtimeTranscriptionSession:
                     break
 
                 audio, peak = self.audio_source.read_step()
-                has_speech = peak >= self.speech_peak_threshold
+                has_speech = detector.detect(audio, peak)
 
-                if has_speech:
-                    if not speech_active:
-                        speech_buffers = [carryover_audio] if len(carryover_audio) > 0 else []
-                        carryover_audio = np.zeros(0, dtype=np.float32)
-                    speech_active = True
-                    silence_steps = 0
+                if speech_active:
+                    idle_silence_steps = 0
                     speech_buffers.append(audio)
-                elif speech_active:
-                    silence_steps += 1
-                    speech_buffers.append(audio)
+                    if has_speech:
+                        silence_steps = 0
+                    else:
+                        silence_steps += 1
+                else:
+                    if has_speech:
+                        idle_silence_steps = 0
+                        speech_candidate_buffers.append(audio)
+                        speech_candidate_steps += 1
+                        if speech_candidate_steps >= min_speech_steps:
+                            speech_buffers = [carryover_audio] if len(carryover_audio) > 0 else []
+                            speech_buffers.extend(speech_candidate_buffers)
+                            carryover_audio = np.zeros(0, dtype=np.float32)
+
+                            speech_active = True
+                            silence_steps = 0
+                            speech_candidate_buffers = []
+                            speech_candidate_steps = 0
+                    else:
+                        idle_silence_steps += 1
+                        speech_candidate_buffers = []
+                        speech_candidate_steps = 0
+
+                    if (
+                        self._pending_tail_words
+                        and idle_silence_steps >= min_silence_steps
+                    ):
+                        # Se houve pausa real apos corte forcado, publica a cauda sem esperar nova fala.
+                        self._flush_pending_tail(on_text)
+                        idle_silence_steps = 0
 
                 utter_len = sum(len(x) for x in speech_buffers) if speech_buffers else 0
-                should_finalize = speech_active and (
-                    silence_steps >= max_silence_steps or utter_len >= max_utt_samples
-                )
+                natural_split = speech_active and silence_steps >= min_silence_steps
+                forced_by_time = speech_active and utter_len >= max_utt_samples
+                should_finalize = natural_split or forced_by_time
 
                 if should_finalize:
-                    # forced_split indica quebra por tamanho maximo e nao por silencio.
-                    forced_split = utter_len >= max_utt_samples and silence_steps < max_silence_steps
+                    # forced_split e usado somente quando tempo maximo estoura sem pausa natural.
+                    forced_split = forced_by_time and not natural_split
+                    apply_boundary_protection = forced_split and self._should_protect_forced_split_boundary()
+
                     utter = np.concatenate(speech_buffers).astype(np.float32)
                     speech_active = False
                     speech_buffers = []
                     silence_steps = 0
 
-                    if forced_split and overlap_samples > 0 and len(utter) > overlap_samples:
-                        # Mantem sobreposicao para reduzir perda de fronteira.
+                    if apply_boundary_protection and overlap_samples > 0 and len(utter) > overlap_samples:
+                        # Sobreposicao apenas em corte forcado para salvar fronteira de palavra.
                         carryover_audio = utter[-overlap_samples:].copy()
                     else:
                         carryover_audio = np.zeros(0, dtype=np.float32)
@@ -139,12 +195,13 @@ class RealtimeTranscriptionSession:
                     self._process_utterance(
                         utter=utter,
                         min_utt_samples=min_utt_samples,
-                        forced_split=forced_split,
+                        forced_split=apply_boundary_protection,
                         on_text=on_text,
                     )
 
-        if speech_buffers:
-            utter = np.concatenate(speech_buffers).astype(np.float32)
+        remaining_buffers = speech_buffers if speech_buffers else speech_candidate_buffers
+        if remaining_buffers:
+            utter = np.concatenate(remaining_buffers).astype(np.float32)
             self._process_utterance(
                 utter=utter,
                 min_utt_samples=int(self.min_utterance_s * self.audio_source.target_sample_rate),
@@ -154,9 +211,7 @@ class RealtimeTranscriptionSession:
 
         if self._pending_tail_words:
             # Esvazia palavras protegidas no final para nao perder texto util.
-            tail_new_words = self._extract_new_suffix(" ".join(self._pending_tail_words))
-            self._append_words(tail_new_words, on_text)
-            self._pending_tail_words = []
+            self._flush_pending_tail(on_text)
 
         return self.get_full_transcript()
 
@@ -165,8 +220,12 @@ class RealtimeTranscriptionSession:
         self._live_words.clear()
         self._context_words = deque(maxlen=self.context_window)
         self._full_parts = []
-        self._last_committed_norm = ""
         self._pending_tail_words = []
+        self._pending_tail_overlap_limit = self.tail_guard_words
+
+    def _should_protect_forced_split_boundary(self) -> bool:
+        """Define se corte forcado aplica overlap + tail guard."""
+        return self.forced_split_policy not in {"hard_cut", "none", "disabled"}
 
     def _process_utterance(
         self,
@@ -188,6 +247,16 @@ class RealtimeTranscriptionSession:
         if text:
             self._commit_transcribed_text(text, forced_split=forced_split, on_text=on_text)
 
+    def _flush_pending_tail(self, on_text: Callable[[str], None]) -> None:
+        """Publica cauda pendente quando nao ha nova fala para reconciliação."""
+        if not self._pending_tail_words:
+            return
+
+        tail_new_words = self._extract_new_suffix(" ".join(self._pending_tail_words))
+        self._append_words(tail_new_words, on_text)
+        self._pending_tail_words = []
+        self._pending_tail_overlap_limit = self.tail_guard_words
+
     def _extract_new_suffix(self, candidate_text: str):
         """Extrai apenas o sufixo novo comparando com historico ja emitido."""
         words = [w for w in candidate_text.split() if w.strip()]
@@ -202,6 +271,8 @@ class RealtimeTranscriptionSession:
         overlap = 0
 
         for k in range(max_overlap, 0, -1):
+            if k < self._min_overlap_words_for_dedupe:
+                continue
             if [_norm(w) for w in history[-k:]] == [_norm(w) for w in words[:k]]:
                 overlap = k
                 break
@@ -231,12 +302,8 @@ class RealtimeTranscriptionSession:
             return
 
         text = " ".join(new_words)
-        norm = re.sub(r"\s+", " ", re.sub(r"[^\w\s]", "", text.lower())).strip()
-        if norm and (norm == self._last_committed_norm or self._last_committed_norm.endswith(norm)):
-            return
 
         self._full_parts.append(text)
-        self._last_committed_norm = norm if norm else self._last_committed_norm
 
         for w in new_words:
             self._live_words.append(w)
@@ -255,7 +322,7 @@ class RealtimeTranscriptionSession:
             return re.sub(r"[^\w]", "", token.lower())
 
         pending = self._pending_tail_words
-        max_overlap = min(len(pending), len(words), self.tail_guard_words)
+        max_overlap = min(len(pending), len(words), self._pending_tail_overlap_limit)
         overlap = 0
 
         for k in range(max_overlap, 0, -1):
@@ -265,6 +332,7 @@ class RealtimeTranscriptionSession:
 
         merged = pending + words[overlap:]
         self._pending_tail_words = []
+        self._pending_tail_overlap_limit = self.tail_guard_words
         return merged
 
     def _commit_transcribed_text(self, text: str, forced_split: bool, on_text: Callable[[str], None]) -> None:
@@ -276,12 +344,20 @@ class RealtimeTranscriptionSession:
         words = self._merge_with_pending_tail(words)
 
         if forced_split:
-            # Segura as ultimas palavras para confirmar na proxima janela.
-            if len(words) <= self.tail_guard_words:
-                self._pending_tail_words = words
-                return
-            commit_words = words[:-self.tail_guard_words]
-            self._pending_tail_words = words[-self.tail_guard_words:]
+            guard_words = self.tail_guard_words + self.forced_split_extra_tail_words
+            if guard_words <= 0:
+                commit_words = words
+                self._pending_tail_words = []
+                self._pending_tail_overlap_limit = self.tail_guard_words
+            else:
+                # Segura as ultimas palavras para confirmar na proxima janela.
+                if len(words) <= guard_words:
+                    self._pending_tail_words = words
+                    self._pending_tail_overlap_limit = guard_words
+                    return
+                commit_words = words[:-guard_words]
+                self._pending_tail_words = words[-guard_words:]
+                self._pending_tail_overlap_limit = guard_words
         else:
             commit_words = words
 

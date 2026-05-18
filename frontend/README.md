@@ -1,10 +1,11 @@
 # Frontend - PySide6
 
-Aplicacao desktop simples para demonstrar transcricao em tempo real.
+Aplicacao desktop para transcricao em tempo real com tela inicial, janelas flutuantes e tela de configuracoes.
 
 ## Objetivo
 
-- exibir a transcricao em uma janela, sem depender do terminal;
+- exibir a transcricao em uma janela flutuante, sem depender do terminal;
+- oferecer uma tela de configuracoes com parametros persistentes;
 - manter a UI desacoplada da implementacao de backend por meio de uma ponte.
 
 ## Estrutura
@@ -12,7 +13,13 @@ Aplicacao desktop simples para demonstrar transcricao em tempo real.
 - src/main.py
   - ponto de entrada da aplicacao
 - src/transcription_window/main_window.py
-  - janela principal e controles
+  - tela inicial (home) e orquestracao das janelas
+- src/transcription_window/floating_windows.py
+  - janela de transcricao e barra flutuante de controles
+- src/transcription_window/settings_window.py
+  - tela de configuracao e testes com chat
+- src/transcription_window/settings_store.py
+  - persistencia local dos parametros (QSettings)
 - src/transcription_window/controller.py
   - controla ciclo de vida da sessao em thread de fundo
 - src/transcription_window/backend_bridge.py
