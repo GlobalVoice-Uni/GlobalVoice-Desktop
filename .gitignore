@@ -17,7 +17,6 @@ __pycache__/
 # IDEs e Editores
 # ========================
 .idea/
-.vscode/
 *.sublime-workspace
 *.sublime-project
 .DS_Store
