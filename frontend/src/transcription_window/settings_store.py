@@ -22,6 +22,9 @@ DEFAULT_SETTINGS = {
     "tail_guard_words": 4,
     "forced_split_policy": "protect_boundary",
     "forced_split_extra_tail_words": 1,
+    "ui_transcription_font_size": 14,
+    "ui_transcription_window_width": 500,
+    "ui_transcription_window_height": 400,
 }
 
 
