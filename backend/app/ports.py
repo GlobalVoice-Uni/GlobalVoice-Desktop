@@ -23,3 +23,13 @@ class TranscriberPort(Protocol):
             language: idioma usado pelo modelo (ex.: "pt" ou "en").
             context_prompt: texto de contexto opcional para estabilizar continuidade.
         """
+
+
+class SpeechDetectorPort(Protocol):
+    """Contrato de detector de fala para segmentacao em tempo real."""
+
+    def reset(self) -> None:
+        """Reseta estado interno entre sessoes."""
+
+    def detect(self, audio_16k: np.ndarray, peak: float) -> bool:
+        """Retorna True quando o bloco atual deve ser tratado como fala."""
