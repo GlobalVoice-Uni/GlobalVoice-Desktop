@@ -4,13 +4,16 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QMainWindow,
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
+    QSizePolicy,
     QSpinBox,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -28,7 +31,8 @@ class SettingsWindow(QMainWindow):
         self.controller = RealtimeController()
 
         self.setWindowTitle("GlobalVoice - Configuracoes")
-        self.resize(980, 620)
+        self.resize(880, 680)
+        self.setMinimumSize(640, 520)
 
         self._build_ui()
         self._connect_signals()
@@ -37,28 +41,49 @@ class SettingsWindow(QMainWindow):
     def refresh_from_storage(self) -> None:
         self._load_settings()
 
+    def _build_form_tab(self, rows: list[tuple[str, QWidget]]) -> QWidget:
+        container = QWidget()
+        layout = QFormLayout(container)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setHorizontalSpacing(16)
+        layout.setVerticalSpacing(10)
+        layout.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        layout.setFormAlignment(Qt.AlignTop)
+        layout.setRowWrapPolicy(QFormLayout.WrapLongRows)
+        layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+
+        for label, widget in rows:
+            layout.addRow(label, widget)
+
+        return container
+
     def _build_ui(self) -> None:
         """Constroi os controles visuais e estilo base da janela."""
         root = QWidget()
         self.setCentralWidget(root)
 
         main_layout = QVBoxLayout(root)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(14)
+        main_layout.setContentsMargins(24, 24, 24, 24)
+        main_layout.setSpacing(16)
 
-        title = QLabel("Transcricao Em Tempo Real")
+        header = QFrame()
+        header.setObjectName("headerCard")
+        header_layout = QVBoxLayout(header)
+        header_layout.setContentsMargins(18, 16, 18, 16)
+        header_layout.setSpacing(6)
+
+        title = QLabel("Configuracoes de Transcricao")
         title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         title.setObjectName("titleLabel")
 
         subtitle = QLabel(
-            "Aplicacao desktop com PySide6. Hoje local, preparada para trocar a ponte de execucao no futuro."
+            "Ajuste parametros de modelo, VAD e segmentacao. O modo teste usa os mesmos valores salvos."
         )
         subtitle.setWordWrap(True)
         subtitle.setObjectName("subtitleLabel")
 
-        form = QFormLayout()
-        form.setHorizontalSpacing(14)
-        form.setVerticalSpacing(10)
+        header_layout.addWidget(title)
+        header_layout.addWidget(subtitle)
 
         self.model_combo = QComboBox()
         self.model_combo.addItems(["tiny", "base", "small", "medium", "large"])
@@ -134,106 +159,225 @@ class SettingsWindow(QMainWindow):
         self.forced_extra_tail_spin = QSpinBox()
         self.forced_extra_tail_spin.setRange(0, 8)
 
-        form.addRow("Modelo", self.model_combo)
-        form.addRow("Dispositivo", self.device_combo)
-        form.addRow("Idioma", self.language_combo)
-        form.addRow("Contexto", self.context_spin)
-        form.addRow("Duracao maxima (s)", self.duration_spin)
-        form.addRow("VAD ativo", self.vad_combo)
-        form.addRow("Limiar pico energia", self.speech_peak_spin)
-        form.addRow("Limiar Silero", self.silero_threshold_spin)
-        form.addRow("Silero min silencio (ms)", self.silero_min_silence_spin)
-        form.addRow("Silero speech pad (ms)", self.silero_pad_spin)
-        form.addRow("Janela minima fala (s)", self.min_speech_window_spin)
-        form.addRow("Janela minima silencio (s)", self.min_silence_window_spin)
-        form.addRow("Enunciado maximo (s)", self.max_utterance_spin)
-        form.addRow("Enunciado minimo (s)", self.min_utterance_spin)
-        form.addRow("Politica forced split", self.forced_policy_combo)
-        form.addRow("Overlap fronteira (s)", self.boundary_overlap_spin)
-        form.addRow("Tail guard (palavras)", self.tail_guard_words_spin)
-        form.addRow("Tail extra forced", self.forced_extra_tail_spin)
-
-        button_row = QHBoxLayout()
-        button_row.setSpacing(10)
+        field_widgets = [
+            self.model_combo,
+            self.device_combo,
+            self.language_combo,
+            self.context_spin,
+            self.duration_spin,
+            self.vad_combo,
+            self.speech_peak_spin,
+            self.silero_threshold_spin,
+            self.silero_min_silence_spin,
+            self.silero_pad_spin,
+            self.min_speech_window_spin,
+            self.min_silence_window_spin,
+            self.max_utterance_spin,
+            self.min_utterance_spin,
+            self.forced_policy_combo,
+            self.boundary_overlap_spin,
+            self.tail_guard_words_spin,
+            self.forced_extra_tail_spin,
+        ]
+        for widget in field_widgets:
+            widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         self.start_button = QPushButton("Iniciar")
         self.stop_button = QPushButton("Parar")
         self.clear_button = QPushButton("Limpar")
         self.save_button = QPushButton("Salvar")
-        self.reset_button = QPushButton("Reverter")
+        self.reset_button = QPushButton("Restaurar")
+        self.close_button = QPushButton("Fechar")
 
         self.stop_button.setEnabled(False)
 
-        button_row.addWidget(self.start_button)
-        button_row.addWidget(self.stop_button)
-        button_row.addWidget(self.clear_button)
-        button_row.addWidget(self.save_button)
-        button_row.addWidget(self.reset_button)
-        button_row.addStretch(1)
+        self.start_button.setProperty("kind", "primary")
+        self.stop_button.setProperty("kind", "danger")
+        self.clear_button.setProperty("kind", "ghost")
+        self.save_button.setProperty("kind", "primary")
+        self.reset_button.setProperty("kind", "secondary")
+        self.close_button.setProperty("kind", "ghost")
+
+        for button in (
+            self.start_button,
+            self.stop_button,
+            self.clear_button,
+            self.save_button,
+            self.reset_button,
+            self.close_button,
+        ):
+            button.setCursor(Qt.PointingHandCursor)
 
         self.output = QPlainTextEdit()
         self.output.setReadOnly(True)
         self.output.setPlaceholderText("A transcricao aparecera aqui...")
+        self.output.setMinimumHeight(140)
+        self.output.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         self.status_label = QLabel("Pronto para iniciar.")
         self.status_label.setObjectName("statusLabel")
 
-        main_layout.addWidget(title)
-        main_layout.addWidget(subtitle)
-        main_layout.addLayout(form)
-        main_layout.addLayout(button_row)
-        main_layout.addWidget(self.output, stretch=1)
-        main_layout.addWidget(self.status_label)
+        self.tabs = QTabWidget()
+        self.tabs.setObjectName("configTabs")
+        self.tabs.setDocumentMode(True)
+
+        base_rows = [
+            ("Modelo", self.model_combo),
+            ("Dispositivo", self.device_combo),
+            ("Idioma", self.language_combo),
+            ("Contexto", self.context_spin),
+            ("Duracao maxima (s)", self.duration_spin),
+        ]
+        vad_rows = [
+            ("VAD ativo", self.vad_combo),
+            ("Limiar pico energia", self.speech_peak_spin),
+            ("Limiar Silero", self.silero_threshold_spin),
+            ("Silero min silencio (ms)", self.silero_min_silence_spin),
+            ("Silero speech pad (ms)", self.silero_pad_spin),
+        ]
+        segment_rows = [
+            ("Janela minima fala (s)", self.min_speech_window_spin),
+            ("Janela minima silencio (s)", self.min_silence_window_spin),
+            ("Enunciado maximo (s)", self.max_utterance_spin),
+            ("Enunciado minimo (s)", self.min_utterance_spin),
+            ("Politica forced split", self.forced_policy_combo),
+            ("Overlap fronteira (s)", self.boundary_overlap_spin),
+            ("Tail guard (palavras)", self.tail_guard_words_spin),
+            ("Tail extra forced", self.forced_extra_tail_spin),
+        ]
+
+        self.tabs.addTab(self._build_form_tab(base_rows), "Basico")
+        self.tabs.addTab(self._build_form_tab(vad_rows), "VAD")
+        self.tabs.addTab(self._build_form_tab(segment_rows), "Segmentacao")
+
+        test_tab = QWidget()
+        test_layout = QVBoxLayout(test_tab)
+        test_layout.setContentsMargins(16, 16, 16, 16)
+        test_layout.setSpacing(12)
+
+        test_buttons = QHBoxLayout()
+        test_buttons.setSpacing(10)
+        test_buttons.addWidget(self.start_button)
+        test_buttons.addWidget(self.stop_button)
+        test_buttons.addWidget(self.clear_button)
+        test_buttons.addStretch(1)
+
+        test_layout.addLayout(test_buttons)
+        test_layout.addWidget(self.output, stretch=1)
+
+        self.tabs.addTab(test_tab, "Teste")
+
+        action_row = QHBoxLayout()
+        action_row.setSpacing(10)
+        action_row.addWidget(self.status_label)
+        action_row.addStretch(1)
+        action_row.addWidget(self.reset_button)
+        action_row.addWidget(self.save_button)
+        action_row.addWidget(self.close_button)
+
+        main_layout.addWidget(header)
+        main_layout.addWidget(self.tabs, stretch=1)
+        main_layout.addLayout(action_row)
 
         self.setStyleSheet(
             """
             QWidget {
-                background: #F7F5F2;
-                color: #1F1C18;
+                background: #0F1E2D;
+                color: #FFFFFF;
                 font-family: 'Bahnschrift', 'Segoe UI';
-                font-size: 14px;
+                font-size: 13px;
+            }
+            QFrame#headerCard {
+                background: rgba(15, 30, 45, 0.95);
+                border-radius: 16px;
+                border: 1px solid rgba(70, 73, 251, 0.3);
             }
             QLabel#titleLabel {
-                font-size: 30px;
+                font-size: 24px;
                 font-weight: 700;
-                color: #0F3D3E;
+                color: #FFFFFF;
             }
             QLabel#subtitleLabel {
-                color: #4B4B4B;
+                color: rgba(255, 255, 255, 0.7);
             }
-            QPushButton {
-                border: 1px solid #0F3D3E;
-                background: #FFFFFF;
-                color: #0F3D3E;
-                border-radius: 8px;
-                padding: 8px 14px;
-                font-weight: 600;
-            }
-            QPushButton:hover {
-                background: #E8F0EF;
-            }
-            QPushButton:disabled {
-                color: #888888;
-                border-color: #BBBBBB;
-                background: #F3F3F3;
-            }
-            QPlainTextEdit {
-                border: 1px solid #CFC8BF;
-                border-radius: 8px;
-                background: #FFFFFF;
-                padding: 10px;
-                selection-background-color: #A8DADC;
-            }
-            QComboBox, QSpinBox, QDoubleSpinBox {
-                border: 1px solid #CFC8BF;
-                border-radius: 6px;
+            QTabWidget::pane {
+                border: 1px solid rgba(70, 73, 251, 0.3);
+                border-radius: 14px;
+                background: rgba(15, 30, 45, 0.85);
                 padding: 6px;
-                background: #FFFFFF;
+            }
+            QTabBar::tab {
+                background: rgba(4, 0, 58, 0.55);
+                color: rgba(255, 255, 255, 0.8);
+                padding: 8px 14px;
+                border-radius: 10px;
+                margin: 4px 4px 0 4px;
+            }
+            QTabBar::tab:selected {
+                background: rgba(70, 73, 251, 0.9);
+                color: #FFFFFF;
+            }
+            QTabBar::tab:!selected:hover {
+                background: rgba(70, 73, 251, 0.35);
+            }
+            QComboBox, QSpinBox, QDoubleSpinBox, QPlainTextEdit {
+                background: rgba(4, 0, 58, 0.7);
+                border: 1px solid rgba(70, 73, 251, 0.25);
+                border-radius: 8px;
+                padding: 6px 10px;
                 min-height: 28px;
             }
+            QPlainTextEdit {
+                padding: 10px;
+                selection-background-color: rgba(70, 73, 251, 0.6);
+            }
             QLabel#statusLabel {
-                color: #2F2F2F;
+                color: #AFC3FF;
                 font-weight: 600;
+            }
+            QPushButton {
+                border-radius: 12px;
+                padding: 8px 16px;
+                font-weight: 600;
+            }
+            QPushButton[kind="primary"] {
+                background: rgba(70, 73, 251, 0.95);
+                color: #FFFFFF;
+            }
+            QPushButton[kind="secondary"] {
+                background: rgba(4, 0, 58, 0.55);
+                color: #FFFFFF;
+                border: 1px solid rgba(70, 73, 251, 0.5);
+            }
+            QPushButton[kind="danger"] {
+                background: rgba(220, 53, 69, 0.9);
+                color: #FFFFFF;
+            }
+            QPushButton[kind="ghost"] {
+                background: rgba(255, 255, 255, 0.08);
+                color: #FFFFFF;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            QPushButton:hover {
+                background: rgba(70, 73, 251, 0.85);
+            }
+            QPushButton[kind="secondary"]:hover {
+                background: rgba(70, 73, 251, 0.55);
+            }
+            QPushButton[kind="danger"]:hover {
+                background: rgba(220, 53, 69, 1);
+            }
+            QPushButton[kind="ghost"]:hover {
+                background: rgba(255, 255, 255, 0.18);
+            }
+            QPushButton:pressed {
+                background: rgba(70, 73, 251, 0.65);
+                padding-top: 9px;
+                padding-bottom: 7px;
+            }
+            QPushButton:disabled {
+                background: rgba(100, 100, 100, 0.4);
+                color: rgba(255, 255, 255, 0.4);
             }
             """
         )
@@ -245,6 +389,7 @@ class SettingsWindow(QMainWindow):
         self.clear_button.clicked.connect(self.output.clear)
         self.save_button.clicked.connect(self._on_save_clicked)
         self.reset_button.clicked.connect(self._on_reset_clicked)
+        self.close_button.clicked.connect(self.close)
         self.vad_combo.currentTextChanged.connect(self._on_vad_type_changed)
 
         self.controller.transcript_chunk.connect(self._on_transcript_chunk)
