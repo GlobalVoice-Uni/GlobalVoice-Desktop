@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -14,8 +14,16 @@ from PySide6.QtWidgets import (
 from .backend_bridge import SessionRequest
 from .controller import RealtimeController
 from .floating_windows import FloatingToolbar, FloatingTranscriptionWindow
+from .relay_network import RelayNode
 from .settings_store import load_settings, save_settings
 from .settings_window import SettingsWindow
+
+
+class RelaySignals(QObject):
+    """Encaminha eventos de relay para a thread da UI."""
+
+    message_received = Signal(str, str)
+    status_received = Signal(str)
 
 
 class MainWindow(QMainWindow):
@@ -30,6 +38,12 @@ class MainWindow(QMainWindow):
         self.settings_window = SettingsWindow()
         self.transcription_window = FloatingTranscriptionWindow()
         self.toolbar = FloatingToolbar()
+        self.relay_signals = RelaySignals()
+        self.relay = RelayNode(
+            on_message=self.relay_signals.message_received.emit,
+            on_status=self.relay_signals.status_received.emit,
+        )
+        self._display_name = ""
         self._loading_session = False
 
         self._build_ui()
@@ -135,6 +149,9 @@ class MainWindow(QMainWindow):
         self.controller.session_finished.connect(self._on_session_finished)
         self.controller.running_changed.connect(self._on_running_changed)
 
+        self.relay_signals.message_received.connect(self._on_relay_message)
+        self.relay_signals.status_received.connect(self._on_relay_status)
+
         self.transcription_window.closed.connect(self._on_floating_closed)
         self.toolbar.closed.connect(self._on_floating_closed)
 
@@ -163,6 +180,32 @@ class MainWindow(QMainWindow):
         font_size = int(values.get("ui_transcription_font_size", 14))
         self.transcription_window.apply_font_size(font_size)
 
+    def _resolve_display_name(self) -> str:
+        values = load_settings()
+        name = str(values.get("user_display_name", "")).strip()
+        return name or "PC 1"
+
+    def _start_relay(self) -> None:
+        values = load_settings()
+        mode = str(values.get("relay_mode", "off"))
+        host = str(values.get("relay_host", "")).strip() or "127.0.0.1"
+        port = int(values.get("relay_port", 8765))
+        self.relay.start(mode=mode, host=host, port=port, display_name=self._display_name)
+
+    def _stop_relay(self) -> None:
+        self.relay.stop()
+
+    def _append_chat_message(self, sender: str, text: str) -> None:
+        if not text:
+            return
+        self.transcription_window.append_chunk(sender, text)
+
+    def _on_relay_message(self, sender: str, text: str) -> None:
+        self._append_chat_message(sender, text)
+
+    def _on_relay_status(self, message: str) -> None:
+        self.toolbar.set_status_message(message)
+
     def _restore_home(self) -> None:
         self.showNormal()
         self.raise_()
@@ -170,6 +213,7 @@ class MainWindow(QMainWindow):
 
     def _on_floating_closed(self) -> None:
         self.controller.stop_session()
+        self._stop_relay()
         self._loading_session = False
         self.toolbar.set_idle()
         self.toolbar.set_buttons_state(False)
@@ -220,6 +264,8 @@ class MainWindow(QMainWindow):
         self.toolbar.set_connecting()
         self.toolbar.set_buttons_state(True, allow_stop=False)
         self._set_status(f"Conectando ({source} -> {target})...")
+        self._display_name = self._resolve_display_name()
+        self._start_relay()
         request = self._build_request()
         self.controller.start_session(request)
 
@@ -233,15 +279,20 @@ class MainWindow(QMainWindow):
     def _on_running_changed(self, is_running: bool) -> None:
         if not is_running:
             self._loading_session = False
+            self._stop_relay()
             self.toolbar.set_idle()
         self.toolbar.set_buttons_state(is_running, allow_stop=not self._loading_session)
 
     def _on_transcript_chunk(self, chunk: str) -> None:
-        self.transcription_window.append_text(chunk)
+        display_name = self._display_name or "PC 1"
+        self._append_chat_message(display_name, chunk)
+        self.relay.send_chunk(display_name, chunk)
 
     def _on_session_finished(self, final_text: str) -> None:
         if final_text and not self.transcription_window.transcription_area.toPlainText().strip():
-            self.transcription_window.append_text(final_text)
+            display_name = self._display_name or "PC 1"
+            self._append_chat_message(display_name, final_text)
+            self.relay.send_chunk(display_name, final_text)
 
     def _on_error(self, message: str) -> None:
         self._loading_session = False

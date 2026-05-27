@@ -31,7 +31,12 @@ class FloatingTranscriptionWindow(QWidget):
 
         self.drag_position = QPoint()
         self._build_ui()
+        self._reset_chat_state()
         self._apply_saved_ui()
+
+    def _reset_chat_state(self) -> None:
+        self._chat_lines: list[str] = []
+        self._last_sender = ""
 
     def _apply_saved_ui(self) -> None:
         values = load_settings()
@@ -159,25 +164,43 @@ class FloatingTranscriptionWindow(QWidget):
         )
         super().resizeEvent(event)
 
-    def append_text(self, text: str) -> None:
-        """Adiciona texto a area de transcricao."""
+    def append_chunk(self, sender: str, text: str) -> None:
+        """Anexa texto ao bloco atual do remetente."""
         if not text:
             return
 
+        sender = sender.strip() if sender else ""
+        normalized_text = text.strip()
+        if not normalized_text:
+            return
+
+        if self._chat_lines and sender == self._last_sender:
+            updated = self._chat_lines[-1].rstrip()
+            separator = " " if not updated.endswith(" ") else ""
+            self._chat_lines[-1] = f"{updated}{separator}{normalized_text}"
+        else:
+            line = f"{sender}: {normalized_text}" if sender else normalized_text
+            self._chat_lines.append(line)
+            self._last_sender = sender
+
+        self.transcription_area.setPlainText("\n".join(self._chat_lines))
         cursor = self.transcription_area.textCursor()
         cursor.movePosition(QTextCursor.End)
         self.transcription_area.setTextCursor(cursor)
-
-        content = self.transcription_area.toPlainText()
-        if content and not content.endswith(" "):
-            self.transcription_area.insertPlainText(" ")
-
-        self.transcription_area.insertPlainText(text)
         self.transcription_area.ensureCursorVisible()
+
+    def append_message(self, sender: str, text: str) -> None:
+        """Compatibilidade: encaminha para append_chunk."""
+        self.append_chunk(sender, text)
+
+    def append_text(self, text: str) -> None:
+        """Compatibilidade: adiciona texto sem remetente."""
+        self.append_chunk("", text)
 
     def clear(self) -> None:
         """Limpa a area de transcricao."""
         self.transcription_area.clear()
+        self._reset_chat_state()
 
     def apply_font_size(self, size: int) -> None:
         size = max(10, min(size, 28))

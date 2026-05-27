@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QMainWindow,
     QMessageBox,
     QPlainTextEdit,
@@ -94,6 +95,10 @@ class SettingsWindow(QMainWindow):
         self.language_combo = QComboBox()
         self.language_combo.addItems(["pt-br", "en"])
 
+        self.display_name_input = QLineEdit()
+        self.display_name_input.setPlaceholderText("Ex: PC 1")
+        self.display_name_input.setMaxLength(40)
+
         self.context_spin = QSpinBox()
         self.context_spin.setRange(0, 20)
 
@@ -159,10 +164,21 @@ class SettingsWindow(QMainWindow):
         self.forced_extra_tail_spin = QSpinBox()
         self.forced_extra_tail_spin.setRange(0, 8)
 
+        self.relay_mode_combo = QComboBox()
+        self.relay_mode_combo.addItems(["off", "host", "cliente"])
+
+        self.relay_host_input = QLineEdit()
+        self.relay_host_input.setPlaceholderText("IP do host, ex: 192.168.0.10")
+        self.relay_host_input.setMaxLength(120)
+
+        self.relay_port_spin = QSpinBox()
+        self.relay_port_spin.setRange(1024, 65535)
+
         field_widgets = [
             self.model_combo,
             self.device_combo,
             self.language_combo,
+            self.display_name_input,
             self.context_spin,
             self.duration_spin,
             self.vad_combo,
@@ -178,6 +194,9 @@ class SettingsWindow(QMainWindow):
             self.boundary_overlap_spin,
             self.tail_guard_words_spin,
             self.forced_extra_tail_spin,
+            self.relay_mode_combo,
+            self.relay_host_input,
+            self.relay_port_spin,
         ]
         for widget in field_widgets:
             widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -227,6 +246,7 @@ class SettingsWindow(QMainWindow):
             ("Idioma", self.language_combo),
             ("Contexto", self.context_spin),
             ("Duracao maxima (s)", self.duration_spin),
+            ("Nome de exibicao", self.display_name_input),
         ]
         vad_rows = [
             ("VAD ativo", self.vad_combo),
@@ -246,9 +266,16 @@ class SettingsWindow(QMainWindow):
             ("Tail extra forced", self.forced_extra_tail_spin),
         ]
 
+        network_rows = [
+            ("Modo de rede", self.relay_mode_combo),
+            ("Host do relay", self.relay_host_input),
+            ("Porta", self.relay_port_spin),
+        ]
+
         self.tabs.addTab(self._build_form_tab(base_rows), "Basico")
         self.tabs.addTab(self._build_form_tab(vad_rows), "VAD")
         self.tabs.addTab(self._build_form_tab(segment_rows), "Segmentacao")
+        self.tabs.addTab(self._build_form_tab(network_rows), "Rede")
 
         test_tab = QWidget()
         test_layout = QVBoxLayout(test_tab)
@@ -412,8 +439,12 @@ class SettingsWindow(QMainWindow):
             "model_size": self.model_combo.currentText(),
             "device": self.device_combo.currentText(),
             "language": self.language_combo.currentText(),
+            "user_display_name": self.display_name_input.text().strip(),
             "context_window": int(self.context_spin.value()),
             "max_duration_s": duration_value,
+            "relay_mode": self.relay_mode_combo.currentText(),
+            "relay_host": self.relay_host_input.text().strip(),
+            "relay_port": int(self.relay_port_spin.value()),
             "vad_type": self.vad_combo.currentText(),
             "speech_peak_threshold": float(self.speech_peak_spin.value()),
             "silero_threshold": float(self.silero_threshold_spin.value()),
@@ -433,8 +464,12 @@ class SettingsWindow(QMainWindow):
         self._set_combo_value(self.model_combo, values["model_size"], DEFAULT_SETTINGS["model_size"])
         self._set_combo_value(self.device_combo, values["device"], DEFAULT_SETTINGS["device"])
         self._set_combo_value(self.language_combo, values["language"], DEFAULT_SETTINGS["language"])
+        self.display_name_input.setText(str(values.get("user_display_name", "")))
         self.context_spin.setValue(int(values["context_window"]))
         self.duration_spin.setValue(float(values["max_duration_s"]))
+        self._set_combo_value(self.relay_mode_combo, values["relay_mode"], DEFAULT_SETTINGS["relay_mode"])
+        self.relay_host_input.setText(str(values.get("relay_host", "")))
+        self.relay_port_spin.setValue(int(values["relay_port"]))
         self._set_combo_value(self.vad_combo, values["vad_type"], DEFAULT_SETTINGS["vad_type"])
         self.speech_peak_spin.setValue(float(values["speech_peak_threshold"]))
         self.silero_threshold_spin.setValue(float(values["silero_threshold"]))
@@ -519,8 +554,12 @@ class SettingsWindow(QMainWindow):
         self.model_combo.setEnabled(not is_running)
         self.device_combo.setEnabled(not is_running)
         self.language_combo.setEnabled(not is_running)
+        self.display_name_input.setEnabled(not is_running)
         self.context_spin.setEnabled(not is_running)
         self.duration_spin.setEnabled(not is_running)
+        self.relay_mode_combo.setEnabled(not is_running)
+        self.relay_host_input.setEnabled(not is_running)
+        self.relay_port_spin.setEnabled(not is_running)
         self.vad_combo.setEnabled(not is_running)
         self.speech_peak_spin.setEnabled(not is_running)
         self.silero_threshold_spin.setEnabled(not is_running and self.vad_combo.currentText() == "silero")
