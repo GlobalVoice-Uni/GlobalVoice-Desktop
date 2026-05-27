@@ -210,7 +210,6 @@ class MainWindow(QMainWindow):
         self._append_chat_message(sender, text)
 
     def _on_relay_status(self, message: str) -> None:
-        self.toolbar.set_relay_status(message)
         self.toolbar.set_status_message(message)
 
     def _restore_home(self) -> None:

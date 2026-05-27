@@ -256,7 +256,7 @@ class RelayClient:
                 if text:
                     self._on_message(sender_name, text)
 
-            self._running = False
+        self._running = False
         self._emit_status("Conexao encerrada.")
 
     def _send_payload(self, payload: dict) -> None:

@@ -509,19 +509,12 @@ class FloatingToolbar(QWidget):
         self.status_text.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.status_text.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
-        self.relay_text = QLabel("Relay: off")
-        self.relay_text.setStyleSheet("color: rgba(255, 255, 255, 0.6); font-size: 11px;")
-        self.relay_text.setFixedWidth(120)
-        self.relay_text.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.relay_text.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-
         status_group = QFrame()
         status_layout = QHBoxLayout(status_group)
         status_layout.setContentsMargins(0, 0, 0, 0)
         status_layout.setSpacing(6)
         status_layout.addWidget(self.status_indicator)
         status_layout.addWidget(self.status_text)
-        status_layout.addWidget(self.relay_text)
 
         layout.addStretch(1)
         layout.addWidget(status_group)
@@ -566,27 +559,10 @@ class FloatingToolbar(QWidget):
         self.status_indicator.setToolTip(message)
         self.status_text.setToolTip(message)
 
-    def set_relay_status(self, message: str) -> None:
-        normalized = (message or "").lower()
-        if "falha" in normalized or "nao foi possivel" in normalized or "erro" in normalized:
-            label = "Relay: erro"
-        elif "conectado" in normalized:
-            label = "Relay: on"
-        elif "ativo" in normalized:
-            label = "Relay: host"
-        elif "encerrado" in normalized or "desconectado" in normalized:
-            label = "Relay: off"
-        else:
-            label = "Relay: ok"
-
-        self.relay_text.setText(label)
-        self.relay_text.setToolTip(message)
-
     def set_idle(self) -> None:
         self.status_indicator.setText("⚪")
         self.status_text.setText("")
         self.set_status_message("Aguardando inicio")
-        self.relay_text.setText("Relay: off")
 
     def set_active(self, message: str | None = None) -> None:
         self.status_indicator.setText("🟢")
