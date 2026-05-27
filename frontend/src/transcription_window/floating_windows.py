@@ -1,4 +1,6 @@
-from PySide6.QtCore import Qt, QPoint, QSize, Signal
+import time
+
+from PySide6.QtCore import QTimer, Qt, QPoint, QSize, Signal
 from PySide6.QtGui import QCloseEvent, QColor, QIcon, QMouseEvent, QPainter, QPainterPath, QPixmap, QTextCursor
 from PySide6.QtWidgets import (
     QComboBox,
@@ -30,6 +32,12 @@ class FloatingTranscriptionWindow(QWidget):
         self.setMinimumSize(360, 240)
 
         self.drag_position = QPoint()
+        self._smooth_enabled = True
+        self._smooth_interval_ms = 35
+        self._silence_break_s = 1.2
+        self._smooth_timer = QTimer(self)
+        self._smooth_timer.setInterval(self._smooth_interval_ms)
+        self._smooth_timer.timeout.connect(self._flush_next_word)
         self._build_ui()
         self._reset_chat_state()
         self._apply_saved_ui()
@@ -37,6 +45,31 @@ class FloatingTranscriptionWindow(QWidget):
     def _reset_chat_state(self) -> None:
         self._chat_lines: list[str] = []
         self._last_sender = ""
+        self._last_chunk_time = 0.0
+        self._pending_words: list[tuple[str, str, bool]] = []
+        if self._smooth_timer.isActive():
+            self._smooth_timer.stop()
+
+    def set_smoothing_enabled(self, enabled: bool) -> None:
+        self._smooth_enabled = bool(enabled)
+        if not self._smooth_enabled:
+            self._flush_pending_words()
+
+    def set_silence_break_s(self, seconds: float) -> None:
+        try:
+            value = float(seconds)
+        except (TypeError, ValueError):
+            value = 0.0
+        self._silence_break_s = max(0.0, value)
+
+    def set_smoothing_interval_ms(self, interval_ms: int) -> None:
+        try:
+            value = int(interval_ms)
+        except (TypeError, ValueError):
+            value = 35
+        value = max(10, min(value, 240))
+        self._smooth_interval_ms = value
+        self._smooth_timer.setInterval(self._smooth_interval_ms)
 
     def _apply_saved_ui(self) -> None:
         values = load_settings()
@@ -174,20 +207,16 @@ class FloatingTranscriptionWindow(QWidget):
         if not normalized_text:
             return
 
-        if self._chat_lines and sender == self._last_sender:
-            updated = self._chat_lines[-1].rstrip()
-            separator = " " if not updated.endswith(" ") else ""
-            self._chat_lines[-1] = f"{updated}{separator}{normalized_text}"
-        else:
-            line = f"{sender}: {normalized_text}" if sender else normalized_text
-            self._chat_lines.append(line)
-            self._last_sender = sender
+        force_new_line = self._should_start_new_line(sender)
+        words = [w for w in normalized_text.split() if w]
+        if not words:
+            return
 
-        self.transcription_area.setPlainText("\n".join(self._chat_lines))
-        cursor = self.transcription_area.textCursor()
-        cursor.movePosition(QTextCursor.End)
-        self.transcription_area.setTextCursor(cursor)
-        self.transcription_area.ensureCursorVisible()
+        if self._smooth_enabled:
+            self._enqueue_words(sender, words, force_new_line)
+            return
+
+        self._append_text_block(sender, " ".join(words), force_new_line)
 
     def append_message(self, sender: str, text: str) -> None:
         """Compatibilidade: encaminha para append_chunk."""
@@ -201,6 +230,66 @@ class FloatingTranscriptionWindow(QWidget):
         """Limpa a area de transcricao."""
         self.transcription_area.clear()
         self._reset_chat_state()
+
+    def _should_start_new_line(self, sender: str) -> bool:
+        now = time.time()
+        force_new_line = False
+        if not self._chat_lines:
+            force_new_line = True
+        elif sender != self._last_sender:
+            force_new_line = True
+        elif self._silence_break_s > 0 and (now - self._last_chunk_time) >= self._silence_break_s:
+            force_new_line = True
+
+        self._last_chunk_time = now
+        return force_new_line
+
+    def _append_text_block(self, sender: str, text: str, force_new_line: bool) -> None:
+        if not text:
+            return
+
+        sender = sender.strip() if sender else ""
+        normalized = text.strip()
+        if not normalized:
+            return
+
+        if force_new_line or not self._chat_lines or sender != self._last_sender:
+            line = f"{sender}: {normalized}" if sender else normalized
+            self._chat_lines.append(line)
+            self._last_sender = sender
+        else:
+            updated = self._chat_lines[-1].rstrip()
+            separator = " " if not updated.endswith(" ") else ""
+            self._chat_lines[-1] = f"{updated}{separator}{normalized}"
+
+        self.transcription_area.setPlainText("\n".join(self._chat_lines))
+        cursor = self.transcription_area.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        self.transcription_area.setTextCursor(cursor)
+        self.transcription_area.ensureCursorVisible()
+
+    def _enqueue_words(self, sender: str, words: list[str], force_new_line: bool) -> None:
+        for idx, word in enumerate(words):
+            self._pending_words.append((sender, word, force_new_line if idx == 0 else False))
+
+        if not self._smooth_timer.isActive():
+            self._smooth_timer.start()
+
+    def _flush_next_word(self) -> None:
+        if not self._pending_words:
+            self._smooth_timer.stop()
+            return
+
+        sender, word, force_new_line = self._pending_words.pop(0)
+        self._append_text_block(sender, word, force_new_line)
+
+    def _flush_pending_words(self) -> None:
+        if self._smooth_timer.isActive():
+            self._smooth_timer.stop()
+
+        while self._pending_words:
+            sender, word, force_new_line = self._pending_words.pop(0)
+            self._append_text_block(sender, word, force_new_line)
 
     def apply_font_size(self, size: int) -> None:
         size = max(10, min(size, 28))

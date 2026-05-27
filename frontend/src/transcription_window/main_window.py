@@ -178,7 +178,13 @@ class MainWindow(QMainWindow):
     def _apply_ui_settings(self) -> None:
         values = load_settings()
         font_size = int(values.get("ui_transcription_font_size", 14))
+        smooth_enabled = bool(values.get("ui_smooth_text", False))
+        smooth_interval = int(values.get("ui_smooth_interval_ms", 35))
+        silence_break = float(values.get("ui_balloon_silence_s", 0.0))
         self.transcription_window.apply_font_size(font_size)
+        self.transcription_window.set_smoothing_enabled(smooth_enabled)
+        self.transcription_window.set_smoothing_interval_ms(smooth_interval)
+        self.transcription_window.set_silence_break_s(silence_break)
 
     def _resolve_display_name(self) -> str:
         values = load_settings()
@@ -264,6 +270,7 @@ class MainWindow(QMainWindow):
         self.toolbar.set_connecting()
         self.toolbar.set_buttons_state(True, allow_stop=False)
         self._set_status(f"Conectando ({source} -> {target})...")
+        self._apply_ui_settings()
         self._display_name = self._resolve_display_name()
         self._start_relay()
         request = self._build_request()
@@ -290,7 +297,7 @@ class MainWindow(QMainWindow):
 
     def _on_session_finished(self, final_text: str) -> None:
         if final_text and not self.transcription_window.transcription_area.toPlainText().strip():
-            display_name = self._display_name or "PC 1"
+            display_name = self._display_name or "User"
             self._append_chat_message(display_name, final_text)
             self.relay.send_chunk(display_name, final_text)
 

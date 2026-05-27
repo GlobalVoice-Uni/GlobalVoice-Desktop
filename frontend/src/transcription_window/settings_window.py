@@ -2,6 +2,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
     QComboBox,
+    QCheckBox,
     QDoubleSpinBox,
     QFormLayout,
     QFrame,
@@ -99,6 +100,20 @@ class SettingsWindow(QMainWindow):
         self.display_name_input.setPlaceholderText("Ex: PC 1")
         self.display_name_input.setMaxLength(40)
 
+        self.smooth_text_check = QCheckBox()
+        self.smooth_text_check.setText("Ativar")
+
+        self.smooth_interval_spin = QSpinBox()
+        self.smooth_interval_spin.setRange(10, 140)
+        self.smooth_interval_spin.setSingleStep(5)
+        self.smooth_interval_spin.setToolTip("Intervalo entre palavras em ms")
+
+        self.silence_break_spin = QDoubleSpinBox()
+        self.silence_break_spin.setRange(0.0, 6.0)
+        self.silence_break_spin.setDecimals(1)
+        self.silence_break_spin.setSingleStep(0.1)
+        self.silence_break_spin.setToolTip("0 desativa quebra automatica")
+
         self.context_spin = QSpinBox()
         self.context_spin.setRange(0, 20)
 
@@ -179,6 +194,9 @@ class SettingsWindow(QMainWindow):
             self.device_combo,
             self.language_combo,
             self.display_name_input,
+            self.smooth_text_check,
+            self.smooth_interval_spin,
+            self.silence_break_spin,
             self.context_spin,
             self.duration_spin,
             self.vad_combo,
@@ -247,6 +265,9 @@ class SettingsWindow(QMainWindow):
             ("Contexto", self.context_spin),
             ("Duracao maxima (s)", self.duration_spin),
             ("Nome de exibicao", self.display_name_input),
+            ("Suavizar exibicao", self.smooth_text_check),
+            ("Tempo suavizacao (ms)", self.smooth_interval_spin),
+            ("Quebra por silencio (s)", self.silence_break_spin),
         ]
         vad_rows = [
             ("VAD ativo", self.vad_combo),
@@ -442,6 +463,9 @@ class SettingsWindow(QMainWindow):
             "user_display_name": self.display_name_input.text().strip(),
             "context_window": int(self.context_spin.value()),
             "max_duration_s": duration_value,
+            "ui_smooth_text": bool(self.smooth_text_check.isChecked()),
+            "ui_smooth_interval_ms": int(self.smooth_interval_spin.value()),
+            "ui_balloon_silence_s": float(self.silence_break_spin.value()),
             "relay_mode": self.relay_mode_combo.currentText(),
             "relay_host": self.relay_host_input.text().strip(),
             "relay_port": int(self.relay_port_spin.value()),
@@ -467,6 +491,9 @@ class SettingsWindow(QMainWindow):
         self.display_name_input.setText(str(values.get("user_display_name", "")))
         self.context_spin.setValue(int(values["context_window"]))
         self.duration_spin.setValue(float(values["max_duration_s"]))
+        self.smooth_text_check.setChecked(bool(values.get("ui_smooth_text", False)))
+        self.smooth_interval_spin.setValue(int(values.get("ui_smooth_interval_ms", 35)))
+        self.silence_break_spin.setValue(float(values.get("ui_balloon_silence_s", 0.0)))
         self._set_combo_value(self.relay_mode_combo, values["relay_mode"], DEFAULT_SETTINGS["relay_mode"])
         self.relay_host_input.setText(str(values.get("relay_host", "")))
         self.relay_port_spin.setValue(int(values["relay_port"]))
@@ -555,6 +582,9 @@ class SettingsWindow(QMainWindow):
         self.device_combo.setEnabled(not is_running)
         self.language_combo.setEnabled(not is_running)
         self.display_name_input.setEnabled(not is_running)
+        self.smooth_text_check.setEnabled(not is_running)
+        self.smooth_interval_spin.setEnabled(not is_running)
+        self.silence_break_spin.setEnabled(not is_running)
         self.context_spin.setEnabled(not is_running)
         self.duration_spin.setEnabled(not is_running)
         self.relay_mode_combo.setEnabled(not is_running)
