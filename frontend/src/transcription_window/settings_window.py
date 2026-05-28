@@ -108,6 +108,17 @@ class SettingsWindow(QMainWindow):
         self.smooth_interval_spin.setSingleStep(5)
         self.smooth_interval_spin.setToolTip("Intervalo entre palavras em ms")
 
+        self.correction_check = QCheckBox()
+        self.correction_check.setText("Ativar")
+
+        self.reconcile_check = QCheckBox()
+        self.reconcile_check.setText("Ativar")
+
+        self.reconcile_tail_spin = QSpinBox()
+        self.reconcile_tail_spin.setRange(4, 40)
+        self.reconcile_tail_spin.setSingleStep(2)
+        self.reconcile_tail_spin.setToolTip("Quantidade de palavras para reconciliação")
+
         self.silence_break_spin = QDoubleSpinBox()
         self.silence_break_spin.setRange(0.0, 6.0)
         self.silence_break_spin.setDecimals(1)
@@ -197,6 +208,9 @@ class SettingsWindow(QMainWindow):
             self.smooth_text_check,
             self.smooth_interval_spin,
             self.silence_break_spin,
+            self.correction_check,
+            self.reconcile_check,
+            self.reconcile_tail_spin,
             self.context_spin,
             self.duration_spin,
             self.vad_combo,
@@ -268,6 +282,9 @@ class SettingsWindow(QMainWindow):
             ("Suavizar exibicao", self.smooth_text_check),
             ("Tempo suavizacao (ms)", self.smooth_interval_spin),
             ("Quebra por silencio (s)", self.silence_break_spin),
+            ("Correcao SymSpell", self.correction_check),
+            ("Reconcilia chunks", self.reconcile_check),
+            ("Cauda reconcilia (palavras)", self.reconcile_tail_spin),
         ]
         vad_rows = [
             ("VAD ativo", self.vad_combo),
@@ -466,6 +483,9 @@ class SettingsWindow(QMainWindow):
             "ui_smooth_text": bool(self.smooth_text_check.isChecked()),
             "ui_smooth_interval_ms": int(self.smooth_interval_spin.value()),
             "ui_balloon_silence_s": float(self.silence_break_spin.value()),
+            "ui_text_correction_enabled": bool(self.correction_check.isChecked()),
+            "ui_reconcile_enabled": bool(self.reconcile_check.isChecked()),
+            "ui_reconcile_tail_words": int(self.reconcile_tail_spin.value()),
             "relay_mode": self.relay_mode_combo.currentText(),
             "relay_host": self.relay_host_input.text().strip(),
             "relay_port": int(self.relay_port_spin.value()),
@@ -494,6 +514,9 @@ class SettingsWindow(QMainWindow):
         self.smooth_text_check.setChecked(bool(values.get("ui_smooth_text", False)))
         self.smooth_interval_spin.setValue(int(values.get("ui_smooth_interval_ms", 35)))
         self.silence_break_spin.setValue(float(values.get("ui_balloon_silence_s", 0.0)))
+        self.correction_check.setChecked(bool(values.get("ui_text_correction_enabled", False)))
+        self.reconcile_check.setChecked(bool(values.get("ui_reconcile_enabled", False)))
+        self.reconcile_tail_spin.setValue(int(values.get("ui_reconcile_tail_words", 12)))
         self._set_combo_value(self.relay_mode_combo, values["relay_mode"], DEFAULT_SETTINGS["relay_mode"])
         self.relay_host_input.setText(str(values.get("relay_host", "")))
         self.relay_port_spin.setValue(int(values["relay_port"]))
@@ -585,6 +608,9 @@ class SettingsWindow(QMainWindow):
         self.smooth_text_check.setEnabled(not is_running)
         self.smooth_interval_spin.setEnabled(not is_running)
         self.silence_break_spin.setEnabled(not is_running)
+        self.correction_check.setEnabled(not is_running)
+        self.reconcile_check.setEnabled(not is_running)
+        self.reconcile_tail_spin.setEnabled(not is_running)
         self.context_spin.setEnabled(not is_running)
         self.duration_spin.setEnabled(not is_running)
         self.relay_mode_combo.setEnabled(not is_running)

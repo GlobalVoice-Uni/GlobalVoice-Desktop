@@ -1,6 +1,7 @@
 import time
+from concurrent.futures import ThreadPoolExecutor
 
-from PySide6.QtCore import QTimer, Qt, QPoint, QSize, Signal
+from PySide6.QtCore import QObject, QTimer, Qt, QPoint, QSize, Signal
 from PySide6.QtGui import QCloseEvent, QColor, QIcon, QMouseEvent, QPainter, QPainterPath, QPixmap, QTextCursor
 from PySide6.QtWidgets import (
     QComboBox,
@@ -18,6 +19,11 @@ from PySide6.QtWidgets import (
 )
 
 from .settings_store import load_settings, save_settings
+from .text_correction import SymSpellCorrector
+
+
+class CorrectionSignals(QObject):
+    corrected = Signal(int, str, int)
 
 
 class FloatingTranscriptionWindow(QWidget):
@@ -35,6 +41,14 @@ class FloatingTranscriptionWindow(QWidget):
         self._smooth_enabled = True
         self._smooth_interval_ms = 35
         self._silence_break_s = 1.2
+        self._correction_enabled = False
+        self._reconcile_enabled = False
+        self._reconcile_tail_words = 12
+        self._corrector = SymSpellCorrector()
+        self._correction_executor = ThreadPoolExecutor(max_workers=1)
+        self._correction_signals = CorrectionSignals()
+        self._correction_signals.corrected.connect(self._apply_corrected_line)
+        self._correction_pending: set[int] = set()
         self._smooth_timer = QTimer(self)
         self._smooth_timer.setInterval(self._smooth_interval_ms)
         self._smooth_timer.timeout.connect(self._flush_next_word)
@@ -44,9 +58,11 @@ class FloatingTranscriptionWindow(QWidget):
 
     def _reset_chat_state(self) -> None:
         self._chat_lines: list[str] = []
+        self._line_revisions: list[int] = []
         self._last_sender = ""
         self._last_chunk_time = 0.0
         self._pending_words: list[tuple[str, str, bool]] = []
+        self._correction_pending.clear()
         if self._smooth_timer.isActive():
             self._smooth_timer.stop()
 
@@ -54,6 +70,21 @@ class FloatingTranscriptionWindow(QWidget):
         self._smooth_enabled = bool(enabled)
         if not self._smooth_enabled:
             self._flush_pending_words()
+
+    def set_text_correction_enabled(self, enabled: bool) -> None:
+        self._correction_enabled = bool(enabled)
+        if not self._correction_enabled:
+            self._correction_pending.clear()
+
+    def set_reconcile_enabled(self, enabled: bool) -> None:
+        self._reconcile_enabled = bool(enabled)
+
+    def set_reconcile_tail_words(self, tail_words: int) -> None:
+        try:
+            value = int(tail_words)
+        except (TypeError, ValueError):
+            value = 12
+        self._reconcile_tail_words = max(2, min(value, 60))
 
     def set_silence_break_s(self, seconds: float) -> None:
         try:
@@ -208,6 +239,23 @@ class FloatingTranscriptionWindow(QWidget):
             return
 
         force_new_line = self._should_start_new_line(sender)
+        if force_new_line:
+            if self._smooth_enabled:
+                self._flush_pending_words()
+            self._finalize_last_line()
+
+        if (
+            self._reconcile_enabled
+            and not force_new_line
+            and self._chat_lines
+            and sender == self._last_sender
+        ):
+            if self._smooth_enabled:
+                self._flush_pending_words()
+            reconciled = self._reconcile_line(self._chat_lines[-1], normalized_text)
+            self._replace_last_line(reconciled)
+            return
+
         words = [w for w in normalized_text.split() if w]
         if not words:
             return
@@ -230,6 +278,11 @@ class FloatingTranscriptionWindow(QWidget):
         """Limpa a area de transcricao."""
         self.transcription_area.clear()
         self._reset_chat_state()
+
+    def finalize_active_line(self) -> None:
+        if self._smooth_enabled:
+            self._flush_pending_words()
+        self._finalize_last_line()
 
     def _should_start_new_line(self, sender: str) -> bool:
         now = time.time()
@@ -256,17 +309,16 @@ class FloatingTranscriptionWindow(QWidget):
         if force_new_line or not self._chat_lines or sender != self._last_sender:
             line = f"{sender}: {normalized}" if sender else normalized
             self._chat_lines.append(line)
+            self._line_revisions.append(0)
             self._last_sender = sender
         else:
             updated = self._chat_lines[-1].rstrip()
             separator = " " if not updated.endswith(" ") else ""
             self._chat_lines[-1] = f"{updated}{separator}{normalized}"
+            if self._line_revisions:
+                self._line_revisions[-1] += 1
 
-        self.transcription_area.setPlainText("\n".join(self._chat_lines))
-        cursor = self.transcription_area.textCursor()
-        cursor.movePosition(QTextCursor.End)
-        self.transcription_area.setTextCursor(cursor)
-        self.transcription_area.ensureCursorVisible()
+        self._refresh_transcription()
 
     def _enqueue_words(self, sender: str, words: list[str], force_new_line: bool) -> None:
         for idx, word in enumerate(words):
@@ -290,6 +342,99 @@ class FloatingTranscriptionWindow(QWidget):
         while self._pending_words:
             sender, word, force_new_line = self._pending_words.pop(0)
             self._append_text_block(sender, word, force_new_line)
+
+    def _refresh_transcription(self) -> None:
+        self.transcription_area.setPlainText("\n".join(self._chat_lines))
+        cursor = self.transcription_area.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        self.transcription_area.setTextCursor(cursor)
+        self.transcription_area.ensureCursorVisible()
+
+    def _replace_last_line(self, line: str) -> None:
+        if not self._chat_lines:
+            return
+        self._chat_lines[-1] = line
+        if self._line_revisions:
+            self._line_revisions[-1] += 1
+
+        sender, _ = self._split_line(line)
+        self._last_sender = sender
+        self._refresh_transcription()
+
+    def _finalize_last_line(self) -> None:
+        if not self._chat_lines:
+            return
+        self._schedule_correction(len(self._chat_lines) - 1)
+
+    def _split_line(self, line: str) -> tuple[str, str]:
+        if ": " in line:
+            sender, text = line.split(": ", 1)
+            return sender.strip(), text
+        return "", line
+
+    def _reconcile_line(self, current_line: str, new_text: str) -> str:
+        sender, current_text = self._split_line(current_line)
+        prev_words = [w for w in current_text.split() if w]
+        new_words = [w for w in new_text.split() if w]
+        if not prev_words:
+            merged_text = " ".join(new_words)
+            return f"{sender}: {merged_text}" if sender else merged_text
+        if not new_words:
+            return current_line
+
+        tail_size = min(len(prev_words), max(2, self._reconcile_tail_words))
+        tail = prev_words[-tail_size:]
+
+        def _norm(token: str) -> str:
+            return token.strip(".,!?;:").lower()
+
+        overlap = 0
+        max_overlap = min(len(tail), len(new_words))
+        for k in range(max_overlap, 0, -1):
+            if [_norm(w) for w in tail[-k:]] == [_norm(w) for w in new_words[:k]]:
+                overlap = k
+                break
+
+        if overlap > 0:
+            merged_words = prev_words[:-overlap] + new_words
+        else:
+            merged_words = prev_words + new_words
+
+        merged_text = " ".join(merged_words)
+        return f"{sender}: {merged_text}" if sender else merged_text
+
+    def _schedule_correction(self, line_index: int) -> None:
+        if not self._correction_enabled or not self._corrector.is_ready:
+            return
+        if line_index < 0 or line_index >= len(self._chat_lines):
+            return
+        if line_index in self._correction_pending:
+            return
+
+        self._correction_pending.add(line_index)
+        revision = self._line_revisions[line_index] if line_index < len(self._line_revisions) else 0
+        line = self._chat_lines[line_index]
+        self._correction_executor.submit(self._run_correction, line_index, line, revision)
+
+    def _run_correction(self, line_index: int, line: str, revision: int) -> None:
+        sender, text = self._split_line(line)
+        corrected_text = self._corrector.correct(text)
+        if corrected_text == text:
+            self._correction_signals.corrected.emit(line_index, line, revision)
+            return
+
+        corrected_line = f"{sender}: {corrected_text}" if sender else corrected_text
+        self._correction_signals.corrected.emit(line_index, corrected_line, revision)
+
+    def _apply_corrected_line(self, line_index: int, text: str, revision: int) -> None:
+        self._correction_pending.discard(line_index)
+        if line_index < 0 or line_index >= len(self._chat_lines):
+            return
+        if line_index < len(self._line_revisions) and self._line_revisions[line_index] != revision:
+            return
+
+        self._chat_lines[line_index] = text
+        self._refresh_transcription()
 
     def apply_font_size(self, size: int) -> None:
         size = max(10, min(size, 28))

@@ -181,10 +181,16 @@ class MainWindow(QMainWindow):
         smooth_enabled = bool(values.get("ui_smooth_text", False))
         smooth_interval = int(values.get("ui_smooth_interval_ms", 35))
         silence_break = float(values.get("ui_balloon_silence_s", 0.0))
+        correction_enabled = bool(values.get("ui_text_correction_enabled", False))
+        reconcile_enabled = bool(values.get("ui_reconcile_enabled", False))
+        reconcile_tail = int(values.get("ui_reconcile_tail_words", 12))
         self.transcription_window.apply_font_size(font_size)
         self.transcription_window.set_smoothing_enabled(smooth_enabled)
         self.transcription_window.set_smoothing_interval_ms(smooth_interval)
         self.transcription_window.set_silence_break_s(silence_break)
+        self.transcription_window.set_text_correction_enabled(correction_enabled)
+        self.transcription_window.set_reconcile_enabled(reconcile_enabled)
+        self.transcription_window.set_reconcile_tail_words(reconcile_tail)
 
     def _resolve_display_name(self) -> str:
         values = load_settings()
@@ -220,6 +226,7 @@ class MainWindow(QMainWindow):
     def _on_floating_closed(self) -> None:
         self.controller.stop_session()
         self._stop_relay()
+        self.transcription_window.finalize_active_line()
         self._loading_session = False
         self.toolbar.set_idle()
         self.toolbar.set_buttons_state(False)
@@ -287,6 +294,7 @@ class MainWindow(QMainWindow):
         if not is_running:
             self._loading_session = False
             self._stop_relay()
+            self.transcription_window.finalize_active_line()
             self.toolbar.set_idle()
         self.toolbar.set_buttons_state(is_running, allow_stop=not self._loading_session)
 
