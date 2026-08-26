@@ -1,6 +1,6 @@
 # GlobalVoice Desktop
 
-Aplicação desktop para transcrição de áudio em tempo real, utilizando Faster-Whisper e interface gráfica em PySide6 com home, toolbar e janelas flutuantes.
+Aplicação desktop para transcrição de áudio em tempo real, em evolução para tradução simultânea bidirecional durante reuniões online.
 
 ## Visão Geral
 
@@ -11,6 +11,8 @@ Aplicação desktop para transcrição de áudio em tempo real, utilizando Faste
 - ✅ Idiomas: português, inglês e espanhol
 - ✅ Arquitetura desacoplada (frontend/backend/bridge) pronta para evolução
 - ✅ Interface em PySide6 com home, toolbar flutuante e painel de configuração por abas
+
+No PFC 2, o projeto avança para capturar tanto o áudio do sistema quanto o microfone, traduzir os dois fluxos e apresentar o resultado por texto e voz. A validação principal será local, com execução remota avaliada como experimento comparativo para máquinas com menos recursos.
 
 ## Estrutura do Repositório
 
@@ -44,8 +46,9 @@ GlobalVoice-Desktop/
 │   │       └── realtime_session.py       # Orquestração de sessão
 │   └── requirements.txt
 │
-└── tests/                 # Testes e validações
-    └── [estrutura a definir]
+└── tests/                 # Testes automatizados
+    ├── unit/              # Regras isoladas do backend
+    └── integration/       # Integração entre bridge e backend
 ```
 
 ## Setup Rápido
@@ -103,6 +106,16 @@ Ou direto com Python:
 cd frontend
 python src/main.py
 ```
+
+## Testes Automatizados
+
+Com a venv da raiz ativa e as dependências instaladas:
+
+```powershell
+.\run_tests.ps1
+```
+
+O mesmo conjunto é executado automaticamente em pushes e pull requests pelo GitHub Actions.
 
 ## Configuração de GPU
 
@@ -193,27 +206,7 @@ _Benchmarks detalhados em [GlobalVoice-ASR-Benchmarks](https://github.com/Global
 
 ## Roadmap
 
-### Fase 1 (Atual)
-
-- [✅] Backend modular com Faster-Whisper
-- [✅] Frontend desktop em PySide6
-- [✅] Suporte GPU com fallback automático
-- [✅] Arquitetura desacoplada (bridge pronta para evolução)
-- [✅] Interface flutuante com toolbar, status e configuração por abas
-- [✅] Integração com Silero VAD na sessão local
-
-### Fase 2 (Próximos Sprints)
-
-- [ ] Comunicação entre duas diferentes maquinas localmente
-- [ ] Testes automatizados (unit + integração)
-- [ ] Suporte a exportação (SRT, JSON, TXT)
-
-### Fase 3 (Futuro)
-
-- [ ] Backend remoto (FastAPI)
-- [ ] Autenticação e multi-usuário
-- [ ] Dashboard de histórico
-- [ ] Suporte a modelos customizados
+O planejamento do PFC 2, os marcos concluídos e os critérios de validação estão em [roadmap.md](roadmap.md).
 
 ## Desenvolvimento
 
@@ -268,7 +261,7 @@ _Benchmarks detalhados em [GlobalVoice-ASR-Benchmarks](https://github.com/Global
 ## Documentação Adicional
 
 - **Benchmarks de Modelos**: [GlobalVoice-ASR-Benchmarks](https://github.com/GlobalVoice-Uni/GlobalVoice-ASR-Benchmarks)
-- **Roadmap Técnico**: Veja seção "Roadmap" acima
+- **Roadmap do PFC 2**: [roadmap.md](roadmap.md)
 
 ## Licença
 
