@@ -5,7 +5,7 @@ SETTINGS_APP = "RealtimeSettings"
 
 DEFAULT_SETTINGS = {
     "model_size": "small",
-    "device": "gpu",
+    "device": "auto",
     "language": "pt-br",
     "context_window": 0,
     "max_duration_s": 0.0,

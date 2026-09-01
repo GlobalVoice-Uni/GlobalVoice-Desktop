@@ -15,7 +15,7 @@ class SessionRequest:
     """
 
     model_size: str = "small"
-    device: str = "cpu"
+    device: str = "auto"
     language: str = "pt-br"
     context_window: int = 0
     max_duration_s: Optional[float] = None
@@ -73,6 +73,13 @@ class LocalBackendBridge:
         """Monta dependencias locais e executa sessao realtime."""
         audio_source = MicrophoneAudioSource(step_duration_s=0.2, target_sample_rate=16000)
         transcriber = LocalFasterWhisperTranscriber(model_size=request.model_size, device=request.device)
+        if on_status:
+            fallback_message = getattr(transcriber, "fallback_message", None)
+            if fallback_message:
+                on_status(fallback_message)
+            else:
+                active_device = getattr(transcriber, "device", request.device).upper()
+                on_status(f"Transcricao carregada em {active_device}.")
         speech_detector, _ = build_speech_detector(
             vad_type=request.vad_type,
             energy_peak_threshold=request.speech_peak_threshold,

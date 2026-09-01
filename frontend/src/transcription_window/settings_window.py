@@ -89,7 +89,7 @@ class SettingsWindow(QMainWindow):
         self.model_combo.addItems(["tiny", "base", "small", "medium", "large"])
 
         self.device_combo = QComboBox()
-        self.device_combo.addItems(["cpu", "gpu"])
+        self.device_combo.addItems(["auto", "cpu", "gpu"])
 
         self.language_combo = QComboBox()
         self.language_combo.addItems(["pt-br", "en"])

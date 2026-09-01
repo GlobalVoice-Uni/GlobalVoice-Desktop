@@ -1,54 +1,83 @@
 from typing import Optional
 
+import ctranslate2
 import numpy as np
-import torch
 from faster_whisper import WhisperModel
 
 
 class LocalFasterWhisperTranscriber:
     """Adapter local de transcricao baseado em Faster-Whisper."""
 
-    def __init__(self, model_size: str = "small", device: str = "cpu"):
+    _GPU_COMPUTE_PREFERENCE = (
+        "float16",
+        "int8_float16",
+        "float32",
+        "int8",
+        "int8_float32",
+    )
+
+    def __init__(self, model_size: str = "small", device: str = "auto"):
         # model_size e device sao expostos para facilitar tuning da aplicacao.
         self.model_size = model_size
-        self.device_request = device
-        self.device = self._resolve_device(device)
+        self.device_request = (device or "auto").strip().lower()
+        self.device = "cpu"
+        self.compute_type = "int8"
+        self.fallback_message: Optional[str] = None
         self.model = self._load_model()
 
-    def _resolve_device(self, requested: str) -> str:
-        """Mapeia escolha da UI para device suportado pelo WhisperModel."""
-        normalized = (requested or "cpu").strip().lower()
-        if normalized in {"gpu", "cuda"}:
-            if not torch.cuda.is_available():
-                raise RuntimeError(
-                    "GPU solicitada, mas CUDA nao esta disponivel neste ambiente "
-                    f"(torch={torch.__version__}, torch_cuda={torch.version.cuda})."
-                )
-            return "cuda"
-        return "cpu"
+    def _supported_cuda_compute_types(self) -> tuple[str, ...]:
+        """Consulta o runtime efetivamente usado pelo Faster-Whisper."""
+        try:
+            if ctranslate2.get_cuda_device_count() < 1:
+                return ()
+            supported = ctranslate2.get_supported_compute_types("cuda")
+        except Exception:
+            return ()
+
+        return tuple(
+            compute_type
+            for compute_type in self._GPU_COMPUTE_PREFERENCE
+            if compute_type in supported
+        )
+
+    def _load_cpu_model(self) -> WhisperModel:
+        self.device = "cpu"
+        self.compute_type = "int8"
+        return WhisperModel(
+            self.model_size,
+            device="cpu",
+            compute_type=self.compute_type,
+            num_workers=1,
+        )
 
     def _load_model(self) -> WhisperModel:
-        """Inicializa modelo com fallback de compute_type em GPU."""
-        if self.device == "cuda":
-            last_error = None
-            for compute_type in ("float16", "int8_float16", "float32"):
+        """Usa GPU quando compativel e recua para CPU sem interromper a sessao."""
+        if self.device_request != "cpu":
+            compute_types = self._supported_cuda_compute_types()
+            for compute_type in compute_types:
                 try:
-                    return WhisperModel(
+                    model = WhisperModel(
                         self.model_size,
                         device="cuda",
                         compute_type=compute_type,
                         num_workers=1,
                     )
-                except Exception as exc:
-                    last_error = exc
-            raise RuntimeError("Nao foi possivel inicializar Faster-Whisper em GPU.") from last_error
+                    self.device = "cuda"
+                    self.compute_type = compute_type
+                    return model
+                except Exception:
+                    continue
 
-        return WhisperModel(
-            self.model_size,
-            device="cpu",
-            compute_type="int8",
-            num_workers=1,
-        )
+            if compute_types:
+                self.fallback_message = (
+                    "A aceleracao por GPU nao pode ser iniciada. Usando CPU automaticamente."
+                )
+            else:
+                self.fallback_message = (
+                    "Nenhuma GPU compativel foi encontrada. Usando CPU automaticamente."
+                )
+
+        return self._load_cpu_model()
 
     def transcribe(
         self,

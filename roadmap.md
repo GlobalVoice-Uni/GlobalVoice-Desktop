@@ -90,6 +90,25 @@ alinhada ao PFC 2 e existe uma estrutura mínima de testes automatizados.
 
 **Duração: 2 semanas.**
 
+### Marco imediato — executável de validação
+
+A primeira build deve existir no início da entrega para permitir avaliações dos
+instrutores e do grupo sem exigir terminal ou ambiente Python. As demais provas de
+conceito continuam depois desse marco.
+
+- [x] Gerar uma build Windows `onedir` a partir da base atualmente funcional.
+- [x] Abrir a aplicação pela build sem depender do Python instalado na máquina.
+- [x] Selecionar automaticamente uma GPU compatível e usar CPU como fallback sem
+  exibir warnings técnicos ao usuário.
+- [x] Documentar o comportamento do primeiro download do modelo e os requisitos de
+  aceleração por GPU.
+- [x] Medir tempo de abertura e tamanho do pacote inicial.
+- [ ] Enviar a build para pelo menos uma pessoa externa ao ambiente de
+  desenvolvimento e registrar o resultado.
+
+**Medição inicial:** pasta com 557,17 MB e janela principal disponível em 2,94 s
+no ambiente de desenvolvimento.
+
 ### Transcrição em tempo real
 
 - [ ] Pesquisar motores de STT recentes projetados para streaming ou transcrição em
@@ -100,7 +119,7 @@ alinhada ao PFC 2 e existe uma estrutura mínima de testes automatizados.
   licença e facilidade de distribuição.
 - [ ] Decidir se o Faster-Whisper continuará como motor principal, fallback ou
   referência de comparação.
-- [ ] Medir o tempo atual do pipeline no hardware do grupo para criar uma **linha de
+- [x] Medir o tempo atual do pipeline no hardware do grupo para criar uma **linha de
   base**: um valor de referência que permita saber objetivamente se as mudanças
   seguintes melhoraram ou pioraram o sistema.
 - [ ] Criar uma prova de conceito de transcrição remota em uma VM conectada pela
@@ -131,8 +150,8 @@ alinhada ao PFC 2 e existe uma estrutura mínima de testes automatizados.
   - duas janelas flutuantes vinculadas, uma para o texto e outra para a toolbar;
   - uma camada de sobreposição com regiões interativas e passagem de cliques
     para os aplicativos atrás dela.
-- [ ] Gerar uma primeira build executável ainda nesta entrega.
-- [ ] Medir o tempo de abertura da build e comparar estratégias de empacotamento.
+- [ ] Comparar estratégias de empacotamento depois que a primeira build `onedir`
+  estiver validada.
 - [ ] Definir se a refatoração necessária será incremental ou se algum módulo
   deverá ser substituído antes das próximas entregas.
 

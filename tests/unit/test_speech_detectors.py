@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
@@ -31,6 +32,33 @@ class EnergySpeechDetectorTests(unittest.TestCase):
         self.assertIsInstance(detector, EnergySpeechDetector)
         self.assertEqual(detector_name, "energy")
         self.assertEqual(statuses, ["VAD ativo: energia (fallback)."])
+
+    def test_silero_fallback_does_not_expose_internal_error(self):
+        statuses = []
+
+        with patch(
+            "backend.app.detectors.speech_detectors.SileroSpeechDetector",
+            side_effect=RuntimeError("detalhe tecnico interno"),
+        ):
+            detector, detector_name = build_speech_detector(
+                vad_type="silero",
+                energy_peak_threshold=0.002,
+                silero_threshold=0.5,
+                silero_min_silence_ms=120,
+                silero_speech_pad_ms=30,
+                on_status=statuses.append,
+            )
+
+        self.assertIsInstance(detector, EnergySpeechDetector)
+        self.assertEqual(detector_name, "energy")
+        self.assertNotIn("detalhe tecnico interno", " ".join(statuses))
+        self.assertEqual(
+            statuses,
+            [
+                "Silero indisponivel. Usando VAD por energia automaticamente.",
+                "VAD ativo: energia (fallback).",
+            ],
+        )
 
 
 if __name__ == "__main__":

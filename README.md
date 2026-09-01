@@ -7,7 +7,7 @@ Aplicação desktop para transcrição de áudio em tempo real, em evolução pa
 **GlobalVoice Desktop** é uma solução desktop modular para transcrição contínua de áudio com:
 
 - ✅ Transcrição em tempo real via microfone
-- ✅ Execução local com fallback automático entre GPU e CPU
+- ✅ Execução local com seleção automática entre GPU compatível e CPU
 - ✅ Idiomas: português, inglês e espanhol
 - ✅ Arquitetura desacoplada (frontend/backend/bridge) pronta para evolução
 - ✅ Interface em PySide6 com home, toolbar flutuante e painel de configuração por abas
@@ -58,7 +58,7 @@ GlobalVoice-Desktop/
 - Python 3.9+
 - pip
 - PowerShell no Windows
-- Opcional: CUDA 12.1 + cuDNN para GPU
+- Opcional: bibliotecas NVIDIA compatíveis com a versão instalada do CTranslate2
 
 ### 1. Clone e entre no repositório
 
@@ -119,19 +119,19 @@ O mesmo conjunto é executado automaticamente em pushes e pull requests pelo Git
 
 ## Configuração de GPU
 
-### Se CUDA/GPU não forem detectados
+O modo `auto`, selecionado por padrão, consulta o próprio CTranslate2 usado pelo
+Faster-Whisper. A aplicação escolhe somente um formato de computação aceito pela
+GPU encontrada. Se a placa, o driver ou as bibliotecas NVIDIA não forem
+compatíveis, a sessão continua em CPU e apresenta apenas uma mensagem simples na
+interface.
 
-```python
-python -c "import torch; print(torch.version); print(torch.version.cuda); print(torch.cuda.is_available())"
-```
+Essa decisão não depende de `torch.cuda.is_available()`: o PyTorch pode emitir
+avisos sobre arquiteturas que não estão presentes em seu wheel mesmo quando o
+CTranslate2 ainda consegue executar o ASR naquela GPU.
 
-Se retornar `False`, reinstale o PyTorch com o wheel correto para CUDA 12.1:
-
-```bash
-pip install torch==2.5.1+cu121 --index-url https://download.pytorch.org/whl/cu121
-```
-
-Depois, rode a verificação novamente.
+As versões atuais do Faster-Whisper requerem cuBLAS para CUDA 12 e cuDNN 9 para
+execução em GPU. Esses requisitos serão verificados durante a evolução das builds;
+eles não são necessários para o fallback em CPU.
 
 ### Performance
 
@@ -246,7 +246,7 @@ O planejamento do PFC 2, os marcos concluídos e os critérios de validação es
 | Problema                                         | Solução                                             |
 | ------------------------------------------------ | ----------------------------------------------------- |
 | "ModuleNotFoundError: No module named 'PySide6'" | `pip install -r frontend/requirements.txt`          |
-| "CUDA not available"                             | Ver seção "Configuração de GPU"                   |
+| GPU indisponível                                 | O modo automático continua em CPU; ver configuração de GPU |
 | "No module named 'faster_whisper'"               | `pip install -r backend/requirements.txt`           |
 | Transcrição muito lenta                        | Usar modelo `tiny` ou `base`; verificar GPU ativa |
 | Áudio cortado ou atrasado                       | Aumentar `context_window` ou `max_duration`       |

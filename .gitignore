@@ -33,3 +33,9 @@ AI_HANDOFF copy.md
 # Resultados locais de experimentos
 # ========================
 experiments/asr_baseline/results/*.json
+
+# ========================
+# Artefatos locais de build
+# ========================
+.build/
+dist/

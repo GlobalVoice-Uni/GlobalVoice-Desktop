@@ -1,0 +1,132 @@
+# -*- mode: python ; coding: utf-8 -*-
+
+import os
+import sys
+
+from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, copy_metadata
+
+
+project_root = os.path.abspath(os.path.join(SPECPATH, "..", ".."))
+entry_point = os.path.join(project_root, "frontend", "src", "main.py")
+diagnostic_console = os.environ.get("GLOBALVOICE_DIAGNOSTIC_CONSOLE") == "1"
+
+datas = []
+binaries = []
+hiddenimports = [
+    "ctranslate2._ext",
+    "faster_whisper.assets",
+]
+
+# Os hooks padrao tratam PySide6, PyAV, NumPy, SciPy e sounddevice. Coletar todos
+# os submodulos de Hugging Face ou CTranslate2 inclui CLIs e frameworks opcionais
+# (Torch, TensorFlow etc.) que nao participam do fluxo de transcricao.
+datas.extend(collect_data_files("faster_whisper"))
+binaries.extend(collect_dynamic_libs("ctranslate2"))
+
+# Inclui o runtime C++ usado pelo Qt mesmo quando ele ja esta instalado na
+# maquina de desenvolvimento. A build nao deve depender desse pre-requisito na
+# maquina que receber a pasta.
+cpp_runtime_candidates = (
+    os.path.join(project_root, ".venv", "Lib", "site-packages", "shiboken6", "msvcp140.dll"),
+    os.path.join(sys.base_prefix, "vcruntime140.dll"),
+    os.path.join(sys.base_prefix, "vcruntime140_1.dll"),
+)
+binaries.extend((path, ".") for path in cpp_runtime_candidates if os.path.isfile(path))
+
+for distribution in ("faster-whisper", "ctranslate2", "silero-vad"):
+    try:
+        datas.extend(copy_metadata(distribution))
+    except Exception:
+        pass
+
+
+analysis = Analysis(
+    [entry_point],
+    pathex=[project_root],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[
+        "experiments",
+        "tests",
+        "torch",
+        "torchaudio",
+        "tensorflow",
+        "jax",
+        "flax",
+    ],
+    noarchive=False,
+    optimize=0,
+)
+
+# O resolvedor de DLLs do Windows pode encontrar bibliotecas pertencentes a
+# outras ferramentas instaladas na maquina. Isso torna a build dependente do
+# ambiente do desenvolvedor e pode quebrar o Qt em outra maquina. Mantemos
+# somente binarios vindos do projeto, do Python usado na build ou do Windows.
+allowed_binary_roots = tuple(
+    os.path.normcase(os.path.abspath(path))
+    for path in (project_root, sys.base_prefix, os.environ.get("WINDIR"))
+    if path
+)
+
+
+def is_allowed_binary(source):
+    if not isinstance(source, str):
+        return True
+
+    source = os.path.normcase(os.path.abspath(source))
+    for root in allowed_binary_roots:
+        try:
+            if os.path.commonpath((source, root)) == root:
+                return True
+        except ValueError:
+            continue
+    return False
+
+
+external_binaries = [
+    destination
+    for destination, source, _kind in analysis.binaries
+    if not is_allowed_binary(source)
+]
+if external_binaries:
+    print(
+        "Dependencias binarias externas ignoradas: "
+        + ", ".join(sorted(external_binaries))
+    )
+analysis.binaries = [
+    entry for entry in analysis.binaries if is_allowed_binary(entry[1])
+]
+
+python_archive = PYZ(analysis.pure)
+
+executable = EXE(
+    python_archive,
+    analysis.scripts,
+    [],
+    exclude_binaries=True,
+    name="GlobalVoice",
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=False,
+    console=diagnostic_console,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
+
+bundle = COLLECT(
+    executable,
+    analysis.binaries,
+    analysis.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name="GlobalVoice",
+)

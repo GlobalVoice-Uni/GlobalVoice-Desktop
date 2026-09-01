@@ -101,9 +101,9 @@ def build_speech_detector(
             if on_status:
                 on_status("VAD ativo: Silero.")
             return detector, "silero"
-        except Exception as exc:
+        except Exception:
             if on_status:
-                on_status(f"Silero indisponivel ({exc}). Fallback para VAD por energia.")
+                on_status("Silero indisponivel. Usando VAD por energia automaticamente.")
 
     detector = EnergySpeechDetector(peak_threshold=energy_peak_threshold)
     if on_status:
