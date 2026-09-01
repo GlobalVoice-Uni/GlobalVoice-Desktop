@@ -5,7 +5,7 @@ SETTINGS_APP = "RealtimeSettings"
 
 DEFAULT_SETTINGS = {
     "model_size": "small",
-    "device": "auto",
+    "device": "gpu",
     "language": "pt-br",
     "context_window": 0,
     "max_duration_s": 0.0,
@@ -48,6 +48,8 @@ def load_settings():
     values = {}
     for key, default in DEFAULT_SETTINGS.items():
         values[key] = _coerce_value(settings.value(key, default), default)
+    if values["device"] == "auto":
+        values["device"] = "gpu"
     return values
 
 

@@ -9,25 +9,36 @@ from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, co
 project_root = os.path.abspath(os.path.join(SPECPATH, "..", ".."))
 entry_point = os.path.join(project_root, "frontend", "src", "main.py")
 diagnostic_console = os.environ.get("GLOBALVOICE_DIAGNOSTIC_CONSOLE") == "1"
+runtime_packages_path = os.environ.get(
+    "GLOBALVOICE_RUNTIME_SITE_PACKAGES",
+    os.path.join(project_root, ".venv", "Lib", "site-packages"),
+)
+cuda_runtime_source = os.environ.get("GLOBALVOICE_CUDA_RUNTIME_SOURCE")
 
 datas = []
 binaries = []
 hiddenimports = [
     "ctranslate2._ext",
     "faster_whisper.assets",
+    "silero_vad",
 ]
 
 # Os hooks padrao tratam PySide6, PyAV, NumPy, SciPy e sounddevice. Coletar todos
 # os submodulos de Hugging Face ou CTranslate2 inclui CLIs e frameworks opcionais
 # (Torch, TensorFlow etc.) que nao participam do fluxo de transcricao.
 datas.extend(collect_data_files("faster_whisper"))
+datas.extend(collect_data_files("silero_vad"))
 binaries.extend(collect_dynamic_libs("ctranslate2"))
+if cuda_runtime_source:
+    # cublas64 depende de cublasLt. O PyInstaller resolve essa dependencia e
+    # inclui cada DLL uma unica vez na raiz interna do pacote.
+    binaries.append((os.path.join(cuda_runtime_source, "cublas64_12.dll"), "."))
 
 # Inclui o runtime C++ usado pelo Qt mesmo quando ele ja esta instalado na
 # maquina de desenvolvimento. A build nao deve depender desse pre-requisito na
 # maquina que receber a pasta.
 cpp_runtime_candidates = (
-    os.path.join(project_root, ".venv", "Lib", "site-packages", "shiboken6", "msvcp140.dll"),
+    os.path.join(runtime_packages_path, "shiboken6", "msvcp140.dll"),
     os.path.join(sys.base_prefix, "vcruntime140.dll"),
     os.path.join(sys.base_prefix, "vcruntime140_1.dll"),
 )
@@ -52,8 +63,6 @@ analysis = Analysis(
     excludes=[
         "experiments",
         "tests",
-        "torch",
-        "torchaudio",
         "tensorflow",
         "jax",
         "flax",

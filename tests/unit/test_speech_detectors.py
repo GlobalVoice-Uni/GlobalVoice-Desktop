@@ -1,15 +1,27 @@
 import unittest
+import warnings
 from unittest.mock import patch
 
 import numpy as np
 
 from backend.app.detectors.speech_detectors import (
     EnergySpeechDetector,
+    SileroSpeechDetector,
     build_speech_detector,
 )
 
 
 class EnergySpeechDetectorTests(unittest.TestCase):
+    def test_silero_principal_loads_and_processes_a_frame(self):
+        with warnings.catch_warnings(record=True) as captured_warnings:
+            warnings.simplefilter("always")
+            detector = SileroSpeechDetector()
+
+        detected = detector.detect(np.zeros(512, dtype=np.float32), peak=0.0)
+
+        self.assertFalse(detected)
+        self.assertEqual(captured_warnings, [])
+
     def test_detect_uses_peak_threshold(self):
         detector = EnergySpeechDetector(peak_threshold=0.01)
         audio = np.zeros(3200, dtype=np.float32)

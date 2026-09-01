@@ -4,6 +4,7 @@ from typing import Callable, Optional, Protocol
 from backend.app.audio.audio_capture import MicrophoneAudioSource
 from backend.app.sessions.realtime_session import RealtimeTranscriptionSession
 from backend.app.detectors.speech_detectors import build_speech_detector
+from backend.app.runtime_status import RuntimeStatus
 from backend.app.transcribers.local_faster_whisper import LocalFasterWhisperTranscriber
 
 
@@ -15,7 +16,7 @@ class SessionRequest:
     """
 
     model_size: str = "small"
-    device: str = "auto"
+    device: str = "gpu"
     language: str = "pt-br"
     context_window: int = 0
     max_duration_s: Optional[float] = None
@@ -51,6 +52,7 @@ class TranscriptionBridge(Protocol):
         request: SessionRequest,
         on_text: Callable[[str], None],
         on_status: Optional[Callable[[str], None]] = None,
+        on_runtime_status: Optional[Callable[[RuntimeStatus], None]] = None,
     ) -> str:
         """Starts a realtime session and returns the final transcript when done."""
 
@@ -69,17 +71,16 @@ class LocalBackendBridge:
         request: SessionRequest,
         on_text: Callable[[str], None],
         on_status: Optional[Callable[[str], None]] = None,
+        on_runtime_status: Optional[Callable[[RuntimeStatus], None]] = None,
     ) -> str:
         """Monta dependencias locais e executa sessao realtime."""
         audio_source = MicrophoneAudioSource(step_duration_s=0.2, target_sample_rate=16000)
         transcriber = LocalFasterWhisperTranscriber(model_size=request.model_size, device=request.device)
+        runtime_status = transcriber.runtime_status
+        if on_runtime_status:
+            on_runtime_status(runtime_status)
         if on_status:
-            fallback_message = getattr(transcriber, "fallback_message", None)
-            if fallback_message:
-                on_status(fallback_message)
-            else:
-                active_device = getattr(transcriber, "device", request.device).upper()
-                on_status(f"Transcricao carregada em {active_device}.")
+            on_status(runtime_status.user_message)
         speech_detector, _ = build_speech_detector(
             vad_type=request.vad_type,
             energy_peak_threshold=request.speech_peak_threshold,

@@ -27,7 +27,7 @@ class MainWindow(QMainWindow):
         self.resize(560, 360)
 
         self.controller = RealtimeController()
-        self.settings_window = SettingsWindow()
+        self.settings_window = SettingsWindow(controller=self.controller)
         self.transcription_window = FloatingTranscriptionWindow()
         self.toolbar = FloatingToolbar()
         self._loading_session = False
@@ -131,6 +131,8 @@ class MainWindow(QMainWindow):
 
         self.controller.transcript_chunk.connect(self._on_transcript_chunk)
         self.controller.status_changed.connect(self._set_status)
+        self.controller.runtime_changed.connect(self.toolbar.set_runtime_status)
+        self.controller.runtime_cleared.connect(self.toolbar.reset_runtime_status)
         self.controller.error_raised.connect(self._on_error)
         self.controller.session_finished.connect(self._on_session_finished)
         self.controller.running_changed.connect(self._on_running_changed)
@@ -218,6 +220,7 @@ class MainWindow(QMainWindow):
         target = self.toolbar.target_combo.currentText()
         self._loading_session = True
         self.toolbar.set_connecting()
+        self.toolbar.set_runtime_pending()
         self.toolbar.set_buttons_state(True, allow_stop=False)
         self._set_status(f"Conectando ({source} -> {target})...")
         request = self._build_request()

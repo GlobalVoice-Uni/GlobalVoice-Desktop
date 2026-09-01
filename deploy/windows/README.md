@@ -19,7 +19,7 @@ Na raiz do projeto:
 
 Por padrão, o script usa as dependências da venv já validada e instala o
 PyInstaller separadamente em `.build\venv`. Para preparar também as dependências
-de execução declaradas nos arquivos `requirements.txt`, use:
+de execução fixadas no lock do Windows, use:
 
 ```powershell
 .\deploy\windows\build.ps1 -InstallRuntimeDependencies
@@ -27,6 +27,33 @@ de execução declaradas nos arquivos `requirements.txt`, use:
 
 Essa opção deve ser usada em uma venv limpa ou controlada. Ela não é necessária
 para repetir o empacotamento do ambiente que já executa a aplicação.
+
+Para gerar a build a partir de outra venv validada sem alterar a `.venv` de
+desenvolvimento:
+
+```powershell
+.\deploy\windows\build.ps1 `
+  -RuntimePythonPath ".build\dependency-audit\venv\Scripts\python.exe"
+```
+
+### Perfis de runtime
+
+Sem parâmetros adicionais, o script gera a base em CPU. Se houver uma GPU NVIDIA
+mas as bibliotecas CUDA não estiverem no pacote, a aplicação muda para CPU antes
+da primeira inferência e informa o fallback na interface.
+
+Para gerar o perfil NVIDIA provisório, informe uma pasta validada que contenha
+`cublas64_12.dll` e `cublasLt64_12.dll`:
+
+```powershell
+.\deploy\windows\build.ps1 `
+  -RuntimePythonPath ".build\dependency-audit\venv\Scripts\python.exe" `
+  -CudaRuntimePath ".venv\Lib\site-packages\torch\lib"
+```
+
+O parâmetro serve como fonte das duas DLLs; ele não inclui o restante do PyTorch
+CUDA no pacote. A origem definitiva deve ser uma distribuição oficial cuja
+licença permita a redistribuição pelo instalador.
 
 Durante o empacotamento, o script restringe o `PATH` ao Python e aos componentes
 do Windows. Isso impede que DLLs de outras ferramentas instaladas na máquina de
@@ -53,20 +80,24 @@ do `.exe` não contém as bibliotecas necessárias.
 ## Primeiro uso
 
 O modelo Faster-Whisper ainda não é incorporado ao pacote. Na primeira sessão de
-transcrição, ele é baixado para o cache do usuário; por isso, essa build inicial
-precisa de internet no primeiro uso. Uma build offline e o tamanho de modelo mais
-adequado serão avaliados depois do teste externo.
+transcrição, ele é baixado para o cache do usuário se ainda não estiver presente;
+por isso, uma máquina limpa precisa de internet no primeiro uso. Uma build offline
+e o tamanho de modelo mais adequado serão avaliados depois do teste externo.
 
-O modo de dispositivo padrão é `auto`. A aplicação tenta uma configuração que o
-CTranslate2 declara compatível com a GPU e continua em CPU quando a aceleração não
-pode ser inicializada. O usuário recebe o estado pela interface, sem precisar
-interpretar mensagens de terminal.
+A preferência de dispositivo padrão é GPU. Nesta build, o CTranslate2 acelera o
+ASR em GPUs NVIDIA via CUDA e continua em CPU quando a aceleração não pode ser
+inicializada. AMD e Intel ainda usam CPU. A interface mostra separadamente a
+preferência e o dispositivo realmente ativo, sem exigir que o usuário interprete
+mensagens de terminal.
 
-Esta primeira build reproduz o ambiente local já validado, no qual o pacote
-Silero VAD ainda não está instalado. Ao selecionar Silero, a aplicação usa o VAD
-por energia automaticamente e informa somente essa troca na interface. A inclusão
-do Silero sem introduzir dependências desnecessárias no pacote permanece uma
-decisão técnica da Entrega 1.
+O Silero VAD e o detector principal e esta presente na build reproduzivel atual.
+O detector por energia existe apenas como fallback de seguranca. A primeira build
+de 557,17 MB, gerada antes da auditoria de dependencias, nao incluia Silero e foi
+substituida por uma build completa de 1.185,94 MB.
+
+O perfil NVIDIA provisório acrescenta somente cuBLAS e ocupa 1.937,80 MB. Esse
+tamanho não é uma meta final: Silero/PyTorch, PySide6 e as bibliotecas CUDA ainda
+serão avaliados separadamente antes do instalador.
 
 Referências técnicas:
 

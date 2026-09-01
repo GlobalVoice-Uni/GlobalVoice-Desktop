@@ -15,6 +15,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from backend.app.runtime_status import ActiveDevice, RuntimeStatus
+
 from .settings_store import load_settings, save_settings
 
 
@@ -407,6 +409,19 @@ class FloatingToolbar(QWidget):
         layout.addStretch(1)
         layout.addWidget(status_group)
 
+        self.runtime_badge = QLabel("Esperando iniciar...")
+        self.runtime_badge.setAlignment(Qt.AlignCenter)
+        self.runtime_badge.setMinimumWidth(105)
+        self.runtime_badge.setStyleSheet(
+            "background: rgba(255, 255, 255, 0.08); color: white; "
+            "border: 1px solid rgba(255, 255, 255, 0.2); "
+            "border-radius: 10px; padding: 5px 8px; font-weight: 700;"
+        )
+        self.runtime_badge.setToolTip(
+            "A GPU sera priorizada quando a transcricao for iniciada."
+        )
+        layout.addWidget(self.runtime_badge)
+
 
         self.close_btn = QToolButton()
         self.close_btn.setObjectName("closeToolbarButton")
@@ -461,6 +476,43 @@ class FloatingToolbar(QWidget):
         self.status_indicator.setText("🟡")
         self.status_text.setText("Carregando")
         self.set_status_message(message or "Carregando...")
+
+    def set_runtime_pending(self) -> None:
+        self.runtime_badge.setText("Verificando...")
+        self.runtime_badge.setToolTip("Verificando o dispositivo solicitado.")
+        self.runtime_badge.setStyleSheet(
+            "background: rgba(245, 158, 11, 0.20); color: white; "
+            "border: 1px solid rgba(245, 158, 11, 0.65); "
+            "border-radius: 10px; padding: 5px 8px; font-weight: 700;"
+        )
+
+    def reset_runtime_status(self) -> None:
+        self.runtime_badge.setText("Esperando iniciar...")
+        self.runtime_badge.setToolTip(
+            "O dispositivo realmente usado aparecera ao iniciar uma sessao."
+        )
+        self.runtime_badge.setStyleSheet(
+            "background: rgba(255, 255, 255, 0.08); color: white; "
+            "border: 1px solid rgba(255, 255, 255, 0.2); "
+            "border-radius: 10px; padding: 5px 8px; font-weight: 700;"
+        )
+
+    def set_runtime_status(self, status: RuntimeStatus) -> None:
+        self.runtime_badge.setText(status.display_label)
+        self.runtime_badge.setToolTip(status.tooltip)
+        if status.active_device == ActiveDevice.GPU:
+            background = "rgba(34, 197, 94, 0.28)"
+            border = "rgba(34, 197, 94, 0.75)"
+        elif status.is_fallback:
+            background = "rgba(245, 158, 11, 0.24)"
+            border = "rgba(245, 158, 11, 0.75)"
+        else:
+            background = "rgba(70, 73, 251, 0.24)"
+            border = "rgba(70, 73, 251, 0.75)"
+        self.runtime_badge.setStyleSheet(
+            f"background: {background}; color: white; border: 1px solid {border}; "
+            "border-radius: 10px; padding: 5px 8px; font-weight: 700;"
+        )
 
     def set_buttons_state(self, is_running: bool, allow_stop: bool = True) -> None:
         self.start_btn.setEnabled(not is_running)

@@ -1,0 +1,3 @@
+# Os testes usam unittest, que faz parte da biblioteca padrao do Python.
+# O runtime completo e instalado porque a suite importa todos os adaptadores reais.
+-r runtime-windows.lock

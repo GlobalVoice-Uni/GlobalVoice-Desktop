@@ -98,19 +98,41 @@ conceito continuam depois desse marco.
 
 - [x] Gerar uma build Windows `onedir` a partir da base atualmente funcional.
 - [x] Abrir a aplicação pela build sem depender do Python instalado na máquina.
-- [x] Selecionar automaticamente uma GPU compatível e usar CPU como fallback sem
-  exibir warnings técnicos ao usuário.
+- [x] Selecionar automaticamente uma GPU NVIDIA compatível com o motor atual e
+  usar CPU como fallback sem exibir warnings técnicos ao usuário.
 - [x] Documentar o comportamento do primeiro download do modelo e os requisitos de
   aceleração por GPU.
 - [x] Medir tempo de abertura e tamanho do pacote inicial.
+- [x] Regenerar a build a partir de uma venv limpa e incluir o Silero VAD
+  principal no pacote.
+- [x] Detectar a ausência das bibliotecas CUDA antes da primeira inferência e
+  mostrar CPU como dispositivo ativo em vez de interromper a sessão.
+- [x] Criar um perfil NVIDIA provisório somente com cuBLAS, separado do PyTorch
+  usado pelo Silero.
+- [x] Validar manualmente uma transcrição GPU pela build com perfil NVIDIA usando
+  Silero VAD e o detector por energia.
 - [ ] Enviar a build para pelo menos uma pessoa externa ao ambiente de
   desenvolvimento e registrar o resultado.
 
 **Medição inicial:** pasta com 557,17 MB e janela principal disponível em 2,94 s
-no ambiente de desenvolvimento.
+no ambiente de desenvolvimento. Depois da inclusão do Silero e do PyTorch CPU, a
+build reproduzível passou a ocupar 1.185,94 MB. O perfil NVIDIA provisório ocupa
+1.937,80 MB, foi validado com os dois detectores de fala e ainda deve ser
+otimizado antes da distribuição final.
 
 ### Transcrição em tempo real
 
+- [x] Adotar GPU como preferência padrão e separar a preferência do dispositivo
+  realmente ativo na sessão.
+- [x] Criar contratos de hardware e runtime que não dependam de um único motor ou
+  fabricante de GPU.
+- [x] Confirmar o Silero VAD como detector principal e manter o detector por
+  energia apenas como fallback de segurança.
+- [ ] Comparar provedores de aceleração para Windows: CUDA em NVIDIA,
+  DirectML/WinML em NVIDIA, AMD e Intel, e ROCm nas GPUs AMD oficialmente
+  suportadas.
+- [ ] Validar pelo menos uma GPU NVIDIA legada, uma NVIDIA recente, uma AMD
+  dedicada ou integrada e o fallback em uma máquina sem GPU suportada.
 - [ ] Pesquisar motores de STT recentes projetados para streaming ou transcrição em
   tempo real.
 - [ ] Comparar essas opções com o Faster-Whisper usando os mesmos áudios e o mesmo
@@ -143,6 +165,17 @@ no ambiente de desenvolvimento.
 
 ### Front-end e distribuição
 
+- [x] Auditar e fixar as dependências de execução em uma venv limpa, incluindo o
+  Silero VAD, e separar os requisitos de runtime, testes e build.
+- [ ] Definir requisitos separados de desenvolvimento e de cada perfil de
+  aceleração depois da escolha dos provedores de GPU.
+- [ ] Isolar e medir os componentes realmente usados por Silero, PyTorch,
+  PySide6 e cuBLAS para reduzir a build e permitir instalação por perfis.
+- [ ] Criar um instalador Inno Setup que instale a base em CPU e o perfil de GPU
+  adequado ao hardware detectado, sem exigir configuração manual do usuário.
+- [ ] Automatizar build, instalação silenciosa, desinstalação e teste em CPU no
+  GitHub Actions; executar os testes de GPU em runners ou máquinas com hardware
+  real.
 - [ ] Avaliar se PySide6 continua adequado para o produto final.
 - [ ] Comparar tempo de abertura, consumo, integração com Windows, suporte a
   overlay e custo de reescrita das alternativas consideradas.
@@ -154,6 +187,7 @@ no ambiente de desenvolvimento.
   estiver validada.
 - [ ] Definir se a refatoração necessária será incremental ou se algum módulo
   deverá ser substituído antes das próximas entregas.
+- [ ] Refazer design base.
 
 **Critério de aceite:** as opções avaliadas, medições e decisões ficam
 registradas; os protótipos de loopback, tradução, TTS, áudio virtual e build

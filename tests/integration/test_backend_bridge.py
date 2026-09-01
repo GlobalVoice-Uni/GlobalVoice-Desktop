@@ -1,6 +1,12 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+from backend.app.runtime_status import (
+    ActiveDevice,
+    DevicePreference,
+    RuntimeProvider,
+    RuntimeStatus,
+)
 from frontend.src.transcription_window import backend_bridge as bridge_module
 
 
@@ -24,12 +30,20 @@ class LocalBackendBridgeTests(unittest.TestCase):
             forced_split_extra_tail_words=2,
         )
         audio_source = object()
-        transcriber = object()
+        runtime_status = RuntimeStatus(
+            preference=DevicePreference.CPU,
+            active_device=ActiveDevice.CPU,
+            engine="faster-whisper",
+            provider=RuntimeProvider.CPU,
+            compute_type="int8",
+        )
+        transcriber = MagicMock(runtime_status=runtime_status)
         detector = object()
         session = MagicMock()
         session.run.return_value = "texto final"
         on_text = MagicMock()
         on_status = MagicMock()
+        on_runtime_status = MagicMock()
 
         with (
             patch.object(
@@ -57,6 +71,7 @@ class LocalBackendBridgeTests(unittest.TestCase):
                 request=request,
                 on_text=on_text,
                 on_status=on_status,
+                on_runtime_status=on_runtime_status,
             )
 
         self.assertEqual(result, "texto final")
@@ -65,6 +80,8 @@ class LocalBackendBridgeTests(unittest.TestCase):
             target_sample_rate=16000,
         )
         transcriber_class.assert_called_once_with(model_size="base", device="cpu")
+        on_runtime_status.assert_called_once_with(runtime_status)
+        on_status.assert_any_call(runtime_status.user_message)
         detector_builder.assert_called_once()
 
         session_arguments = session_class.call_args.kwargs

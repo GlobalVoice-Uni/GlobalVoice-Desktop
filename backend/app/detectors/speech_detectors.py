@@ -1,3 +1,4 @@
+import warnings
 from typing import Callable, Optional, Tuple
 
 import numpy as np
@@ -42,7 +43,11 @@ class SileroSpeechDetector:
 
         self.sample_rate = sample_rate
         self.frame_samples = 512 if sample_rate == 16000 else 256
-        self._model = load_silero_vad(onnx=use_onnx)
+        # Dependencias de terceiros ainda emitem avisos de APIs que elas mesmas
+        # utilizam. Eles nao exigem acao do usuario e nao devem vazar para a UI.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self._model = load_silero_vad(onnx=use_onnx)
         self._iterator = VADIterator(
             self._model,
             threshold=threshold,

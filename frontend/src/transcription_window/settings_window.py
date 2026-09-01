@@ -18,6 +18,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from backend.app.runtime_status import ActiveDevice, RuntimeStatus
+
 from .backend_bridge import SessionRequest
 from .controller import RealtimeController
 from .settings_store import DEFAULT_SETTINGS, load_settings, save_settings
@@ -26,9 +28,9 @@ from .settings_store import DEFAULT_SETTINGS, load_settings, save_settings
 class SettingsWindow(QMainWindow):
     """Janela de configuracao e testes da transcricao realtime."""
 
-    def __init__(self):
+    def __init__(self, controller: RealtimeController | None = None):
         super().__init__()
-        self.controller = RealtimeController()
+        self.controller = controller or RealtimeController()
 
         self.setWindowTitle("GlobalVoice - Configuracoes")
         self.resize(880, 680)
@@ -89,7 +91,17 @@ class SettingsWindow(QMainWindow):
         self.model_combo.addItems(["tiny", "base", "small", "medium", "large"])
 
         self.device_combo = QComboBox()
-        self.device_combo.addItems(["auto", "cpu", "gpu"])
+        self.device_combo.addItem("GPU (recomendado)", "gpu")
+        self.device_combo.addItem("CPU", "cpu")
+        self.device_combo.setToolTip(
+            "A GPU e priorizada. A CPU e usada somente por escolha ou fallback."
+        )
+
+        self.active_device_label = QLabel("Esperando iniciar...")
+        self.active_device_label.setObjectName("runtimeDeviceLabel")
+        self.active_device_label.setToolTip(
+            "O dispositivo realmente usado aparecera ao iniciar uma sessao."
+        )
 
         self.language_combo = QComboBox()
         self.language_combo.addItems(["pt-br", "en"])
@@ -223,7 +235,8 @@ class SettingsWindow(QMainWindow):
 
         base_rows = [
             ("Modelo", self.model_combo),
-            ("Dispositivo", self.device_combo),
+            ("Preferencia", self.device_combo),
+            ("Dispositivo ativo", self.active_device_label),
             ("Idioma", self.language_combo),
             ("Contexto", self.context_spin),
             ("Duracao maxima (s)", self.duration_spin),
@@ -335,6 +348,13 @@ class SettingsWindow(QMainWindow):
                 color: #AFC3FF;
                 font-weight: 600;
             }
+            QLabel#runtimeDeviceLabel {
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 8px;
+                padding: 7px 10px;
+                font-weight: 700;
+            }
             QPushButton {
                 border-radius: 12px;
                 padding: 8px 16px;
@@ -394,6 +414,8 @@ class SettingsWindow(QMainWindow):
 
         self.controller.transcript_chunk.connect(self._on_transcript_chunk)
         self.controller.status_changed.connect(self._set_status)
+        self.controller.runtime_changed.connect(self._on_runtime_changed)
+        self.controller.runtime_cleared.connect(self._reset_runtime_status)
         self.controller.error_raised.connect(self._on_error)
         self.controller.session_finished.connect(self._on_session_finished)
         self.controller.running_changed.connect(self._on_running_changed)
@@ -405,12 +427,20 @@ class SettingsWindow(QMainWindow):
         else:
             combo.setCurrentText(fallback)
 
+    def _device_preference(self) -> str:
+        return str(self.device_combo.currentData() or "gpu")
+
+    def _set_device_preference(self, value: str) -> None:
+        normalized = "cpu" if value == "cpu" else "gpu"
+        index = self.device_combo.findData(normalized)
+        self.device_combo.setCurrentIndex(max(index, 0))
+
     def _collect_settings(self) -> dict:
         duration_value = float(self.duration_spin.value())
 
         return {
             "model_size": self.model_combo.currentText(),
-            "device": self.device_combo.currentText(),
+            "device": self._device_preference(),
             "language": self.language_combo.currentText(),
             "context_window": int(self.context_spin.value()),
             "max_duration_s": duration_value,
@@ -431,7 +461,7 @@ class SettingsWindow(QMainWindow):
 
     def _apply_settings(self, values: dict) -> None:
         self._set_combo_value(self.model_combo, values["model_size"], DEFAULT_SETTINGS["model_size"])
-        self._set_combo_value(self.device_combo, values["device"], DEFAULT_SETTINGS["device"])
+        self._set_device_preference(values["device"])
         self._set_combo_value(self.language_combo, values["language"], DEFAULT_SETTINGS["language"])
         self.context_spin.setValue(int(values["context_window"]))
         self.duration_spin.setValue(float(values["max_duration_s"]))
@@ -462,6 +492,9 @@ class SettingsWindow(QMainWindow):
     def _on_save_clicked(self) -> None:
         values = self._collect_settings()
         save_settings(values)
+        runtime_status = self.controller.runtime_status
+        if runtime_status and runtime_status.preference.value != values["device"]:
+            self.controller.reset_runtime_status()
         self._set_status("Configuracoes salvas.")
 
     def _on_reset_clicked(self) -> None:
@@ -476,7 +509,7 @@ class SettingsWindow(QMainWindow):
 
         return SessionRequest(
             model_size=self.model_combo.currentText(),
-            device=self.device_combo.currentText(),
+            device=self._device_preference(),
             language=self.language_combo.currentText(),
             context_window=int(self.context_spin.value()),
             max_duration_s=max_duration,
@@ -561,6 +594,37 @@ class SettingsWindow(QMainWindow):
     def _on_error(self, message: str) -> None:
         """Exibe erro de execucao para o usuario."""
         QMessageBox.critical(self, "Erro na transcricao", message)
+
+    def _on_runtime_changed(self, status: RuntimeStatus) -> None:
+        """Mostra o dispositivo efetivo sem alterar a preferencia salva."""
+        self.active_device_label.setText(status.display_label)
+        self.active_device_label.setToolTip(status.tooltip)
+        self.device_combo.setToolTip(status.tooltip)
+
+        if status.active_device == ActiveDevice.GPU:
+            color = "rgba(34, 197, 94, 0.28)"
+            border = "rgba(34, 197, 94, 0.75)"
+        elif status.is_fallback:
+            color = "rgba(245, 158, 11, 0.24)"
+            border = "rgba(245, 158, 11, 0.75)"
+        else:
+            color = "rgba(70, 73, 251, 0.24)"
+            border = "rgba(70, 73, 251, 0.75)"
+
+        self.active_device_label.setStyleSheet(
+            f"background: {color}; border: 1px solid {border}; "
+            "border-radius: 8px; padding: 7px 10px; font-weight: 700;"
+        )
+
+    def _reset_runtime_status(self) -> None:
+        self.active_device_label.setText("Esperando iniciar...")
+        self.active_device_label.setToolTip(
+            "O dispositivo realmente usado aparecera ao iniciar uma sessao."
+        )
+        self.active_device_label.setStyleSheet("")
+        self.device_combo.setToolTip(
+            "A GPU e priorizada. A CPU e usada somente por escolha ou fallback."
+        )
 
     def _set_status(self, message: str) -> None:
         """Atualiza mensagem de status na barra inferior."""

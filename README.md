@@ -55,7 +55,7 @@ GlobalVoice-Desktop/
 
 ### Pré-requisitos
 
-- Python 3.9+
+- Python 3.12
 - pip
 - PowerShell no Windows
 - Opcional: bibliotecas NVIDIA compatíveis com a versão instalada do CTranslate2
@@ -77,23 +77,16 @@ python -m pip install --upgrade pip
 
 Este projeto usa um único ambiente virtual na raiz para backend e frontend.
 
-### 3. Configure Backend
+### 3. Instale as dependencias validadas
 
-```bash
-cd backend
-pip install -r requirements.txt
-cd ..
+```powershell
+python -m pip install -r requirements\runtime-windows.lock
 ```
 
-### 4. Configure Frontend
+O lock inclui o Silero VAD, que e o detector principal de fala. Para apenas
+consultar as dependencias diretas, veja `requirements\runtime.txt`.
 
-```bash
-cd frontend
-pip install -r requirements.txt
-cd ..
-```
-
-### 5. Execute (PowerShell no Windows)
+### 4. Execute (PowerShell no Windows)
 
 ```powershell
 cd frontend
@@ -117,13 +110,29 @@ Com a venv da raiz ativa e as dependências instaladas:
 
 O mesmo conjunto é executado automaticamente em pushes e pull requests pelo GitHub Actions.
 
+A composicao e a validacao do ambiente estao registradas em
+[`docs/entrega-1-dependencias.md`](docs/entrega-1-dependencias.md).
+
 ## Configuração de GPU
 
-O modo `auto`, selecionado por padrão, consulta o próprio CTranslate2 usado pelo
-Faster-Whisper. A aplicação escolhe somente um formato de computação aceito pela
-GPU encontrada. Se a placa, o driver ou as bibliotecas NVIDIA não forem
-compatíveis, a sessão continua em CPU e apresenta apenas uma mensagem simples na
-interface.
+A preferência padrão é `GPU`. No motor atual, a aplicação consulta o CTranslate2
+usado pelo Faster-Whisper e escolhe somente um formato de computação aceito por
+uma GPU NVIDIA via CUDA. Se a placa, o driver ou as bibliotecas necessárias não
+forem compatíveis, a sessão continua em CPU e apresenta apenas uma mensagem
+simples na interface.
+
+A preferência permanece visível como GPU, enquanto um indicador separado mostra
+o dispositivo realmente ativo. Em caso de fallback, esse indicador muda para CPU
+e seu texto de ajuda explica o motivo sem expor a exceção técnica.
+
+No Windows, o perfil NVIDIA provisório inclui somente `cublas64_12.dll` e
+`cublasLt64_12.dll`, além do cuDNN já fornecido pelo CTranslate2. Se essas
+bibliotecas não estiverem instaladas no pacote, a aplicação identifica a ausência
+antes da primeira inferência e usa CPU, sem apresentar uma falsa GPU ativa.
+
+Esta implementação ainda não acelera o ASR em GPUs AMD ou Intel. Esses fabricantes
+usam CPU nesta linha de base. A Entrega 1 inclui a avaliação de DirectML/WinML e
+ROCm para ampliar a cobertura sem vincular a arquitetura final ao CTranslate2.
 
 Essa decisão não depende de `torch.cuda.is_available()`: o PyTorch pode emitir
 avisos sobre arquiteturas que não estão presentes em seu wheel mesmo quando o
@@ -156,7 +165,7 @@ _Benchmarks detalhados em [GlobalVoice-ASR-Benchmarks](https://github.com/Global
 ### O que a UI oferece atualmente
 
 - Home para iniciar e abrir configurações
-- Toolbar flutuante com iniciar/parar/limpar, indicador de status e botão de opções
+- Toolbar flutuante com iniciar/parar/limpar, dispositivo ativo, indicador de status e botão de opções
 - Janela flutuante de transcrição redimensionável
 - Persistência local de parâmetros e dimensões da janela via QSettings
 

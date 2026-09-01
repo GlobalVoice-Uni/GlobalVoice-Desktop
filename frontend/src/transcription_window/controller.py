@@ -3,6 +3,8 @@ from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, Signal
 
+from backend.app.runtime_status import RuntimeStatus
+
 from .backend_bridge import LocalBackendBridge, SessionRequest, TranscriptionBridge
 
 
@@ -15,6 +17,8 @@ class RealtimeController(QObject):
 
     transcript_chunk = Signal(str)
     status_changed = Signal(str)
+    runtime_changed = Signal(object)
+    runtime_cleared = Signal()
     error_raised = Signal(str)
     session_finished = Signal(str)
     running_changed = Signal(bool)
@@ -29,10 +33,20 @@ class RealtimeController(QObject):
         self._active_bridge: Optional[TranscriptionBridge] = None
         self._worker_thread: Optional[threading.Thread] = None
         self._running = False
+        self._runtime_status: Optional[RuntimeStatus] = None
 
     @property
     def is_running(self) -> bool:
         return self._running
+
+    @property
+    def runtime_status(self) -> Optional[RuntimeStatus]:
+        return self._runtime_status
+
+    def reset_runtime_status(self) -> None:
+        """Invalida o dispositivo ativo quando a proxima sessao sera diferente."""
+        self._runtime_status = None
+        self.runtime_cleared.emit()
 
     def start_session(self, request: SessionRequest) -> None:
         """Inicia uma nova sessao realtime em thread de fundo."""
@@ -69,6 +83,7 @@ class RealtimeController(QObject):
                 request=request,
                 on_text=self._emit_chunk,
                 on_status=self.status_changed.emit,
+                on_runtime_status=self._publish_runtime_status,
             )
             self.session_finished.emit(final_text)
             self.status_changed.emit("Sessao finalizada.")
@@ -84,3 +99,7 @@ class RealtimeController(QObject):
         """Repassa trecho transcrito para consumo da janela."""
         if chunk:
             self.transcript_chunk.emit(chunk)
+
+    def _publish_runtime_status(self, status: RuntimeStatus) -> None:
+        self._runtime_status = status
+        self.runtime_changed.emit(status)
