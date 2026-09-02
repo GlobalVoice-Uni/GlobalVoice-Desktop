@@ -16,6 +16,8 @@ Este modulo concentra a logica de negocio da transcricao em tempo real.
   - contratos de transcricao e detector de fala (TranscriberPort / SpeechDetectorPort)
 - app/detectors/speech_detectors.py
   - implementacoes de detector (Silero principal + energia como fallback)
+- app/detectors/silero_onnx.py
+  - execucao em streaming do modelo Silero versionado, sem PyTorch
 - app/transcribers/local_faster_whisper.py
   - implementacao local com Faster-Whisper
 - app/sessions/realtime_session.py

@@ -107,7 +107,7 @@ conceito continuam depois desse marco.
   principal no pacote.
 - [x] Detectar a ausência das bibliotecas CUDA antes da primeira inferência e
   mostrar CPU como dispositivo ativo em vez de interromper a sessão.
-- [x] Criar um perfil NVIDIA provisório somente com cuBLAS, separado do PyTorch
+- [x] Criar um perfil NVIDIA provisório somente com cuBLAS, separado do runtime
   usado pelo Silero.
 - [x] Validar manualmente uma transcrição GPU pela build com perfil NVIDIA usando
   Silero VAD e o detector por energia.
@@ -115,10 +115,10 @@ conceito continuam depois desse marco.
   desenvolvimento e registrar o resultado.
 
 **Medição inicial:** pasta com 557,17 MB e janela principal disponível em 2,94 s
-no ambiente de desenvolvimento. Depois da inclusão do Silero e do PyTorch CPU, a
-build reproduzível passou a ocupar 1.185,94 MB. O perfil NVIDIA provisório ocupa
-1.937,80 MB, foi validado com os dois detectores de fala e ainda deve ser
-otimizado antes da distribuição final.
+no ambiente de desenvolvimento. A build com Silero e PyTorch CPU ocupava
+1.185,94 MB; o antigo perfil NVIDIA provisório ocupava 1.937,80 MB. O Silero foi
+migrado para ONNX sem PyTorch, e o novo perfil NVIDIA validado com fala real ocupa
+1.309,96 MB.
 
 ### Transcrição em tempo real
 
@@ -169,8 +169,10 @@ otimizado antes da distribuição final.
   Silero VAD, e separar os requisitos de runtime, testes e build.
 - [ ] Definir requisitos separados de desenvolvimento e de cada perfil de
   aceleração depois da escolha dos provedores de GPU.
-- [ ] Isolar e medir os componentes realmente usados por Silero, PyTorch,
-  PySide6 e cuBLAS para reduzir a build e permitir instalação por perfis.
+- [x] Isolar o Silero em ONNX, comparar seu comportamento com a implementação
+  anterior e remover PyTorch e Torchaudio do runtime.
+- [ ] Isolar e medir os componentes realmente usados por PySide6 e cuBLAS para
+  reduzir a build e permitir instalação por perfis.
 - [ ] Criar um instalador Inno Setup que instale a base em CPU e o perfil de GPU
   adequado ao hardware detectado, sem exigir configuração manual do usuário.
 - [ ] Automatizar build, instalação silenciosa, desinstalação e teste em CPU no

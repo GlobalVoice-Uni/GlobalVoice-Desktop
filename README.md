@@ -83,8 +83,9 @@ Este projeto usa um único ambiente virtual na raiz para backend e frontend.
 python -m pip install -r requirements\runtime-windows.lock
 ```
 
-O lock inclui o Silero VAD, que e o detector principal de fala. Para apenas
-consultar as dependencias diretas, veja `requirements\runtime.txt`.
+O modelo Silero VAD principal ja esta versionado no projeto e e executado por
+ONNX Runtime. Para apenas consultar as dependencias diretas, veja
+`requirements\runtime.txt`.
 
 ### 4. Execute (PowerShell no Windows)
 
@@ -134,9 +135,9 @@ Esta implementação ainda não acelera o ASR em GPUs AMD ou Intel. Esses fabric
 usam CPU nesta linha de base. A Entrega 1 inclui a avaliação de DirectML/WinML e
 ROCm para ampliar a cobertura sem vincular a arquitetura final ao CTranslate2.
 
-Essa decisão não depende de `torch.cuda.is_available()`: o PyTorch pode emitir
-avisos sobre arquiteturas que não estão presentes em seu wheel mesmo quando o
-CTranslate2 ainda consegue executar o ASR naquela GPU.
+Essa decisão não depende de `torch.cuda.is_available()`: a aplicação não usa
+PyTorch no runtime. A compatibilidade do ASR é determinada diretamente pelo
+CTranslate2 e pelas bibliotecas do perfil de aceleração.
 
 As versões atuais do Faster-Whisper requerem cuBLAS para CUDA 12 e cuDNN 9 para
 execução em GPU. Esses requisitos serão verificados durante a evolução das builds;
@@ -226,7 +227,7 @@ O planejamento do PFC 2, os marcos concluídos e os critérios de validação es
 | **Frontend**            | UI, controles, thread local     | Python + PySide6               |
 | **Backend Bridge**      | Contrato entre UI e lógica     | Python (dataclasses, Protocol) |
 | **Backend Session**     | Orquestração de transcrição | Python puro                    |
-| **Backend Transcriber** | Modelo de IA (Faster-Whisper)   | Python + Torch                 |
+| **Backend Transcriber** | Modelo de IA (Faster-Whisper)   | Python + CTranslate2           |
 | **Backend Audio**       | Captura e processamento         | Python + numpy/scipy           |
 
 ### Extensões Futuras

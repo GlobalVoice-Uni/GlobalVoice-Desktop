@@ -1,9 +1,9 @@
-import warnings
 from typing import Callable, Optional, Tuple
 
 import numpy as np
 
 from ..ports import SpeechDetectorPort
+from .silero_onnx import FRAME_SAMPLES, SAMPLE_RATE, SileroOnnxStreamingModel
 
 
 class EnergySpeechDetector:
@@ -29,36 +29,21 @@ class SileroSpeechDetector:
         sample_rate: int = 16000,
         min_silence_duration_ms: int = 120,
         speech_pad_ms: int = 30,
-        use_onnx: bool = False,
     ):
-        if sample_rate not in (8000, 16000):
-            raise ValueError("SileroSpeechDetector suporta apenas 8000 Hz ou 16000 Hz.")
-
-        try:
-            from silero_vad import VADIterator, load_silero_vad  # type: ignore[import-not-found]
-        except Exception as exc:
-            raise RuntimeError(
-                "Dependencia silero-vad nao encontrada. Instale com: pip install silero-vad"
-            ) from exc
+        if sample_rate != SAMPLE_RATE:
+            raise ValueError("SileroSpeechDetector suporta apenas 16000 Hz.")
 
         self.sample_rate = sample_rate
-        self.frame_samples = 512 if sample_rate == 16000 else 256
-        # Dependencias de terceiros ainda emitem avisos de APIs que elas mesmas
-        # utilizam. Eles nao exigem acao do usuario e nao devem vazar para a UI.
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            self._model = load_silero_vad(onnx=use_onnx)
-        self._iterator = VADIterator(
-            self._model,
+        self.frame_samples = FRAME_SAMPLES
+        self._model = SileroOnnxStreamingModel(
             threshold=threshold,
-            sampling_rate=sample_rate,
             min_silence_duration_ms=min_silence_duration_ms,
             speech_pad_ms=speech_pad_ms,
         )
         self._speech_active = False
 
     def reset(self) -> None:
-        self._iterator.reset_states()
+        self._model.reset()
         self._speech_active = False
 
     def detect(self, audio_16k: np.ndarray, peak: float) -> bool:
@@ -74,12 +59,8 @@ class SileroSpeechDetector:
             if len(frame) < self.frame_samples:
                 frame = np.pad(frame, (0, self.frame_samples - len(frame)), mode="constant")
 
-            event = self._iterator(frame, return_seconds=False)
-            if isinstance(event, dict):
-                if "start" in event:
-                    self._speech_active = True
-                if "end" in event:
-                    self._speech_active = False
+            result = self._model.process(frame)
+            self._speech_active = result.active
 
         return self._speech_active
 

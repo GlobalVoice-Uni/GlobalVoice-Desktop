@@ -20,14 +20,24 @@ binaries = []
 hiddenimports = [
     "ctranslate2._ext",
     "faster_whisper.assets",
-    "silero_vad",
 ]
 
 # Os hooks padrao tratam PySide6, PyAV, NumPy, SciPy e sounddevice. Coletar todos
 # os submodulos de Hugging Face ou CTranslate2 inclui CLIs e frameworks opcionais
 # (Torch, TensorFlow etc.) que nao participam do fluxo de transcricao.
 datas.extend(collect_data_files("faster_whisper"))
-datas.extend(collect_data_files("silero_vad"))
+datas.extend(
+    [
+        (
+            os.path.join(project_root, "backend", "assets", "silero_vad_16k_op15.onnx"),
+            os.path.join("backend", "assets"),
+        ),
+        (
+            os.path.join(project_root, "backend", "assets", "SILERO_VAD_LICENSE.txt"),
+            os.path.join("backend", "assets"),
+        ),
+    ]
+)
 binaries.extend(collect_dynamic_libs("ctranslate2"))
 if cuda_runtime_source:
     # cublas64 depende de cublasLt. O PyInstaller resolve essa dependencia e
@@ -44,7 +54,7 @@ cpp_runtime_candidates = (
 )
 binaries.extend((path, ".") for path in cpp_runtime_candidates if os.path.isfile(path))
 
-for distribution in ("faster-whisper", "ctranslate2", "silero-vad"):
+for distribution in ("faster-whisper", "ctranslate2", "onnxruntime"):
     try:
         datas.extend(copy_metadata(distribution))
     except Exception:
@@ -66,6 +76,9 @@ analysis = Analysis(
         "tensorflow",
         "jax",
         "flax",
+        "silero_vad",
+        "torch",
+        "torchaudio",
     ],
     noarchive=False,
     optimize=0,

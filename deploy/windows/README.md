@@ -48,12 +48,11 @@ Para gerar o perfil NVIDIA provisório, informe uma pasta validada que contenha
 ```powershell
 .\deploy\windows\build.ps1 `
   -RuntimePythonPath ".build\dependency-audit\venv\Scripts\python.exe" `
-  -CudaRuntimePath ".venv\Lib\site-packages\torch\lib"
+  -CudaRuntimePath "C:\caminho\cuda-runtime"
 ```
 
-O parâmetro serve como fonte das duas DLLs; ele não inclui o restante do PyTorch
-CUDA no pacote. A origem definitiva deve ser uma distribuição oficial cuja
-licença permita a redistribuição pelo instalador.
+O parâmetro serve como fonte das duas DLLs. A origem definitiva deve ser uma
+distribuição oficial cuja licença permita a redistribuição pelo instalador.
 
 Durante o empacotamento, o script restringe o `PATH` ao Python e aos componentes
 do Windows. Isso impede que DLLs de outras ferramentas instaladas na máquina de
@@ -91,13 +90,13 @@ preferência e o dispositivo realmente ativo, sem exigir que o usuário interpre
 mensagens de terminal.
 
 O Silero VAD e o detector principal e esta presente na build reproduzivel atual.
-O detector por energia existe apenas como fallback de seguranca. A primeira build
-de 557,17 MB, gerada antes da auditoria de dependencias, nao incluia Silero e foi
-substituida por uma build completa de 1.185,94 MB.
+Seu modelo ONNX e versionado no projeto e nao requer PyTorch ou Torchaudio. O
+detector por energia existe apenas como fallback de seguranca.
 
-O perfil NVIDIA provisório acrescenta somente cuBLAS e ocupa 1.937,80 MB. Esse
-tamanho não é uma meta final: Silero/PyTorch, PySide6 e as bibliotecas CUDA ainda
-serão avaliados separadamente antes do instalador.
+O perfil NVIDIA provisório acrescenta somente cuBLAS e ocupa 1.309,96 MB depois
+da migração do Silero para ONNX, contra 1.937,80 MB na build anterior. Esse
+tamanho ainda não é uma meta final: PySide6 e as bibliotecas CUDA serão avaliados
+separadamente antes do instalador.
 
 Referências técnicas:
 

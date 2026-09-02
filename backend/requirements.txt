@@ -7,7 +7,5 @@ numpy==2.4.4
 scipy==1.17.1
 sounddevice==0.5.5
 
-# VAD principal. O par torch/torchaudio deve permanecer alinhado.
-silero-vad==6.2.0
-torch==2.11.0
-torchaudio==2.11.0
+# VAD principal executado pelo modelo ONNX versionado no projeto.
+onnxruntime==1.29.0
