@@ -93,10 +93,11 @@ O Silero VAD e o detector principal e esta presente na build reproduzivel atual.
 Seu modelo ONNX e versionado no projeto e nao requer PyTorch ou Torchaudio. O
 detector por energia existe apenas como fallback de seguranca.
 
-O perfil NVIDIA provisório acrescenta somente cuBLAS e ocupa 1.309,96 MB depois
-da migração do Silero para ONNX, contra 1.937,80 MB na build anterior. Esse
-tamanho ainda não é uma meta final: PySide6 e as bibliotecas CUDA serão avaliados
-separadamente antes do instalador.
+O perfil NVIDIA provisório acrescenta somente cuBLAS. Depois da migração do
+Silero para ONNX e da eliminação de cópias idênticas de DLLs, a build validada
+ocupa 1.149,48 MB, contra 1.937,80 MB antes dessas otimizações. Esse tamanho ainda
+não é uma meta final: PySide6 e as bibliotecas CUDA serão avaliados separadamente
+antes do instalador.
 
 Referências técnicas:
 

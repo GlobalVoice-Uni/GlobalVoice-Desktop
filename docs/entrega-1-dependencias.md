@@ -65,6 +65,13 @@ modelo ONNX e de sua licença. A transcrição com fala real foi validada manual
 no executável usando Silero, GPU e CPU; o detector por energia também permaneceu
 funcional.
 
+A auditoria seguinte encontrou 156,89 MB em arquivos maiores que 1 MB copiados
+mais de uma vez pelo PyInstaller. O empacotamento passou a preservar as DLLs nos
+diretórios registrados por CTranslate2, PyAV, NumPy e SciPy e a descartar apenas
+a cópia plana com a mesma origem. A nova build ocupa 1.149,48 MB e não possui
+duplicações maiores que 1 MB. O executável deduplicado foi validado manualmente
+com Silero e detector por energia, em GPU e CPU.
+
 Esse perfil permite a validação técnica, mas ainda não define a distribuição
 final. A origem licenciada das DLLs, versões alternativas menores e a instalação
 seletiva por hardware devem ser avaliadas antes de um release.

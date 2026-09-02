@@ -123,6 +123,40 @@ analysis.binaries = [
     entry for entry in analysis.binaries if is_allowed_binary(entry[1])
 ]
 
+# Wheels preparados para Windows mantem suas DLLs em diretorios proprios e os
+# adicionam explicitamente ao carregador antes de importar as extensoes nativas.
+# A analise recursiva do PyInstaller tambem copia essas mesmas DLLs para a raiz,
+# duplicando conteudo sem acrescentar outra dependencia. Removemos somente a
+# copia plana quando a origem exata ja esta preservada no diretorio conhecido.
+package_binary_directories = {
+    "av.libs",
+    "ctranslate2",
+    "numpy.libs",
+    "scipy.libs",
+}
+nested_binary_sources = {
+    os.path.normcase(os.path.abspath(source))
+    for destination, source, _kind in analysis.binaries
+    if os.path.normcase(os.path.dirname(destination)) in package_binary_directories
+}
+duplicate_root_binaries = [
+    destination
+    for destination, source, _kind in analysis.binaries
+    if not os.path.dirname(destination)
+    and os.path.normcase(os.path.abspath(source)) in nested_binary_sources
+]
+if duplicate_root_binaries:
+    print(
+        "Copias binarias planas ignoradas: "
+        + ", ".join(sorted(duplicate_root_binaries))
+    )
+analysis.binaries = [
+    entry
+    for entry in analysis.binaries
+    if os.path.dirname(entry[0])
+    or os.path.normcase(os.path.abspath(entry[1])) not in nested_binary_sources
+]
+
 python_archive = PYZ(analysis.pure)
 
 executable = EXE(

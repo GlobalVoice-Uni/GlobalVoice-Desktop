@@ -118,7 +118,7 @@ conceito continuam depois desse marco.
 no ambiente de desenvolvimento. A build com Silero e PyTorch CPU ocupava
 1.185,94 MB; o antigo perfil NVIDIA provisório ocupava 1.937,80 MB. O Silero foi
 migrado para ONNX sem PyTorch, e o novo perfil NVIDIA validado com fala real ocupa
-1.309,96 MB.
+1.309,96 MB. A build deduplicada validada ocupa 1.149,48 MB.
 
 ### Transcrição em tempo real
 
@@ -171,6 +171,8 @@ migrado para ONNX sem PyTorch, e o novo perfil NVIDIA validado com fala real ocu
   aceleração depois da escolha dos provedores de GPU.
 - [x] Isolar o Silero em ONNX, comparar seu comportamento com a implementação
   anterior e remover PyTorch e Torchaudio do runtime.
+- [x] Validar a build que elimina cópias idênticas de DLLs do CTranslate2, PyAV,
+  NumPy e SciPy.
 - [ ] Isolar e medir os componentes realmente usados por PySide6 e cuBLAS para
   reduzir a build e permitir instalação por perfis.
 - [ ] Criar um instalador Inno Setup que instale a base em CPU e o perfil de GPU
