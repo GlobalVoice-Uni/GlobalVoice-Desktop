@@ -79,6 +79,7 @@ analysis = Analysis(
         "silero_vad",
         "torch",
         "torchaudio",
+        "PySide6.QtNetwork",
     ],
     noarchive=False,
     optimize=0,
@@ -121,6 +122,61 @@ if external_binaries:
     )
 analysis.binaries = [
     entry for entry in analysis.binaries if is_allowed_binary(entry[1])
+]
+
+# A interface atual usa QtCore, QtGui e QtWidgets. Mantemos o backend padrao do
+# Windows, o estilo nativo e os formatos de imagem, mas removemos alternativas
+# que puxam QML/Quick, PDF, OpenGL por software e a pilha de rede/TLS. Esses
+# componentes nao sao importados nem usados pelas telas do Global Voice.
+unused_qt_binary_names = {
+    "opengl32sw.dll",
+    "qt6network.dll",
+    "qt6opengl.dll",
+    "qt6pdf.dll",
+    "qt6qml.dll",
+    "qt6qmlmeta.dll",
+    "qt6qmlmodels.dll",
+    "qt6qmlworkerscript.dll",
+    "qt6quick.dll",
+    "qt6virtualkeyboard.dll",
+}
+unused_qt_plugin_prefixes = (
+    os.path.normcase(os.path.join("PySide6", "plugins", "networkinformation")),
+    os.path.normcase(os.path.join("PySide6", "plugins", "tls")),
+)
+unused_qt_plugin_paths = {
+    os.path.normcase(path)
+    for path in (
+        os.path.join("PySide6", "plugins", "imageformats", "qpdf.dll"),
+        os.path.join("PySide6", "plugins", "platforminputcontexts", "qtvirtualkeyboardplugin.dll"),
+        os.path.join("PySide6", "plugins", "platforms", "qdirect2d.dll"),
+        os.path.join("PySide6", "plugins", "platforms", "qminimal.dll"),
+        os.path.join("PySide6", "plugins", "platforms", "qoffscreen.dll"),
+    )
+}
+
+
+def is_unused_qt_binary(destination):
+    normalized = os.path.normcase(destination)
+    if os.path.basename(normalized) in unused_qt_binary_names:
+        return True
+    if normalized in unused_qt_plugin_paths:
+        return True
+    return any(
+        normalized == prefix or normalized.startswith(prefix + os.sep)
+        for prefix in unused_qt_plugin_prefixes
+    )
+
+
+unused_qt_binaries = [
+    destination
+    for destination, _source, _kind in analysis.binaries
+    if is_unused_qt_binary(destination)
+]
+if unused_qt_binaries:
+    print("Componentes Qt nao usados ignorados: " + ", ".join(sorted(unused_qt_binaries)))
+analysis.binaries = [
+    entry for entry in analysis.binaries if not is_unused_qt_binary(entry[0])
 ]
 
 # Wheels preparados para Windows mantem suas DLLs em diretorios proprios e os

@@ -95,9 +95,10 @@ detector por energia existe apenas como fallback de seguranca.
 
 O perfil NVIDIA provisório acrescenta somente cuBLAS. Depois da migração do
 Silero para ONNX e da eliminação de cópias idênticas de DLLs, a build validada
-ocupa 1.149,48 MB, contra 1.937,80 MB antes dessas otimizações. Esse tamanho ainda
-não é uma meta final: PySide6 e as bibliotecas CUDA serão avaliados separadamente
-antes do instalador.
+ocupava 1.149,48 MB. A build validada sem os componentes Qt não usados pela
+interface ocupa 1.105,87 MB, contra 1.937,80 MB antes dessas otimizações. Esse
+tamanho ainda não é uma meta final: as bibliotecas CUDA serão avaliadas
+separadamente antes do instalador.
 
 Referências técnicas:
 

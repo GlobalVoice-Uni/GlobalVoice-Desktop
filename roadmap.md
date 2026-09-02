@@ -144,6 +144,9 @@ migrado para ONNX sem PyTorch, e o novo perfil NVIDIA validado com fala real ocu
 - [x] Medir o tempo atual do pipeline no hardware do grupo para criar uma **linha de
   base**: um valor de referência que permita saber objetivamente se as mudanças
   seguintes melhoraram ou pioraram o sistema.
+- [ ] Repetir a linha de base com a máquina livre e sob carga representativa,
+  usando o mesmo áudio, para medir perda de velocidade ou qualidade por disputa
+  de CPU, GPU e memória.
 - [ ] Criar uma prova de conceito de transcrição remota em uma VM conectada pela
   bridge.
 - [ ] Comparar transcrição local e remota com os mesmos áudios, medindo qualidade,
@@ -173,8 +176,10 @@ migrado para ONNX sem PyTorch, e o novo perfil NVIDIA validado com fala real ocu
   anterior e remover PyTorch e Torchaudio do runtime.
 - [x] Validar a build que elimina cópias idênticas de DLLs do CTranslate2, PyAV,
   NumPy e SciPy.
-- [ ] Isolar e medir os componentes realmente usados por PySide6 e cuBLAS para
-  reduzir a build e permitir instalação por perfis.
+- [x] Validar a build de 1.105,87 MB sem os componentes Qt não usados pela
+  interface atual.
+- [ ] Definir como distribuir cuBLAS somente no perfil NVIDIA sem aumentar a base
+  instalada para usuários de CPU, AMD ou Intel.
 - [ ] Criar um instalador Inno Setup que instale a base em CPU e o perfil de GPU
   adequado ao hardware detectado, sem exigir configuração manual do usuário.
 - [ ] Automatizar build, instalação silenciosa, desinstalação e teste em CPU no

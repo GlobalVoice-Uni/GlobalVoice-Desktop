@@ -72,6 +72,19 @@ a cópia plana com a mesma origem. A nova build ocupa 1.149,48 MB e não possui
 duplicações maiores que 1 MB. O executável deduplicado foi validado manualmente
 com Silero e detector por energia, em GPU e CPU.
 
+## Componentes Qt
+
+Embora a instalação completa do PySide6 ocupe aproximadamente 628 MB, o
+PyInstaller já selecionava apenas QtCore, QtGui, QtWidgets e suas dependências. A
+interface não usa rede/TLS, QML/Quick, PDF, teclado virtual, plataformas de teste
+nem OpenGL por software. Esses componentes foram removidos, preservando o backend
+`qwindows`, o estilo moderno e o suporte a SVG e aos demais formatos de imagem.
+
+A build resultante ocupa 1.105,87 MB, redução adicional de 43,61 MB. A presença
+dos componentes Qt necessários e a ausência dos excluídos foram verificadas no
+pacote. A abertura, os fluxos visuais e a transcrição por Silero e energia em GPU
+e CPU foram validados manualmente no executável.
+
 Esse perfil permite a validação técnica, mas ainda não define a distribuição
 final. A origem licenciada das DLLs, versões alternativas menores e a instalação
 seletiva por hardware devem ser avaliadas antes de um release.
