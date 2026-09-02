@@ -126,10 +126,12 @@ A preferência permanece visível como GPU, enquanto um indicador separado mostr
 o dispositivo realmente ativo. Em caso de fallback, esse indicador muda para CPU
 e seu texto de ajuda explica o motivo sem expor a exceção técnica.
 
-No Windows, o perfil NVIDIA provisório inclui somente `cublas64_12.dll` e
-`cublasLt64_12.dll`, além do cuDNN já fornecido pelo CTranslate2. Se essas
-bibliotecas não estiverem instaladas no pacote, a aplicação identifica a ausência
-antes da primeira inferência e usa CPU, sem apresentar uma falsa GPU ativa.
+No Windows, o perfil NVIDIA opcional inclui somente `cublas64_12.dll` e
+`cublasLt64_12.dll`, além do cuDNN já fornecido pelo CTranslate2. Ele usa a
+distribuição oficial `nvidia-cublas-cu12==12.8.4.1`, preserva a licença da NVIDIA
+e fica separado da base da aplicação. Se essas bibliotecas não estiverem
+instaladas, a aplicação identifica a ausência antes da primeira inferência e usa
+CPU, sem apresentar uma falsa GPU ativa.
 
 Esta implementação ainda não acelera o ASR em GPUs AMD ou Intel. Esses fabricantes
 usam CPU nesta linha de base. A Entrega 1 inclui a avaliação de DirectML/WinML e
@@ -247,7 +249,7 @@ O planejamento do PFC 2, os marcos concluídos e os critérios de validação es
 
 - **PySide6**: UI desktop
 - **faster-whisper**: Motor de transcrição
-- **torch**: Framework ML (com suporte CUDA)
+- **onnxruntime**: Execução local do Silero VAD
 - **sounddevice**: Captura de áudio
 - **numpy/scipy**: Processamento de áudio
 

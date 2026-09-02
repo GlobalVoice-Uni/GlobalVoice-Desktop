@@ -13,8 +13,6 @@ runtime_packages_path = os.environ.get(
     "GLOBALVOICE_RUNTIME_SITE_PACKAGES",
     os.path.join(project_root, ".venv", "Lib", "site-packages"),
 )
-cuda_runtime_source = os.environ.get("GLOBALVOICE_CUDA_RUNTIME_SOURCE")
-
 datas = []
 binaries = []
 hiddenimports = [
@@ -39,10 +37,6 @@ datas.extend(
     ]
 )
 binaries.extend(collect_dynamic_libs("ctranslate2"))
-if cuda_runtime_source:
-    # cublas64 depende de cublasLt. O PyInstaller resolve essa dependencia e
-    # inclui cada DLL uma unica vez na raiz interna do pacote.
-    binaries.append((os.path.join(cuda_runtime_source, "cublas64_12.dll"), "."))
 
 # Inclui o runtime C++ usado pelo Qt mesmo quando ele ja esta instalado na
 # maquina de desenvolvimento. A build nao deve depender desse pre-requisito na

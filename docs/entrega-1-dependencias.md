@@ -5,7 +5,7 @@ pacotes do ambiente de desenvolvimento.
 
 ## Resultado
 
-- O Silero VAD e o detector principal da aplicacao e deve integrar toda build.
+- O Silero VAD é o detector principal da aplicação e deve integrar toda build.
 - O detector por energia permanece apenas como fallback quando o Silero nao pode
   ser inicializado.
 - Faster-Whisper e CTranslate2 executam o ASR; PyTorch nao controla a GPU usada
@@ -38,7 +38,7 @@ o modelo ONNX oficial da mesma versão.
 A build completa passou a ocupar 1.185,94 MB. A primeira build, sem Silero,
 ocupava 557,17 MB e nao deve ser distribuida como representacao do runtime final.
 
-## Perfil NVIDIA provisório
+## Perfil NVIDIA
 
 O primeiro pacote reproduzível usava o runtime CPU do PyTorch e não continha
 cuBLAS. O CTranslate2 detectava a GPU e carregava o modelo, mas a primeira
@@ -85,13 +85,32 @@ dos componentes Qt necessários e a ausência dos excluídos foram verificadas n
 pacote. A abertura, os fluxos visuais e a transcrição por Silero e energia em GPU
 e CPU foram validados manualmente no executável.
 
-Esse perfil permite a validação técnica, mas ainda não define a distribuição
-final. A origem licenciada das DLLs, versões alternativas menores e a instalação
-seletiva por hardware devem ser avaliadas antes de um release.
+### Origem e separação para o instalador
+
+As duas bibliotecas foram substituídas por arquivos byte a byte idênticos vindos
+do pacote oficial `nvidia-cublas-cu12==12.8.4.1` para Windows. O pacote e o
+conteúdo extraído são verificados por SHA-256, e a licença da NVIDIA acompanha o
+perfil. `cublas.dll` e `cublasLt.dll` constam no Attachment A da licença do CUDA
+Toolkit como arquivos redistribuíveis para Windows.
+
+A build passou a ser composta por duas partes físicas:
+
+- base comum de 354,01 MB, sem cuBLAS;
+- perfil `nvidia-cuda12` de 751,92 MB descompactado;
+- instalação combinada de 1.105,92 MB.
+
+O perfil fica em `_internal/runtime/nvidia/cuda12`, sem DLL CUDA fora desse
+diretório. Essa separação permite ao Inno Setup instalar cuBLAS somente quando o
+perfil NVIDIA for selecionado, sem aumentar a base instalada em maquinas CPU,
+AMD ou Intel.
+
+O perfil define a distribuição atual do CUDA. A seleção automática por hardware
+e a possibilidade de separar o seu download do instalador base ainda serão
+validadas antes de um release.
 
 ## Pendencias relacionadas
 
-- definir uma fonte oficial e redistribuível para o perfil cuBLAS do instalador;
+- validar o perfil NVIDIA separado em outra GPU e em uma instalação limpa;
 - definir os perfis de aceleracao depois de comparar CUDA, DirectML/WinML e ROCm;
 - atualizar o lock somente depois que uma nova combinacao passar pela mesma
   validacao limpa.

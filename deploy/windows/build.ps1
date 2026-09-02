@@ -2,7 +2,8 @@ param(
     [switch]$InstallRuntimeDependencies,
     [switch]$DiagnosticConsole,
     [string]$RuntimePythonPath,
-    [string]$CudaRuntimePath
+    [Alias("CudaRuntimePath")]
+    [string]$NvidiaRuntimePath
 )
 
 $ErrorActionPreference = "Stop"
@@ -27,7 +28,6 @@ $executablePath = Join-Path $distPath "GlobalVoice\GlobalVoice.exe"
 $previousPythonPath = $env:PYTHONPATH
 $previousDiagnosticConsole = $env:GLOBALVOICE_DIAGNOSTIC_CONSOLE
 $previousRuntimePackages = $env:GLOBALVOICE_RUNTIME_SITE_PACKAGES
-$previousCudaRuntimeSource = $env:GLOBALVOICE_CUDA_RUNTIME_SOURCE
 $previousPath = $env:PATH
 
 if (-not (Test-Path $pythonPath)) {
@@ -35,19 +35,24 @@ if (-not (Test-Path $pythonPath)) {
     exit 1
 }
 
-$resolvedCudaRuntimePath = $null
-if (-not [string]::IsNullOrWhiteSpace($CudaRuntimePath)) {
-    $cudaPathCandidate = if ([System.IO.Path]::IsPathRooted($CudaRuntimePath)) {
-        $CudaRuntimePath
+$resolvedNvidiaRuntimePath = $null
+if (-not [string]::IsNullOrWhiteSpace($NvidiaRuntimePath)) {
+    $runtimePathCandidate = if ([System.IO.Path]::IsPathRooted($NvidiaRuntimePath)) {
+        $NvidiaRuntimePath
     }
     else {
-        Join-Path $projectDir $CudaRuntimePath
+        Join-Path $projectDir $NvidiaRuntimePath
     }
-    $resolvedCudaRuntimePath = (Resolve-Path $cudaPathCandidate).Path
-    foreach ($libraryName in @("cublasLt64_12.dll", "cublas64_12.dll")) {
-        $libraryPath = Join-Path $resolvedCudaRuntimePath $libraryName
-        if (-not (Test-Path -LiteralPath $libraryPath -PathType Leaf)) {
-            Write-Error "Biblioteca do perfil NVIDIA nao encontrada: $libraryPath"
+    $resolvedNvidiaRuntimePath = (Resolve-Path $runtimePathCandidate).Path
+    foreach ($fileName in @(
+        "cublasLt64_12.dll",
+        "cublas64_12.dll",
+        "NVIDIA-CUDA-LICENSE.txt",
+        "profile.json"
+    )) {
+        $filePath = Join-Path $resolvedNvidiaRuntimePath $fileName
+        if (-not (Test-Path -LiteralPath $filePath -PathType Leaf)) {
+            Write-Error "Arquivo do perfil NVIDIA nao encontrado: $filePath"
             exit 1
         }
     }
@@ -90,7 +95,6 @@ try {
     $env:PYTHONPATH = "$projectDir;$runtimePackagesPath"
     $env:GLOBALVOICE_DIAGNOSTIC_CONSOLE = if ($DiagnosticConsole) { "1" } else { "0" }
     $env:GLOBALVOICE_RUNTIME_SITE_PACKAGES = $runtimePackagesPath
-    $env:GLOBALVOICE_CUDA_RUNTIME_SOURCE = $resolvedCudaRuntimePath
     $env:PATH = $controlledPath
     & $buildPythonPath -m PyInstaller `
         --noconfirm `
@@ -105,6 +109,33 @@ try {
         exit 1
     }
 
+    $baseBytes = (
+        Get-ChildItem (Split-Path -Parent $executablePath) -File -Recurse |
+            Measure-Object -Property Length -Sum
+    ).Sum
+
+    $nvidiaRuntimeBytes = 0
+    if ($resolvedNvidiaRuntimePath) {
+        $runtimeTarget = Join-Path (
+            Split-Path -Parent $executablePath
+        ) "_internal\runtime\nvidia\cuda12"
+        New-Item -ItemType Directory -Force -Path $runtimeTarget | Out-Null
+        foreach ($fileName in @(
+            "cublasLt64_12.dll",
+            "cublas64_12.dll",
+            "NVIDIA-CUDA-LICENSE.txt",
+            "profile.json"
+        )) {
+            Copy-Item -LiteralPath (
+                Join-Path $resolvedNvidiaRuntimePath $fileName
+            ) -Destination $runtimeTarget -Force
+        }
+        $nvidiaRuntimeBytes = (
+            Get-ChildItem -LiteralPath $runtimeTarget -File |
+                Measure-Object -Property Length -Sum
+        ).Sum
+    }
+
     $bundleBytes = (
         Get-ChildItem (Split-Path -Parent $executablePath) -File -Recurse |
             Measure-Object -Property Length -Sum
@@ -112,14 +143,15 @@ try {
     $bundleSizeMb = [Math]::Round($bundleBytes / 1MB, 2)
 
     Write-Output "BUILD_OK=$executablePath"
+    Write-Output "BASE_SIZE_MB=$([Math]::Round($baseBytes / 1MB, 2))"
+    Write-Output "NVIDIA_RUNTIME_SIZE_MB=$([Math]::Round($nvidiaRuntimeBytes / 1MB, 2))"
     Write-Output "BUNDLE_SIZE_MB=$bundleSizeMb"
-    Write-Output "CUDA_PROFILE=$(if ($resolvedCudaRuntimePath) { 'nvidia-cuda12' } else { 'cpu' })"
+    Write-Output "RUNTIME_PROFILE=$(if ($resolvedNvidiaRuntimePath) { 'nvidia-cuda12' } else { 'base' })"
 }
 finally {
     $env:PYTHONPATH = $previousPythonPath
     $env:GLOBALVOICE_DIAGNOSTIC_CONSOLE = $previousDiagnosticConsole
     $env:GLOBALVOICE_RUNTIME_SITE_PACKAGES = $previousRuntimePackages
-    $env:GLOBALVOICE_CUDA_RUNTIME_SOURCE = $previousCudaRuntimeSource
     $env:PATH = $previousPath
     Pop-Location
 }

@@ -42,17 +42,27 @@ Sem parâmetros adicionais, o script gera a base em CPU. Se houver uma GPU NVIDI
 mas as bibliotecas CUDA não estiverem no pacote, a aplicação muda para CPU antes
 da primeira inferência e informa o fallback na interface.
 
-Para gerar o perfil NVIDIA provisório, informe uma pasta validada que contenha
-`cublas64_12.dll` e `cublasLt64_12.dll`:
+O perfil NVIDIA é preparado separadamente a partir do pacote oficial da NVIDIA.
+O script baixa `nvidia-cublas-cu12==12.8.4.1`, verifica o SHA-256 antes de abrir o
+arquivo, extrai somente as duas DLLs necessárias e preserva a licença:
+
+```powershell
+.\deploy\windows\prepare-nvidia-runtime.ps1
+```
+
+O download fica no cache local `.build\downloads`, e o perfil reproduzível é
+gerado em `dist\runtime-profiles\nvidia-cuda12`. Para acrescentá-lo a uma build:
 
 ```powershell
 .\deploy\windows\build.ps1 `
   -RuntimePythonPath ".build\dependency-audit\venv\Scripts\python.exe" `
-  -CudaRuntimePath "C:\caminho\cuda-runtime"
+  -NvidiaRuntimePath "dist\runtime-profiles\nvidia-cuda12"
 ```
 
-O parâmetro serve como fonte das duas DLLs. A origem definitiva deve ser uma
-distribuição oficial cuja licença permita a redistribuição pelo instalador.
+O PyInstaller sempre gera primeiro a mesma base. Quando o perfil é informado, os
+arquivos opcionais são copiados depois para
+`_internal\runtime\nvidia\cuda12`. Isso evita misturar cuBLAS com as dependencias
+comuns e permite que o instalador omita o perfil em máquinas CPU, AMD ou Intel.
 
 Durante o empacotamento, o script restringe o `PATH` ao Python e aos componentes
 do Windows. Isso impede que DLLs de outras ferramentas instaladas na máquina de
@@ -89,19 +99,19 @@ inicializada. AMD e Intel ainda usam CPU. A interface mostra separadamente a
 preferência e o dispositivo realmente ativo, sem exigir que o usuário interprete
 mensagens de terminal.
 
-O Silero VAD e o detector principal e esta presente na build reproduzivel atual.
-Seu modelo ONNX e versionado no projeto e nao requer PyTorch ou Torchaudio. O
-detector por energia existe apenas como fallback de seguranca.
+O Silero VAD é o detector principal e está presente na build reproduzível atual.
+Seu modelo ONNX é versionado no projeto e não requer PyTorch ou Torchaudio. O
+detector por energia existe apenas como fallback de segurança.
 
-O perfil NVIDIA provisório acrescenta somente cuBLAS. Depois da migração do
-Silero para ONNX e da eliminação de cópias idênticas de DLLs, a build validada
-ocupava 1.149,48 MB. A build validada sem os componentes Qt não usados pela
-interface ocupa 1.105,87 MB, contra 1.937,80 MB antes dessas otimizações. Esse
-tamanho ainda não é uma meta final: as bibliotecas CUDA serão avaliadas
-separadamente antes do instalador.
+A base atual ocupa 354,01 MB. O perfil NVIDIA acrescenta 751,92 MB descompactado,
+totalizando 1.105,92 MB quando instalado. O pacote oficial de origem ocupa
+aproximadamente 541,25 MB compactado. As duas DLLs extraídas dele são byte a byte
+idênticas às que passaram pelos testes manuais anteriores.
 
 Referências técnicas:
 
 - [PyInstaller: opções `onedir` e `onefile`](https://pyinstaller.org/en/stable/usage.html#what-to-generate)
 - [Faster-Whisper: requisitos atuais de GPU](https://github.com/SYSTRAN/faster-whisper#gpu)
 - [CTranslate2: consulta dos formatos suportados](https://opennmt.net/CTranslate2/python/ctranslate2.get_supported_compute_types.html)
+- [Guia de instalação do CUDA no Windows](https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html)
+- [Licença do CUDA Toolkit](https://docs.nvidia.com/cuda/eula/index.html)

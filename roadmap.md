@@ -118,7 +118,9 @@ conceito continuam depois desse marco.
 no ambiente de desenvolvimento. A build com Silero e PyTorch CPU ocupava
 1.185,94 MB; o antigo perfil NVIDIA provisório ocupava 1.937,80 MB. O Silero foi
 migrado para ONNX sem PyTorch, e o novo perfil NVIDIA validado com fala real ocupa
-1.309,96 MB. A build deduplicada validada ocupa 1.149,48 MB.
+1.309,96 MB. A build deduplicada validada ocupa 1.149,48 MB. Após o corte do Qt e
+a separação do perfil CUDA, a base ocupa 354,01 MB e a instalação NVIDIA completa
+ocupa 1.105,92 MB.
 
 ### Transcrição em tempo real
 
@@ -178,7 +180,7 @@ migrado para ONNX sem PyTorch, e o novo perfil NVIDIA validado com fala real ocu
   NumPy e SciPy.
 - [x] Validar a build de 1.105,87 MB sem os componentes Qt não usados pela
   interface atual.
-- [ ] Definir como distribuir cuBLAS somente no perfil NVIDIA sem aumentar a base
+- [x] Definir como distribuir cuBLAS somente no perfil NVIDIA sem aumentar a base
   instalada para usuários de CPU, AMD ou Intel.
 - [ ] Criar um instalador Inno Setup que instale a base em CPU e o perfil de GPU
   adequado ao hardware detectado, sem exigir configuração manual do usuário.

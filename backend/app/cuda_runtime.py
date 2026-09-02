@@ -30,7 +30,11 @@ def _candidate_directories() -> tuple[Path, ...]:
 
     frozen_root = getattr(sys, "_MEIPASS", None)
     if frozen_root:
-        candidates.append(Path(frozen_root))
+        frozen_root = Path(frozen_root)
+        candidates.append(frozen_root / "runtime" / "nvidia" / "cuda12")
+        # Mantem compatibilidade com as builds provisórias que colocavam as
+        # bibliotecas diretamente na raiz interna do pacote.
+        candidates.append(frozen_root)
 
     # Compatibilidade com o ambiente de desenvolvimento anterior. O aplicativo
     # empacotado nao depende do PyTorch CUDA; ele recebe um perfil proprio.

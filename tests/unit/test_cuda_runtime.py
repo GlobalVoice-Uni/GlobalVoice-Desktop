@@ -1,3 +1,4 @@
+import os
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -6,6 +7,21 @@ from backend.app import cuda_runtime
 
 
 class CudaRuntimeTests(unittest.TestCase):
+    def test_prefers_installed_nvidia_profile_in_frozen_build(self):
+        frozen_root = Path("pacote")
+
+        with (
+            patch.dict(os.environ, {"GLOBALVOICE_CUDA_RUNTIME": ""}),
+            patch.object(cuda_runtime.sys, "_MEIPASS", str(frozen_root), create=True),
+        ):
+            candidates = cuda_runtime._candidate_directories()
+
+        expected_profile = (
+            frozen_root / "runtime" / "nvidia" / "cuda12"
+        ).resolve()
+        self.assertEqual(candidates[0], expected_profile)
+        self.assertEqual(candidates[1], frozen_root.resolve())
+
     def test_uses_the_first_complete_runtime_directory(self):
         first = Path("incompleto")
         second = Path("perfil-nvidia")
