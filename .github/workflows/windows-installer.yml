@@ -1,0 +1,67 @@
+name: Instalador Windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_version:
+        description: Versao numerica do aplicativo
+        required: true
+        default: 0.1.0
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  APP_VERSION: ${{ inputs.app_version }}
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Baixar repositorio
+        uses: actions/checkout@v7
+
+      - name: Configurar Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements/runtime-windows.lock
+
+      - name: Preparar ambiente de runtime
+        shell: pwsh
+        run: |
+          python -m venv .build/runtime-venv
+          ./.build/runtime-venv/Scripts/python.exe -m pip install --disable-pip-version-check -r requirements/runtime-windows.lock
+
+      - name: Preparar perfil NVIDIA
+        shell: pwsh
+        run: ./deploy/windows/prepare-nvidia-runtime.ps1
+
+      - name: Gerar executavel
+        shell: pwsh
+        run: ./deploy/windows/build.ps1 -RuntimePythonPath ".build/runtime-venv/Scripts/python.exe"
+
+      - name: Preparar Inno Setup
+        shell: pwsh
+        run: ./deploy/windows/prepare-inno-setup.ps1
+
+      - name: Gerar instalador
+        shell: pwsh
+        run: ./deploy/windows/build-installer.ps1 -AppVersion $env:APP_VERSION
+
+      - name: Testar instalacao somente CPU
+        shell: pwsh
+        run: ./deploy/windows/test-installer.ps1 -InstallerPath "dist/installer/GlobalVoice-Setup-$env:APP_VERSION.exe"
+
+      - name: Publicar instalador do teste
+        uses: actions/upload-artifact@v4
+        with:
+          name: GlobalVoice-Setup-${{ inputs.app_version }}
+          path: dist/installer/GlobalVoice-Setup-${{ inputs.app_version }}.exe
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7

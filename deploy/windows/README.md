@@ -92,6 +92,13 @@ O primeiro instalador usa o Inno Setup 7.1.0. Por padrão, o script procura o
 compilador em `.build\inno-setup-7.1.0\ISCC.exe`; outra instalação pode ser
 informada por `-InnoCompilerPath`.
 
+Para baixar, validar e instalar essa versão do compilador somente dentro de
+`.build`, execute:
+
+```powershell
+.\deploy\windows\prepare-inno-setup.ps1
+```
+
 Com a build e o perfil NVIDIA preparados:
 
 ```powershell
@@ -130,6 +137,19 @@ As preferências da aplicação são mantidas por usuário entre atualizações 
 reinstalações. Em uma instalação limpa, GPU e Silero são as opções iniciais; o
 botão `Restaurar` da tela de configurações recupera esses padrões sem exigir uma
 nova instalação.
+
+O teste automatizado local instala somente o componente base, verifica que o
+perfil NVIDIA não foi incluído, inicia o aplicativo e executa a desinstalação:
+
+```powershell
+.\deploy\windows\test-installer.ps1
+```
+
+O workflow `Instalador Windows` repete a preparação da build, a compilação e esse
+teste em um runner Windows do GitHub Actions. Ele é iniciado manualmente para
+evitar o custo da build completa em cada commit e mantém o instalador como
+artefato por sete dias. A presença e o funcionamento de uma GPU continuam sendo
+validados em máquinas com hardware real.
 
 ## Primeiro uso
 
