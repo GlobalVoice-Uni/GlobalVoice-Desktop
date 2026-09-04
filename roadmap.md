@@ -182,8 +182,10 @@ ocupa 1.105,92 MB.
   interface atual.
 - [x] Definir como distribuir cuBLAS somente no perfil NVIDIA sem aumentar a base
   instalada para usuários de CPU, AMD ou Intel.
-- [ ] Criar um instalador Inno Setup que instale a base em CPU e o perfil de GPU
+- [x] Criar um instalador Inno Setup que instale a base em CPU e o perfil de GPU
   adequado ao hardware detectado, sem exigir configuração manual do usuário.
+- [x] Validar manualmente o fluxo visual do instalador, os atalhos, a execução do
+  aplicativo instalado e a remoção completa.
 - [ ] Automatizar build, instalação silenciosa, desinstalação e teste em CPU no
   GitHub Actions; executar os testes de GPU em runners ou máquinas com hardware
   real.
@@ -301,6 +303,7 @@ geradas desde a Entrega 1. Esta etapa consolida o processo já testado.
 
 - [ ] Estabilizar a forma de empacotamento escolhida.
 - [ ] Gerar uma versão identificada e congelar as dependências.
+- [ ] Definir a estratégia de assinatura de código do instalador e do executável.
 - [ ] Criar diagnóstico de pré-requisitos e dispositivos de áudio.
 - [ ] Verificar licença e forma permitida de instalação do dispositivo virtual
   antes de incorporá-lo ao instalador.

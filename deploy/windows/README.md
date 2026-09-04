@@ -86,6 +86,51 @@ dist\GlobalVoice\GlobalVoice.exe
 Toda a pasta `dist\GlobalVoice` deve ser enviada. Um atalho ou uma cópia isolada
 do `.exe` não contém as bibliotecas necessárias.
 
+## Gerar o instalador
+
+O primeiro instalador usa o Inno Setup 7.1.0. Por padrão, o script procura o
+compilador em `.build\inno-setup-7.1.0\ISCC.exe`; outra instalação pode ser
+informada por `-InnoCompilerPath`.
+
+Com a build e o perfil NVIDIA preparados:
+
+```powershell
+.\deploy\windows\build-installer.ps1 -AppVersion "0.1.0"
+```
+
+O resultado compactado fica em
+`dist\installer\GlobalVoice-Setup-0.1.0.exe`. Para ajustes no instalador, o modo
+rápido evita a compressão e reduz o tempo de compilação:
+
+```powershell
+.\deploy\windows\build-installer.ps1 -AppVersion "0.1.0" -Fast
+```
+
+O instalador normal solicita permissão administrativa, sugere `Arquivos de
+Programas\Global Voice`, permite alterar o destino, cria um atalho no menu Iniciar
+e oferece um atalho opcional na área de trabalho. Português do Brasil e inglês
+estão incluídos.
+
+Uma consulta ao Registro do Windows procura um dispositivo PCI NVIDIA da classe
+de adaptadores de vídeo. Quando ele existe, o componente CUDA 12/cuBLAS é
+selecionado automaticamente; quando não existe, somente a base é selecionada. A
+tela de componentes permite corrigir a escolha manualmente. O instalador não
+instala drivers nem o CUDA Toolkit no sistema.
+
+O primeiro pacote completo ocupou 520,91 MB e levou aproximadamente 7 minutos
+para ser compilado com LZMA2 no ambiente de desenvolvimento. O modo rápido ocupou
+1.111,24 MB e levou cerca de 16 segundos. Instalação e desinstalação silenciosas
+foram verificadas tanto com o perfil NVIDIA automático quanto somente com a base.
+
+O executável do instalador ainda não possui assinatura de código. Até que uma
+estratégia de assinatura seja definida, o Windows pode apresentar um aviso de
+editor desconhecido em outras máquinas.
+
+As preferências da aplicação são mantidas por usuário entre atualizações e
+reinstalações. Em uma instalação limpa, GPU e Silero são as opções iniciais; o
+botão `Restaurar` da tela de configurações recupera esses padrões sem exigir uma
+nova instalação.
+
 ## Primeiro uso
 
 O modelo Faster-Whisper ainda não é incorporado ao pacote. Na primeira sessão de
