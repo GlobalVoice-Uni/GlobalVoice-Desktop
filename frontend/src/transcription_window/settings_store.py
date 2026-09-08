@@ -1,14 +1,27 @@
+# frontend/src/transcription_window/settings_store.py
 from PySide6.QtCore import QSettings
 
 SETTINGS_ORG = "GlobalVoice"
 SETTINGS_APP = "RealtimeSettings"
 
 DEFAULT_SETTINGS = {
+    # --- Uso Comum / PFC 2 ---
+    "source_language": "pt-br",
+    "target_language": "en",
+    "display_mode": "translation_only",  # "translation_only", "transcript_only", "both"
+    "audio_input_device": "default",
+    "audio_loopback_device": "default",
+    "audio_virtual_device": "default",
+    "translation_provider": "local",
+    "tts_engine": "local",
+    
+    # --- Modelo ASR & Execucao ---
     "model_size": "small",
     "device": "gpu",
-    "language": "pt-br",
     "context_window": 0,
     "max_duration_s": 0.0,
+    
+    # --- VAD & Segmentacao ---
     "vad_type": "silero",
     "speech_peak_threshold": 0.0018,
     "silero_threshold": 0.5,
@@ -22,9 +35,14 @@ DEFAULT_SETTINGS = {
     "tail_guard_words": 4,
     "forced_split_policy": "protect_boundary",
     "forced_split_extra_tail_words": 1,
+    
+    # --- Janela Flutuante (Layout e Aparencia) ---
     "ui_transcription_font_size": 14,
-    "ui_transcription_window_width": 500,
-    "ui_transcription_window_height": 400,
+    "ui_transcription_window_width": 520,
+    "ui_transcription_window_height": 420,
+    "ui_transcription_window_x": -1,
+    "ui_transcription_window_y": -1,
+    "ui_transcription_opacity": 0.95,
 }
 
 

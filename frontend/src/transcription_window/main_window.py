@@ -34,9 +34,18 @@ class MainWindow(QMainWindow):
 
         self._build_ui()
         self._connect_signals()
+        self.toolbar.toggle_chat_requested.connect(self._on_toggle_chat)
         self._position_floating_windows()
         self._hide_floating_windows()
         self._apply_ui_settings()
+
+    def _on_toggle_chat(self) -> None:
+        """Alterna a visibilidade da janela de transcricao mantendo a sessao ativa."""
+        if self.transcription_window.isVisible():
+            self.transcription_window.hide()
+        else:
+            self.transcription_window.show()
+            self.transcription_window.raise_()
 
     def _build_ui(self) -> None:
         root = QWidget()
@@ -169,12 +178,18 @@ class MainWindow(QMainWindow):
         self.activateWindow()
 
     def _on_floating_closed(self) -> None:
-        self.controller.stop_session()
-        self._loading_session = False
-        self.toolbar.set_idle()
-        self.toolbar.set_buttons_state(False)
-        self._hide_floating_windows()
-        self._restore_home()
+        # Se quem emitiu o sinal de fechamento foi a toolbar, encerra tudo
+        sender = self.sender()
+        if sender == self.toolbar:
+            self.controller.stop_session()
+            self._loading_session = False
+            self.toolbar.set_idle()
+            self.toolbar.set_buttons_state(False)
+            self._hide_floating_windows()
+            self._restore_home()
+        else:
+            # Se foi apenas o 'X' da janela de texto, apenas oculta
+            self.transcription_window.hide()    
 
     def _build_request(self) -> SessionRequest:
         values = load_settings()
