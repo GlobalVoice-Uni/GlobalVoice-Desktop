@@ -1,3 +1,12 @@
+# Esse front que subi ne minha brach -> feat(frontend): implementa barra flutuante em pílula, chat em balões e validações de build
+
+- Refatora FloatingToolbar para o formato compacto capsule pill com ícones vetoriais nativos (QPainter).
+- Adiciona seletor de idiomas rápido com botão de inversão (PT ⇄ EN), botão dinâmico de Iniciar/Parar e controle PTT (Push-to-Talk).
+- Implementa renderização em balões de chat estilo WhatsApp na FloatingTranscriptionWindow, separando os canais Reunião (loopback) e Você (microfone).
+- Adiciona botão utilitário na barra para alternar a visibilidade da janela de chat sem interromper a sessão ativa.
+- Adiciona receita do PyInstaller (GlobalVoice.spec) e script de validação de captura WASAPI Loopback (test_loopback.py).
+- Mantém conformidade com as seções 16, 22 e 24 do documento de especificação do PFC 2.
+
 # Frontend - PySide6
 
 Aplicacao desktop para transcricao em tempo real com tela inicial, janelas flutuantes e tela de configuracoes.
