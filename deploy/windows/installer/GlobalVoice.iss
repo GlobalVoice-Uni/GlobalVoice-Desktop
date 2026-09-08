@@ -45,7 +45,7 @@ Name: "automatic"; Description: "Instalação recomendada"
 Name: "custom"; Description: "Instalação personalizada"; Flags: iscustom
 
 [Components]
-Name: "base"; Description: "Aplicação e suporte a CPU"; Types: automatic custom; Flags: fixed
+Name: "base"; Description: "Aplicação e processamento por CPU (AMD, Intel ou fallback)"; Types: automatic custom; Flags: fixed
 Name: "nvidia"; Description: "Aceleração para GPU NVIDIA (CUDA 12/cuBLAS)"; Types: automatic
 
 [Tasks]

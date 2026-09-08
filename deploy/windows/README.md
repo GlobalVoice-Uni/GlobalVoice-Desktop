@@ -106,8 +106,9 @@ Com a build e o perfil NVIDIA preparados:
 ```
 
 O resultado compactado fica em
-`dist\installer\GlobalVoice-Setup-0.1.0.exe`. Para ajustes no instalador, o modo
-rápido evita a compressão e reduz o tempo de compilação:
+`dist\installer\GlobalVoice-Setup-0.1.0.exe`, acompanhado por um arquivo
+`.sha256` para verificar a integridade após a transferência. Para ajustes no
+instalador, o modo rápido evita a compressão e reduz o tempo de compilação:
 
 ```powershell
 .\deploy\windows\build-installer.ps1 -AppVersion "0.1.0" -Fast
@@ -123,6 +124,12 @@ de adaptadores de vídeo. Quando ele existe, o componente CUDA 12/cuBLAS é
 selecionado automaticamente; quando não existe, somente a base é selecionada. A
 tela de componentes permite corrigir a escolha manualmente. O instalador não
 instala drivers nem o CUDA Toolkit no sistema.
+
+Em máquinas AMD ou Intel, o componente base é instalado e o CTranslate2 usa sua
+execução otimizada em CPU. Não é incluído um perfil DirectML genérico nesta
+versão, porque o motor Faster-Whisper/CTranslate2 atual não conseguiria utilizá-lo
+para acelerar o ASR. Os dois cenários externos estão descritos em
+[`docs/entrega-1-teste-externo.md`](../../docs/entrega-1-teste-externo.md).
 
 O primeiro pacote completo ocupou 520,91 MB e levou aproximadamente 7 minutos
 para ser compilado com LZMA2 no ambiente de desenvolvimento. O modo rápido ocupou
@@ -143,6 +150,12 @@ perfil NVIDIA não foi incluído, inicia o aplicativo e executa a desinstalaçã
 
 ```powershell
 .\deploy\windows\test-installer.ps1
+```
+
+Para verificar também os arquivos do perfil NVIDIA:
+
+```powershell
+.\deploy\windows\test-installer.ps1 -RuntimeProfile nvidia
 ```
 
 O workflow `Instalador Windows` repete a preparação da build, a compilação e esse

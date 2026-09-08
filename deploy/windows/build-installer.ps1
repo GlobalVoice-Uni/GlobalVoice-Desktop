@@ -77,6 +77,10 @@ if (-not (Test-Path -LiteralPath $installerPath -PathType Leaf)) {
 
 $installer = Get-Item -LiteralPath $installerPath
 $hash = Get-FileHash -LiteralPath $installerPath -Algorithm SHA256
+$checksumPath = "$installerPath.sha256"
+$checksumLine = "$($hash.Hash.ToLowerInvariant())  $($installer.Name)"
+[System.IO.File]::WriteAllText($checksumPath, "$checksumLine`n")
 Write-Output "INSTALLER_OK=$installerPath"
 Write-Output "INSTALLER_SIZE_MB=$([Math]::Round($installer.Length / 1MB, 2))"
 Write-Output "INSTALLER_SHA256=$($hash.Hash)"
+Write-Output "CHECKSUM_OK=$checksumPath"

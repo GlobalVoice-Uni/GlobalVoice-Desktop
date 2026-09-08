@@ -5,6 +5,7 @@ import numpy as np
 from faster_whisper import WhisperModel
 
 from ..cuda_runtime import prepare_cuda_runtime
+from ..hardware_profiles import GraphicsVendor, detect_windows_graphics_adapters
 from ..runtime_status import (
     ActiveDevice,
     DevicePreference,
@@ -25,6 +26,16 @@ class LocalFasterWhisperTranscriber:
         "int8_float32",
     )
 
+    @staticmethod
+    def _hardware_fallback_reason(default: FallbackReason) -> FallbackReason:
+        adapters = detect_windows_graphics_adapters()
+        vendors = {adapter.vendor for adapter in adapters}
+        if GraphicsVendor.NVIDIA in vendors:
+            return FallbackReason.NVIDIA_DRIVER_UNAVAILABLE
+        if vendors.intersection({GraphicsVendor.AMD, GraphicsVendor.INTEL}):
+            return FallbackReason.UNSUPPORTED_GRAPHICS_VENDOR
+        return default
+
     def __init__(self, model_size: str = "small", device: str = "gpu"):
         # model_size e device sao expostos para facilitar tuning da aplicacao.
         self.model_size = model_size
@@ -44,8 +55,16 @@ class LocalFasterWhisperTranscriber:
     ) -> tuple[tuple[str, ...], Optional[FallbackReason]]:
         """Consulta o runtime efetivamente usado pelo Faster-Whisper."""
         try:
-            if ctranslate2.get_cuda_device_count() < 1:
-                return (), FallbackReason.ACCELERATOR_NOT_FOUND
+            cuda_device_count = ctranslate2.get_cuda_device_count()
+        except Exception:
+            return (), self._hardware_fallback_reason(FallbackReason.RUNTIME_UNAVAILABLE)
+
+        if cuda_device_count < 1:
+            return (), self._hardware_fallback_reason(
+                FallbackReason.ACCELERATOR_NOT_FOUND
+            )
+
+        try:
             if not prepare_cuda_runtime().available:
                 return (), FallbackReason.CUDA_LIBRARIES_MISSING
             supported = ctranslate2.get_supported_compute_types("cuda")

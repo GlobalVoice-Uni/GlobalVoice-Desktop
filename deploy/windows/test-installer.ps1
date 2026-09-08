@@ -1,6 +1,8 @@
 param(
     [string]$InstallerPath = "dist\installer\GlobalVoice-Setup-0.1.0.exe",
-    [string]$InstallPath = ".build\installer-smoke\base"
+    [string]$InstallPath,
+    [ValidateSet("base", "nvidia")]
+    [string]$RuntimeProfile = "base"
 )
 
 $ErrorActionPreference = "Stop"
@@ -12,11 +14,17 @@ $resolvedInstallerPath = if ([System.IO.Path]::IsPathRooted($InstallerPath)) {
 else {
     [System.IO.Path]::GetFullPath((Join-Path $projectDir $InstallerPath))
 }
-$resolvedInstallPath = if ([System.IO.Path]::IsPathRooted($InstallPath)) {
-    [System.IO.Path]::GetFullPath($InstallPath)
+$requestedInstallPath = if ([string]::IsNullOrWhiteSpace($InstallPath)) {
+    ".build\installer-smoke\$RuntimeProfile"
 }
 else {
-    [System.IO.Path]::GetFullPath((Join-Path $projectDir $InstallPath))
+    $InstallPath
+}
+$resolvedInstallPath = if ([System.IO.Path]::IsPathRooted($requestedInstallPath)) {
+    [System.IO.Path]::GetFullPath($requestedInstallPath)
+}
+else {
+    [System.IO.Path]::GetFullPath((Join-Path $projectDir $requestedInstallPath))
 }
 $smokeRoot = [System.IO.Path]::GetFullPath((Join-Path $projectDir ".build\installer-smoke"))
 $relativeInstallPath = [System.IO.Path]::GetRelativePath($smokeRoot, $resolvedInstallPath)
@@ -35,8 +43,8 @@ if (Test-Path -LiteralPath $resolvedInstallPath) {
 }
 
 New-Item -ItemType Directory -Force -Path $smokeRoot | Out-Null
-$installLog = Join-Path $smokeRoot "install-base.log"
-$uninstallLog = Join-Path $smokeRoot "uninstall-base.log"
+$installLog = Join-Path $smokeRoot "install-$RuntimeProfile.log"
+$uninstallLog = Join-Path $smokeRoot "uninstall-$RuntimeProfile.log"
 $setupArguments = @(
     "/VERYSILENT",
     "/SUPPRESSMSGBOXES",
@@ -45,7 +53,7 @@ $setupArguments = @(
     "/CURRENTUSER",
     "/DIR=`"$resolvedInstallPath`"",
     "/TYPE=custom",
-    "/COMPONENTS=base",
+    "/COMPONENTS=$(if ($RuntimeProfile -eq 'nvidia') { 'base,nvidia' } else { 'base' })",
     "/TASKS=",
     "/LOG=`"$installLog`""
 )
@@ -71,16 +79,19 @@ try {
         throw "Desinstalador nao encontrado em $uninstallerPath."
     }
 
-    $unexpectedCudaFiles = @(
-        Get-ChildItem `
-            -LiteralPath (Join-Path $resolvedInstallPath "_internal") `
-            -Filter "cublas*_12.dll" `
-            -File `
-            -Recurse `
-            -ErrorAction SilentlyContinue
+    $cudaRuntimePath = Join-Path $resolvedInstallPath "_internal\runtime\nvidia\cuda12"
+    $cudaFiles = @(
+        Get-ChildItem -LiteralPath $cudaRuntimePath -File -ErrorAction SilentlyContinue
     )
-    if ($unexpectedCudaFiles.Count -gt 0) {
+    if ($RuntimeProfile -eq "base" -and $cudaFiles.Count -gt 0) {
         throw "O teste somente CPU instalou arquivos opcionais de cuBLAS."
+    }
+    if ($RuntimeProfile -eq "nvidia") {
+        foreach ($fileName in ("cublas64_12.dll", "cublasLt64_12.dll")) {
+            if (-not (Test-Path -LiteralPath (Join-Path $cudaRuntimePath $fileName))) {
+                throw "O perfil NVIDIA nao instalou $fileName."
+            }
+        }
     }
 
     $application = Start-Process `
@@ -95,7 +106,7 @@ try {
     }
 
     Write-Output "INSTALL_SMOKE_OK=$applicationPath"
-    Write-Output "CPU_PROFILE_OK=true"
+    Write-Output "RUNTIME_PROFILE_OK=$RuntimeProfile"
 }
 finally {
     if ($null -ne $application -and -not $application.HasExited) {

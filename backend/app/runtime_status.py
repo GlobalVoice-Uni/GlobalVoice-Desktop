@@ -32,6 +32,8 @@ class RuntimeProvider(str, Enum):
 
 class FallbackReason(str, Enum):
     ACCELERATOR_NOT_FOUND = "accelerator_not_found"
+    UNSUPPORTED_GRAPHICS_VENDOR = "unsupported_graphics_vendor"
+    NVIDIA_DRIVER_UNAVAILABLE = "nvidia_driver_unavailable"
     CUDA_LIBRARIES_MISSING = "cuda_libraries_missing"
     RUNTIME_UNAVAILABLE = "runtime_unavailable"
     INITIALIZATION_FAILED = "initialization_failed"
@@ -66,6 +68,16 @@ class RuntimeStatus:
             return "Transcricao carregada na GPU."
         if self.fallback_reason == FallbackReason.ACCELERATOR_NOT_FOUND:
             return "GPU compativel nao encontrada. A sessao esta usando CPU."
+        if self.fallback_reason == FallbackReason.UNSUPPORTED_GRAPHICS_VENDOR:
+            return (
+                "Uma GPU AMD ou Intel foi detectada, mas o motor atual acelera "
+                "somente em NVIDIA. A sessao esta usando CPU."
+            )
+        if self.fallback_reason == FallbackReason.NVIDIA_DRIVER_UNAVAILABLE:
+            return (
+                "Uma GPU NVIDIA foi detectada, mas o driver nao disponibilizou "
+                "CUDA para o motor atual. A sessao esta usando CPU."
+            )
         if self.fallback_reason == FallbackReason.CUDA_LIBRARIES_MISSING:
             return (
                 "Os componentes de aceleracao NVIDIA nao estao disponiveis. "

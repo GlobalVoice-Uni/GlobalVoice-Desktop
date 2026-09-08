@@ -8,6 +8,7 @@ from backend.app.runtime_status import (
     RuntimeProvider,
 )
 from backend.app.cuda_runtime import CudaRuntimeCheck
+from backend.app.hardware_profiles import GraphicsAdapter, GraphicsVendor
 from backend.app.transcribers import local_faster_whisper as transcriber_module
 
 
@@ -139,6 +140,11 @@ class LocalFasterWhisperTranscriberTests(unittest.TestCase):
             ),
             patch.object(
                 transcriber_module,
+                "detect_windows_graphics_adapters",
+                return_value=(),
+            ),
+            patch.object(
+                transcriber_module,
                 "WhisperModel",
                 return_value=cpu_model,
             ) as whisper_model,
@@ -157,6 +163,86 @@ class LocalFasterWhisperTranscriberTests(unittest.TestCase):
             FallbackReason.ACCELERATOR_NOT_FOUND,
         )
         self.assertIn("GPU compativel nao encontrada", transcriber.fallback_message)
+
+    def test_gpu_preference_explains_unsupported_amd_adapter(self):
+        with (
+            patch.object(
+                transcriber_module.ctranslate2,
+                "get_cuda_device_count",
+                return_value=0,
+            ),
+            patch.object(
+                transcriber_module,
+                "detect_windows_graphics_adapters",
+                return_value=(
+                    GraphicsAdapter(
+                        name="AMD Radeon Vega",
+                        vendor=GraphicsVendor.AMD,
+                    ),
+                ),
+            ),
+            patch.object(transcriber_module, "WhisperModel", return_value=object()),
+        ):
+            transcriber = transcriber_module.LocalFasterWhisperTranscriber(device="gpu")
+
+        self.assertEqual(
+            transcriber.runtime_status.fallback_reason,
+            FallbackReason.UNSUPPORTED_GRAPHICS_VENDOR,
+        )
+        self.assertIn("GPU AMD ou Intel", transcriber.fallback_message)
+
+    def test_gpu_preference_explains_unavailable_nvidia_driver(self):
+        with (
+            patch.object(
+                transcriber_module.ctranslate2,
+                "get_cuda_device_count",
+                return_value=0,
+            ),
+            patch.object(
+                transcriber_module,
+                "detect_windows_graphics_adapters",
+                return_value=(
+                    GraphicsAdapter(
+                        name="NVIDIA GeForce",
+                        vendor=GraphicsVendor.NVIDIA,
+                    ),
+                ),
+            ),
+            patch.object(transcriber_module, "WhisperModel", return_value=object()),
+        ):
+            transcriber = transcriber_module.LocalFasterWhisperTranscriber(device="gpu")
+
+        self.assertEqual(
+            transcriber.runtime_status.fallback_reason,
+            FallbackReason.NVIDIA_DRIVER_UNAVAILABLE,
+        )
+        self.assertIn("driver nao disponibilizou CUDA", transcriber.fallback_message)
+
+    def test_gpu_probe_error_still_explains_unsupported_amd_adapter(self):
+        with (
+            patch.object(
+                transcriber_module.ctranslate2,
+                "get_cuda_device_count",
+                side_effect=RuntimeError("CUDA driver unavailable"),
+            ),
+            patch.object(
+                transcriber_module,
+                "detect_windows_graphics_adapters",
+                return_value=(
+                    GraphicsAdapter(
+                        name="AMD Radeon Vega",
+                        vendor=GraphicsVendor.AMD,
+                    ),
+                ),
+            ),
+            patch.object(transcriber_module, "WhisperModel", return_value=object()),
+        ):
+            transcriber = transcriber_module.LocalFasterWhisperTranscriber(device="gpu")
+
+        self.assertEqual(
+            transcriber.runtime_status.fallback_reason,
+            FallbackReason.UNSUPPORTED_GRAPHICS_VENDOR,
+        )
 
     def test_gpu_preference_falls_back_before_loading_when_cuda_libraries_are_missing(self):
         cpu_model = object()

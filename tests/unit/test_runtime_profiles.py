@@ -4,6 +4,7 @@ from backend.app.hardware_profiles import (
     GraphicsAdapter,
     GraphicsVendor,
     RuntimeProfile,
+    graphics_vendor_from_device_id,
 )
 from backend.app.runtime_status import (
     ActiveDevice,
@@ -15,6 +16,20 @@ from backend.app.runtime_status import (
 
 
 class RuntimeStatusTests(unittest.TestCase):
+    def test_maps_common_pci_vendor_ids(self):
+        self.assertEqual(
+            graphics_vendor_from_device_id("PCI\\VEN_10DE&DEV_1C81"),
+            GraphicsVendor.NVIDIA,
+        )
+        self.assertEqual(
+            graphics_vendor_from_device_id("PCI\\VEN_1002&DEV_15DD"),
+            GraphicsVendor.AMD,
+        )
+        self.assertEqual(
+            graphics_vendor_from_device_id("PCI\\VEN_8086&DEV_9A49"),
+            GraphicsVendor.INTEL,
+        )
+
     def test_legacy_auto_value_keeps_gpu_as_preference(self):
         self.assertEqual(DevicePreference.from_value("auto"), DevicePreference.GPU)
 

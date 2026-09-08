@@ -61,7 +61,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: GlobalVoice-Setup-${{ inputs.app_version }}
-          path: dist/installer/GlobalVoice-Setup-${{ inputs.app_version }}.exe
+          path: |
+            dist/installer/GlobalVoice-Setup-${{ inputs.app_version }}.exe
+            dist/installer/GlobalVoice-Setup-${{ inputs.app_version }}.exe.sha256
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
