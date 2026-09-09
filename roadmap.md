@@ -218,7 +218,7 @@ desta entrega para evitar uma segunda implementação concorrente.
 - [x] Gerar o instalador final e seu checksum SHA-256 a partir do estado aprovado.
 - [x] Fazer uma última instalação limpa e validar abertura, transcrição,
   dispositivo ativo, atalhos e desinstalação.
-- [ ] Publicar no GitHub uma pré-versão destinada a testes, contendo o instalador,
+- [x] Publicar no GitHub uma pré-versão destinada a testes, contendo o instalador,
   o checksum e as notas de versão.
 
 **Critério de aceite:** as decisões de transcrição, aceleração, tradução, TTS,
