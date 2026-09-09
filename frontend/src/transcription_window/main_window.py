@@ -58,7 +58,7 @@ class MainWindow(QMainWindow):
         title.setAlignment(Qt.AlignCenter)
 
         self.start_button = QPushButton("Iniciar")
-        self.settings_button = QPushButton("Opcoes")
+        self.settings_button = QPushButton("Configurações")
 
         self.start_button.setProperty("kind", "primary")
         self.settings_button.setProperty("kind", "secondary")
@@ -92,7 +92,7 @@ class MainWindow(QMainWindow):
                 color: #FFFFFF;
             }
             QPushButton {
-                border-radius: 12px;
+                border-radius: 10px;
                 padding: 10px 18px;
                 font-weight: 600;
             }
@@ -124,12 +124,21 @@ class MainWindow(QMainWindow):
         self.start_button.clicked.connect(self._on_start_clicked)
         self.settings_button.clicked.connect(self._on_settings_clicked)
 
-        self.toolbar.start_btn.clicked.connect(self._on_toolbar_start_clicked)
-        self.toolbar.stop_btn.clicked.connect(self._on_toolbar_stop_clicked)
+        self.toolbar.start_requested.connect(self._on_toolbar_start_clicked)
+        self.toolbar.stop_requested.connect(self._on_toolbar_stop_clicked)
+        self.toolbar.ptt_pressed.connect(self._on_ptt_pressed)
+        self.toolbar.ptt_released.connect(self._on_ptt_released)
+        self.toolbar.microphone_mute_changed.connect(
+            self.controller.set_microphone_muted
+        )
+        self.toolbar.source_language_changed.connect(self._on_source_language_changed)
+        self.toolbar.toggle_chat_requested.connect(self._on_toggle_chat)
         self.toolbar.clear_btn.clicked.connect(self._on_toolbar_clear_clicked)
         self.toolbar.settings_requested.connect(self._on_settings_clicked)
 
         self.controller.transcript_chunk.connect(self._on_transcript_chunk)
+        self.controller.speech_started.connect(self.transcription_window.begin_speech)
+        self.controller.voice_activity_changed.connect(self.toolbar.set_voice_activity)
         self.controller.status_changed.connect(self._set_status)
         self.controller.runtime_changed.connect(self.toolbar.set_runtime_status)
         self.controller.runtime_cleared.connect(self.toolbar.reset_runtime_status)
@@ -137,8 +146,8 @@ class MainWindow(QMainWindow):
         self.controller.session_finished.connect(self._on_session_finished)
         self.controller.running_changed.connect(self._on_running_changed)
 
-        self.transcription_window.closed.connect(self._on_floating_closed)
-        self.toolbar.closed.connect(self._on_floating_closed)
+        self.transcription_window.closed.connect(self._on_transcription_closed)
+        self.toolbar.closed.connect(self._on_toolbar_closed)
 
     def _position_floating_windows(self) -> None:
         screen = QApplication.primaryScreen()
@@ -146,15 +155,32 @@ class MainWindow(QMainWindow):
             return
 
         geo = screen.availableGeometry()
-        self.toolbar.move(geo.width() // 2 - self.toolbar.width() // 2, geo.height() - 80)
-        self.transcription_window.move(geo.width() - self.transcription_window.width() - 20, 100)
+        values = load_settings()
+        toolbar_x = int(values.get("ui_toolbar_x", -1))
+        toolbar_y = int(values.get("ui_toolbar_y", -1))
+        if toolbar_x >= 0 and toolbar_y >= 0:
+            self.toolbar.move(toolbar_x, toolbar_y)
+        else:
+            self.toolbar.move(
+                geo.left() + geo.width() // 2 - self.toolbar.width() // 2,
+                geo.bottom() - self.toolbar.height() - 20,
+            )
+
+        saved_x = int(values.get("ui_transcription_window_x", -1))
+        saved_y = int(values.get("ui_transcription_window_y", -1))
+        if saved_x < 0 or saved_y < 0:
+            self.transcription_window.move(
+                geo.right() - self.transcription_window.width() - 20,
+                geo.top() + 100,
+            )
 
     def _show_floating_windows(self) -> None:
-        self._position_floating_windows()
+        if not self.toolbar.isVisible():
+            self._position_floating_windows()
         self.toolbar.show()
         self.transcription_window.show()
-        self.toolbar.raise_()
         self.transcription_window.raise_()
+        self.toolbar.raise_()
 
     def _hide_floating_windows(self) -> None:
         self.toolbar.hide()
@@ -164,19 +190,35 @@ class MainWindow(QMainWindow):
         values = load_settings()
         font_size = int(values.get("ui_transcription_font_size", 14))
         self.transcription_window.apply_font_size(font_size)
+        self.toolbar.set_capture_mode(values.get("capture_mode", "automatic"))
+        self.toolbar.set_source_language(values.get("language", "pt-br"))
 
     def _restore_home(self) -> None:
         self.showNormal()
         self.raise_()
         self.activateWindow()
 
-    def _on_floating_closed(self) -> None:
+    def _on_transcription_closed(self) -> None:
+        self.transcription_window.hide()
+
+    def _on_toolbar_closed(self) -> None:
+        self.controller.set_talk_active(False)
+        self.controller.set_microphone_muted(False)
+        self.toolbar.reset_microphone_state()
         self.controller.stop_session()
         self._loading_session = False
         self.toolbar.set_idle()
         self.toolbar.set_buttons_state(False)
         self._hide_floating_windows()
         self._restore_home()
+
+    def _on_toggle_chat(self) -> None:
+        if self.transcription_window.isVisible():
+            self.transcription_window.hide()
+            return
+        self.transcription_window.show()
+        self.transcription_window.raise_()
+        self.toolbar.raise_()
 
     def _build_request(self) -> SessionRequest:
         values = load_settings()
@@ -186,7 +228,10 @@ class MainWindow(QMainWindow):
         return SessionRequest(
             model_size=values["model_size"],
             device=values["device"],
-            language=self.toolbar.get_language_code(self.toolbar.source_combo.currentText()),
+            language=str(
+                self.toolbar.source_combo.currentData() or values["language"]
+            ),
+            capture_mode=values.get("capture_mode", "automatic"),
             context_window=int(values["context_window"]),
             max_duration_s=max_duration,
             vad_type=values["vad_type"],
@@ -216,18 +261,33 @@ class MainWindow(QMainWindow):
 
     def _on_toolbar_start_clicked(self) -> None:
         self._show_floating_windows()
+        values = load_settings()
+        self.toolbar.set_capture_mode(values.get("capture_mode", "automatic"))
+        self.toolbar.set_source_language(values.get("language", "pt-br"))
         source = self.toolbar.source_combo.currentText()
-        target = self.toolbar.target_combo.currentText()
+        self.controller.set_talk_active(False)
+        self.controller.set_microphone_muted(False)
+        self.toolbar.reset_microphone_state()
         self._loading_session = True
         self.toolbar.set_connecting()
         self.toolbar.set_runtime_pending()
         self.toolbar.set_buttons_state(True, allow_stop=False)
-        self._set_status(f"Conectando ({source} -> {target})...")
+        self._set_status(f"Preparando transcrição em {source}...")
         request = self._build_request()
         self.controller.start_session(request)
 
     def _on_toolbar_stop_clicked(self) -> None:
+        self.controller.set_talk_active(False)
         self.controller.stop_session()
+
+    def _on_ptt_pressed(self) -> None:
+        self.controller.set_talk_active(True)
+
+    def _on_ptt_released(self) -> None:
+        self.controller.set_talk_active(False)
+
+    def _on_source_language_changed(self, language: str) -> None:
+        save_settings({"language": language})
 
     def _on_toolbar_clear_clicked(self) -> None:
         self.transcription_window.clear()
@@ -250,7 +310,7 @@ class MainWindow(QMainWindow):
         self._loading_session = False
         self.toolbar.set_idle()
         self.toolbar.set_buttons_state(False)
-        QMessageBox.critical(self, "Erro na transcricao", message)
+        QMessageBox.critical(self, "Erro na transcrição", message)
 
     def _set_status(self, message: str) -> None:
         normalized = message.lower()

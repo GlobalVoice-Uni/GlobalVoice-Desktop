@@ -48,24 +48,32 @@ Referências:
 
 ## Notebook Ryzen com Vega integrada
 
-- [ ] O componente NVIDIA começa desmarcado no instalador.
-- [ ] A instalação e os atalhos são concluídos normalmente.
-- [ ] GPU permanece como preferência inicial e Silero como VAD inicial.
-- [ ] Ao iniciar a transcrição, o dispositivo ativo muda para `CPU · fallback`.
-- [ ] O texto de ajuda informa que uma GPU AMD ou Intel foi detectada, mas que o
+- [x] O componente NVIDIA começa desmarcado no instalador.
+- [x] A instalação e os atalhos são concluídos normalmente.
+- [x] GPU permanece como preferência inicial e Silero como VAD inicial.
+- [x] Ao iniciar a transcrição, o dispositivo ativo muda para `CPU · fallback`.
+- [x] O texto de ajuda informa que uma GPU AMD ou Intel foi detectada, mas que o
   motor atual acelera somente em NVIDIA.
-- [ ] A transcrição funciona por pelo menos cinco minutos sem encerramento ou
+- [x] A transcrição funciona por pelo menos cinco minutos sem encerramento ou
   erro visível.
-- [ ] A desinstalação remove a pasta e os atalhos.
+- [x] A desinstalação remove a pasta e os atalhos.
 
 ## Notebook com NVIDIA dedicada
 
-- [ ] O componente NVIDIA começa marcado automaticamente e pode ser desmarcado.
-- [ ] A instalação e os atalhos são concluídos normalmente.
-- [ ] GPU permanece como preferência inicial e Silero como VAD inicial.
-- [ ] Ao iniciar a transcrição, o dispositivo ativo mostra `GPU · CUDA`.
-- [ ] A transcrição funciona por pelo menos cinco minutos sem erro de DLL.
-- [ ] A desinstalação remove a pasta e os atalhos.
+- [x] O componente NVIDIA começa marcado automaticamente e pode ser desmarcado.
+- [x] A instalação e os atalhos são concluídos normalmente.
+- [x] GPU permanece como preferência inicial e Silero como VAD inicial.
+- [x] Ao iniciar a transcrição, o dispositivo ativo mostra `GPU · CUDA`.
+- [x] A transcrição funciona por pelo menos cinco minutos sem erro de DLL.
+- [x] A desinstalação remove a pasta e os atalhos.
+
+## Resultado da validação externa
+
+A rodada externa foi concluída em 8 de setembro de 2026 nos dois perfis previstos.
+O instalador selecionou o componente compatível, a aplicação transcreveu usando o
+dispositivo esperado e a desinstalação removeu os arquivos e atalhos. Os modelos
+exatos de processador e GPU, a versão do Windows e os tempos observados devem ser
+acrescentados às notas da primeira versão quando forem consolidados pela equipe.
 
 ## Resultado a registrar
 

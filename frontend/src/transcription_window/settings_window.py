@@ -32,7 +32,7 @@ class SettingsWindow(QMainWindow):
         super().__init__()
         self.controller = controller or RealtimeController()
 
-        self.setWindowTitle("GlobalVoice - Configuracoes")
+        self.setWindowTitle("GlobalVoice - Configurações")
         self.resize(880, 680)
         self.setMinimumSize(640, 520)
 
@@ -74,12 +74,13 @@ class SettingsWindow(QMainWindow):
         header_layout.setContentsMargins(18, 16, 18, 16)
         header_layout.setSpacing(6)
 
-        title = QLabel("Configuracoes de Transcricao")
+        title = QLabel("Configurações de transcrição")
         title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         title.setObjectName("titleLabel")
 
         subtitle = QLabel(
-            "Ajuste parametros de modelo, VAD e segmentacao. O modo teste usa os mesmos valores salvos."
+            "Ajuste o modelo, o controle do microfone, o VAD e a segmentação. "
+            "O diagnóstico usa os mesmos parâmetros técnicos salvos."
         )
         subtitle.setWordWrap(True)
         subtitle.setObjectName("subtitleLabel")
@@ -94,17 +95,23 @@ class SettingsWindow(QMainWindow):
         self.device_combo.addItem("GPU (recomendado)", "gpu")
         self.device_combo.addItem("CPU", "cpu")
         self.device_combo.setToolTip(
-            "A GPU e priorizada. A CPU e usada somente por escolha ou fallback."
+            "A GPU é priorizada. A CPU é usada somente por escolha ou fallback."
         )
 
         self.active_device_label = QLabel("Esperando iniciar...")
         self.active_device_label.setObjectName("runtimeDeviceLabel")
-        self.active_device_label.setToolTip(
-            "O dispositivo realmente usado aparecera ao iniciar uma sessao."
-        )
+        self.active_device_label.setToolTip("Dispositivo em uso durante a sessão.")
 
         self.language_combo = QComboBox()
-        self.language_combo.addItems(["pt-br", "en"])
+        self.language_combo.addItems(["pt-br", "en", "es"])
+
+        self.capture_mode_combo = QComboBox()
+        self.capture_mode_combo.addItem("Detecção automática", "automatic")
+        self.capture_mode_combo.addItem("Apertar para falar", "push_to_talk")
+        self.capture_mode_combo.setToolTip(
+            "No modo automático, o VAD identifica a fala. No modo manual, "
+            "o áudio só é processado enquanto o botão Falar estiver pressionado."
+        )
 
         self.context_spin = QSpinBox()
         self.context_spin.setRange(0, 20)
@@ -113,7 +120,7 @@ class SettingsWindow(QMainWindow):
         self.duration_spin.setRange(0.0, 600.0)
         self.duration_spin.setDecimals(1)
         self.duration_spin.setSingleStep(5.0)
-        self.duration_spin.setToolTip("0 = modo continuo ate clicar em Parar")
+        self.duration_spin.setToolTip("0 = modo contínuo até clicar em Parar")
 
         self.vad_combo = QComboBox()
         self.vad_combo.addItems(["silero", "energy"])
@@ -175,6 +182,7 @@ class SettingsWindow(QMainWindow):
             self.model_combo,
             self.device_combo,
             self.language_combo,
+            self.capture_mode_combo,
             self.context_spin,
             self.duration_spin,
             self.vad_combo,
@@ -222,7 +230,7 @@ class SettingsWindow(QMainWindow):
 
         self.output = QPlainTextEdit()
         self.output.setReadOnly(True)
-        self.output.setPlaceholderText("A transcricao aparecera aqui...")
+        self.output.setPlaceholderText("A transcrição aparecerá aqui...")
         self.output.setMinimumHeight(140)
         self.output.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
@@ -235,33 +243,34 @@ class SettingsWindow(QMainWindow):
 
         base_rows = [
             ("Modelo", self.model_combo),
-            ("Preferencia", self.device_combo),
+            ("Preferência", self.device_combo),
             ("Dispositivo ativo", self.active_device_label),
             ("Idioma", self.language_combo),
+            ("Controle do microfone", self.capture_mode_combo),
             ("Contexto", self.context_spin),
-            ("Duracao maxima (s)", self.duration_spin),
+            ("Duração máxima (s)", self.duration_spin),
         ]
         vad_rows = [
             ("VAD ativo", self.vad_combo),
             ("Limiar pico energia", self.speech_peak_spin),
             ("Limiar Silero", self.silero_threshold_spin),
-            ("Silero min silencio (ms)", self.silero_min_silence_spin),
+            ("Silero min. silêncio (ms)", self.silero_min_silence_spin),
             ("Silero speech pad (ms)", self.silero_pad_spin),
         ]
         segment_rows = [
-            ("Janela minima fala (s)", self.min_speech_window_spin),
-            ("Janela minima silencio (s)", self.min_silence_window_spin),
-            ("Enunciado maximo (s)", self.max_utterance_spin),
-            ("Enunciado minimo (s)", self.min_utterance_spin),
-            ("Politica forced split", self.forced_policy_combo),
+            ("Janela mínima de fala (s)", self.min_speech_window_spin),
+            ("Janela mínima de silêncio (s)", self.min_silence_window_spin),
+            ("Enunciado máximo (s)", self.max_utterance_spin),
+            ("Enunciado mínimo (s)", self.min_utterance_spin),
+            ("Política de corte forçado", self.forced_policy_combo),
             ("Overlap fronteira (s)", self.boundary_overlap_spin),
             ("Tail guard (palavras)", self.tail_guard_words_spin),
             ("Tail extra forced", self.forced_extra_tail_spin),
         ]
 
-        self.tabs.addTab(self._build_form_tab(base_rows), "Basico")
+        self.tabs.addTab(self._build_form_tab(base_rows), "Básico")
         self.tabs.addTab(self._build_form_tab(vad_rows), "VAD")
-        self.tabs.addTab(self._build_form_tab(segment_rows), "Segmentacao")
+        self.tabs.addTab(self._build_form_tab(segment_rows), "Segmentação")
 
         test_tab = QWidget()
         test_layout = QVBoxLayout(test_tab)
@@ -315,7 +324,7 @@ class SettingsWindow(QMainWindow):
             }
             QTabWidget::pane {
                 border: 1px solid rgba(70, 73, 251, 0.3);
-                border-radius: 14px;
+                border-radius: 12px;
                 background: rgba(15, 30, 45, 0.85);
                 padding: 6px;
             }
@@ -336,7 +345,7 @@ class SettingsWindow(QMainWindow):
             QComboBox, QSpinBox, QDoubleSpinBox, QPlainTextEdit {
                 background: rgba(4, 0, 58, 0.7);
                 border: 1px solid rgba(70, 73, 251, 0.25);
-                border-radius: 8px;
+                border-radius: 10px;
                 padding: 6px 10px;
                 min-height: 28px;
             }
@@ -351,12 +360,12 @@ class SettingsWindow(QMainWindow):
             QLabel#runtimeDeviceLabel {
                 background: rgba(255, 255, 255, 0.08);
                 border: 1px solid rgba(255, 255, 255, 0.2);
-                border-radius: 8px;
+                border-radius: 10px;
                 padding: 7px 10px;
                 font-weight: 700;
             }
             QPushButton {
-                border-radius: 12px;
+                border-radius: 10px;
                 padding: 8px 16px;
                 font-weight: 600;
             }
@@ -430,10 +439,17 @@ class SettingsWindow(QMainWindow):
     def _device_preference(self) -> str:
         return str(self.device_combo.currentData() or "gpu")
 
+    def _capture_mode(self) -> str:
+        return str(self.capture_mode_combo.currentData() or "automatic")
+
     def _set_device_preference(self, value: str) -> None:
         normalized = "cpu" if value == "cpu" else "gpu"
         index = self.device_combo.findData(normalized)
         self.device_combo.setCurrentIndex(max(index, 0))
+
+    def _set_capture_mode(self, value: str) -> None:
+        index = self.capture_mode_combo.findData(value)
+        self.capture_mode_combo.setCurrentIndex(max(index, 0))
 
     def _collect_settings(self) -> dict:
         duration_value = float(self.duration_spin.value())
@@ -442,6 +458,7 @@ class SettingsWindow(QMainWindow):
             "model_size": self.model_combo.currentText(),
             "device": self._device_preference(),
             "language": self.language_combo.currentText(),
+            "capture_mode": self._capture_mode(),
             "context_window": int(self.context_spin.value()),
             "max_duration_s": duration_value,
             "vad_type": self.vad_combo.currentText(),
@@ -463,6 +480,7 @@ class SettingsWindow(QMainWindow):
         self._set_combo_value(self.model_combo, values["model_size"], DEFAULT_SETTINGS["model_size"])
         self._set_device_preference(values["device"])
         self._set_combo_value(self.language_combo, values["language"], DEFAULT_SETTINGS["language"])
+        self._set_capture_mode(values["capture_mode"])
         self.context_spin.setValue(int(values["context_window"]))
         self.duration_spin.setValue(float(values["max_duration_s"]))
         self._set_combo_value(self.vad_combo, values["vad_type"], DEFAULT_SETTINGS["vad_type"])
@@ -495,12 +513,12 @@ class SettingsWindow(QMainWindow):
         runtime_status = self.controller.runtime_status
         if runtime_status and runtime_status.preference.value != values["device"]:
             self.controller.reset_runtime_status()
-        self._set_status("Configuracoes salvas.")
+        self._set_status("Configurações salvas.")
 
     def _on_reset_clicked(self) -> None:
         self._apply_settings(DEFAULT_SETTINGS)
         save_settings(DEFAULT_SETTINGS)
-        self._set_status("Configuracoes restauradas.")
+        self._set_status("Configurações restauradas.")
 
     def _build_request(self) -> SessionRequest:
         """Traduz os valores da UI para o objeto de requisicao da sessao."""
@@ -511,6 +529,8 @@ class SettingsWindow(QMainWindow):
             model_size=self.model_combo.currentText(),
             device=self._device_preference(),
             language=self.language_combo.currentText(),
+            # O diagnostico desta janela nao possui o botao de PTT; usa VAD.
+            capture_mode="automatic",
             context_window=int(self.context_spin.value()),
             max_duration_s=max_duration,
             vad_type=self.vad_combo.currentText(),
@@ -552,6 +572,7 @@ class SettingsWindow(QMainWindow):
         self.model_combo.setEnabled(not is_running)
         self.device_combo.setEnabled(not is_running)
         self.language_combo.setEnabled(not is_running)
+        self.capture_mode_combo.setEnabled(not is_running)
         self.context_spin.setEnabled(not is_running)
         self.duration_spin.setEnabled(not is_running)
         self.vad_combo.setEnabled(not is_running)
@@ -593,7 +614,7 @@ class SettingsWindow(QMainWindow):
 
     def _on_error(self, message: str) -> None:
         """Exibe erro de execucao para o usuario."""
-        QMessageBox.critical(self, "Erro na transcricao", message)
+        QMessageBox.critical(self, "Erro na transcrição", message)
 
     def _on_runtime_changed(self, status: RuntimeStatus) -> None:
         """Mostra o dispositivo efetivo sem alterar a preferencia salva."""
@@ -613,14 +634,12 @@ class SettingsWindow(QMainWindow):
 
         self.active_device_label.setStyleSheet(
             f"background: {color}; border: 1px solid {border}; "
-            "border-radius: 8px; padding: 7px 10px; font-weight: 700;"
+            "border-radius: 10px; padding: 7px 10px; font-weight: 700;"
         )
 
     def _reset_runtime_status(self) -> None:
         self.active_device_label.setText("Esperando iniciar...")
-        self.active_device_label.setToolTip(
-            "O dispositivo realmente usado aparecera ao iniciar uma sessao."
-        )
+        self.active_device_label.setToolTip("Dispositivo em uso durante a sessão.")
         self.active_device_label.setStyleSheet("")
         self.device_combo.setToolTip(
             "A GPU e priorizada. A CPU e usada somente por escolha ou fallback."

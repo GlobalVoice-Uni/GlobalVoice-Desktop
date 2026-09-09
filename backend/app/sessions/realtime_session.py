@@ -23,11 +23,13 @@ class RealtimeTranscriptionSession:
         transcriber: TranscriberPort,
         speech_detector: Optional[SpeechDetectorPort] = None,
         language: str = "pt-br",
+        capture_mode: str = "automatic",
         context_window: int = 0,
         speech_peak_threshold: float = 0.0018,
         max_silence_inside_utterance_s: float = 0.4,
         min_speech_window_s: float = 0.2,
         min_silence_window_s: Optional[float] = None,
+        new_speech_silence_s: float = 1.2,
         max_utterance_s: float = 3.2,
         min_utterance_s: float = 0.7,
         boundary_overlap_s: float = 0.45,
@@ -40,6 +42,9 @@ class RealtimeTranscriptionSession:
         self.transcriber = transcriber
         self.speech_detector = speech_detector
         self.language = "pt" if language == "pt-br" else language
+        self.capture_mode = (
+            "push_to_talk" if capture_mode == "push_to_talk" else "automatic"
+        )
         self.context_window = max(0, context_window)
 
         # Parametros de segmentacao e protecao de fronteira entre blocos.
@@ -54,6 +59,12 @@ class RealtimeTranscriptionSession:
                 else max_silence_inside_utterance_s
             ),
         )
+        # A pausa que fecha um chunk tecnico pode ser curta para manter a
+        # transcricao responsiva. Uma pausa maior separa falas visualmente.
+        self.new_speech_silence_s = max(
+            self.min_silence_window_s,
+            new_speech_silence_s,
+        )
         self.max_utterance_s = max_utterance_s
         self.min_utterance_s = min_utterance_s
         self.boundary_overlap_s = boundary_overlap_s
@@ -62,6 +73,8 @@ class RealtimeTranscriptionSession:
         self.forced_split_extra_tail_words = max(0, forced_split_extra_tail_words)
 
         self._stop_requested = False
+        self._talk_active = False
+        self._microphone_muted = False
         self._live_words = deque(maxlen=1400)
         self._context_words = deque(maxlen=self.context_window)
         self._full_parts = []
@@ -73,6 +86,14 @@ class RealtimeTranscriptionSession:
         """Solicita parada assicrona da sessao em execucao."""
         self._stop_requested = True
 
+    def set_talk_active(self, active: bool) -> None:
+        """Habilita a captura enquanto o modo apertar-para-falar estiver ativo."""
+        self._talk_active = bool(active)
+
+    def set_microphone_muted(self, muted: bool) -> None:
+        """Ignora a captura automatica enquanto o microfone estiver mutado."""
+        self._microphone_muted = bool(muted)
+
     def get_full_transcript(self) -> str:
         """Retorna o texto final acumulado na sessao."""
         return " ".join(self._full_parts).strip()
@@ -81,6 +102,8 @@ class RealtimeTranscriptionSession:
         self,
         on_text: Callable[[str], None],
         on_status: Optional[Callable[[str], None]] = None,
+        on_speech_start: Optional[Callable[[], None]] = None,
+        on_voice_activity: Optional[Callable[[bool], None]] = None,
         max_duration_s: Optional[float] = None,
     ) -> str:
         """Executa o loop realtime e envia cada trecho confirmado via callback.
@@ -88,6 +111,8 @@ class RealtimeTranscriptionSession:
         Args:
             on_text: callback chamado com novos trechos confirmados.
             on_status: callback opcional para mensagens de estado.
+            on_speech_start: callback disparado no inicio de cada nova fala.
+            on_voice_activity: callback de atividade instantanea do VAD.
             max_duration_s: limite opcional de duracao; None = continuo ate stop().
         """
         self._reset_state()
@@ -104,7 +129,21 @@ class RealtimeTranscriptionSession:
         speech_candidate_steps = 0
         silence_steps = 0
         idle_silence_steps = 0
+        silence_before_candidate_steps = 0
         carryover_audio = np.zeros(0, dtype=np.float32)
+        talk_was_active = False
+        visual_speech_started = False
+        voice_was_active = False
+        microphone_was_muted = False
+
+        def publish_voice_activity(active: bool) -> None:
+            nonlocal voice_was_active
+            normalized = bool(active)
+            if normalized == voice_was_active:
+                return
+            voice_was_active = normalized
+            if on_voice_activity:
+                on_voice_activity(normalized)
 
         if on_status:
             on_status("Inicializando captura de audio...")
@@ -119,6 +158,15 @@ class RealtimeTranscriptionSession:
             min_silence_steps = max(
                 1,
                 int(np.ceil(self.min_silence_window_s / self.audio_source.step_duration_s)),
+            )
+            new_speech_silence_steps = max(
+                min_silence_steps,
+                int(
+                    np.ceil(
+                        self.new_speech_silence_s
+                        / self.audio_source.step_duration_s
+                    )
+                ),
             )
             max_utt_samples = int(self.max_utterance_s * self.audio_source.target_sample_rate)
             min_utt_samples = int(self.min_utterance_s * self.audio_source.target_sample_rate)
@@ -135,7 +183,82 @@ class RealtimeTranscriptionSession:
                     break
 
                 audio, peak = self.audio_source.read_step()
+
+                if self.capture_mode == "push_to_talk":
+                    if self._talk_active:
+                        if not talk_was_active:
+                            speech_buffers = []
+                            carryover_audio = np.zeros(0, dtype=np.float32)
+                            if on_speech_start:
+                                on_speech_start()
+                        talk_was_active = True
+                        speech_buffers.append(audio)
+
+                        utter_len = sum(len(chunk) for chunk in speech_buffers)
+                        if utter_len >= max_utt_samples:
+                            utter = np.concatenate(speech_buffers).astype(np.float32)
+                            protect_boundary = self._should_protect_forced_split_boundary()
+                            if protect_boundary and overlap_samples > 0 and len(utter) > overlap_samples:
+                                speech_buffers = [utter[-overlap_samples:].copy()]
+                            else:
+                                speech_buffers = []
+                            self._process_utterance(
+                                utter=utter,
+                                min_utt_samples=max(
+                                    1,
+                                    int(
+                                        self.min_speech_window_s
+                                        * self.audio_source.target_sample_rate
+                                    ),
+                                ),
+                                forced_split=protect_boundary,
+                                on_text=on_text,
+                            )
+                    else:
+                        if talk_was_active and speech_buffers:
+                            utter = np.concatenate(speech_buffers).astype(np.float32)
+                            self._process_utterance(
+                                utter=utter,
+                                min_utt_samples=max(
+                                    1,
+                                    int(
+                                        self.min_speech_window_s
+                                        * self.audio_source.target_sample_rate
+                                    ),
+                                ),
+                                forced_split=False,
+                                on_text=on_text,
+                            )
+                        if talk_was_active and self._pending_tail_words:
+                            self._flush_pending_tail(on_text)
+                        talk_was_active = False
+                        speech_buffers = []
+                    continue
+
+                if self._microphone_muted:
+                    publish_voice_activity(False)
+                    if not microphone_was_muted:
+                        if self._pending_tail_words:
+                            self._flush_pending_tail(on_text)
+                        detector.reset()
+                        speech_active = False
+                        speech_buffers = []
+                        speech_candidate_buffers = []
+                        speech_candidate_steps = 0
+                        silence_steps = 0
+                        idle_silence_steps = 0
+                        silence_before_candidate_steps = 0
+                        carryover_audio = np.zeros(0, dtype=np.float32)
+                        visual_speech_started = False
+                    microphone_was_muted = True
+                    continue
+
+                if microphone_was_muted:
+                    detector.reset()
+                    microphone_was_muted = False
+
                 has_speech = detector.detect(audio, peak)
+                publish_voice_activity(has_speech)
 
                 if speech_active:
                     idle_silence_steps = 0
@@ -146,7 +269,9 @@ class RealtimeTranscriptionSession:
                         silence_steps += 1
                 else:
                     if has_speech:
-                        idle_silence_steps = 0
+                        if speech_candidate_steps == 0:
+                            silence_before_candidate_steps = idle_silence_steps
+                            idle_silence_steps = 0
                         speech_candidate_buffers.append(audio)
                         speech_candidate_steps += 1
                         if speech_candidate_steps >= min_speech_steps:
@@ -155,11 +280,21 @@ class RealtimeTranscriptionSession:
                             carryover_audio = np.zeros(0, dtype=np.float32)
 
                             speech_active = True
+                            starts_visual_speech = (
+                                not visual_speech_started
+                                or silence_before_candidate_steps
+                                >= new_speech_silence_steps
+                            )
+                            if starts_visual_speech and on_speech_start:
+                                on_speech_start()
+                            visual_speech_started = True
                             silence_steps = 0
+                            silence_before_candidate_steps = 0
                             speech_candidate_buffers = []
                             speech_candidate_steps = 0
                     else:
                         idle_silence_steps += 1
+                        silence_before_candidate_steps = 0
                         speech_candidate_buffers = []
                         speech_candidate_steps = 0
 
@@ -169,7 +304,6 @@ class RealtimeTranscriptionSession:
                     ):
                         # Se houve pausa real apos corte forcado, publica a cauda sem esperar nova fala.
                         self._flush_pending_tail(on_text)
-                        idle_silence_steps = 0
 
                 utter_len = sum(len(x) for x in speech_buffers) if speech_buffers else 0
                 natural_split = speech_active and silence_steps >= min_silence_steps
@@ -184,6 +318,7 @@ class RealtimeTranscriptionSession:
                     utter = np.concatenate(speech_buffers).astype(np.float32)
                     speech_active = False
                     speech_buffers = []
+                    idle_silence_steps = silence_steps if natural_split else 0
                     silence_steps = 0
 
                     if apply_boundary_protection and overlap_samples > 0 and len(utter) > overlap_samples:
@@ -202,9 +337,17 @@ class RealtimeTranscriptionSession:
         remaining_buffers = speech_buffers if speech_buffers else speech_candidate_buffers
         if remaining_buffers:
             utter = np.concatenate(remaining_buffers).astype(np.float32)
+            final_min_utterance_s = (
+                self.min_speech_window_s
+                if self.capture_mode == "push_to_talk"
+                else self.min_utterance_s
+            )
             self._process_utterance(
                 utter=utter,
-                min_utt_samples=int(self.min_utterance_s * self.audio_source.target_sample_rate),
+                min_utt_samples=max(
+                    1,
+                    int(final_min_utterance_s * self.audio_source.target_sample_rate),
+                ),
                 forced_split=False,
                 on_text=on_text,
             )
@@ -212,6 +355,8 @@ class RealtimeTranscriptionSession:
         if self._pending_tail_words:
             # Esvazia palavras protegidas no final para nao perder texto util.
             self._flush_pending_tail(on_text)
+
+        publish_voice_activity(False)
 
         return self.get_full_transcript()
 

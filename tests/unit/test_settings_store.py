@@ -19,6 +19,9 @@ class SettingsStoreTests(unittest.TestCase):
 
         self.assertEqual(values["device"], "gpu")
         self.assertEqual(values["vad_type"], "silero")
+        self.assertEqual(values["capture_mode"], "automatic")
+        self.assertEqual(values["ui_toolbar_x"], -1)
+        self.assertEqual(values["ui_toolbar_y"], -1)
 
     def test_valid_saved_preferences_are_preserved(self):
         saved = FakeSettings({"device": "cpu", "vad_type": "energy"})

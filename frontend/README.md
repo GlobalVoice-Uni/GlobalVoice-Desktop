@@ -1,12 +1,28 @@
 # Frontend - PySide6
 
-Aplicacao desktop para transcricao em tempo real com tela inicial, janelas flutuantes e tela de configuracoes.
+Aplicacao desktop para transcricao em tempo real com tela inicial, janelas
+flutuantes e tela de configuracoes.
 
 ## Objetivo
 
 - exibir a transcricao em uma janela flutuante, sem depender do terminal;
 - oferecer uma tela de configuracoes com parametros persistentes;
+- permitir captura com deteccao automatica de voz ou no modo apertar para falar;
+- manter os controles compactos em uma toolbar sempre visivel durante a sessao;
 - manter a UI desacoplada da implementacao de backend por meio de uma ponte.
+
+O tamanho do texto pode ser ajustado e persistido com `Ctrl + roda do mouse`,
+inclusive enquanto a janela ainda mostra somente a mensagem de espera. Pausas
+curtas podem fechar chunks do ASR sem criar um novo bloco visual; um novo
+cabeçalho aparece somente depois de uma pausa contínua maior. O estado da sessão
+e o hardware ativo compartilham o mesmo indicador na toolbar: cinza em espera,
+amarelo durante o carregamento e verde quando a captura está ativa.
+
+Durante a Entrega 1, os seletores PT/EN/ES controlam somente o idioma de entrada
+informado ao Faster-Whisper; eles ainda não representam tradução. O botão
+central inverte o par e a escolha fica persistida para a próxima sessão. No modo
+automático, o botão do microfone acende quando o VAD detecta voz e alterna o mudo
+ao ser clicado. A posição da toolbar também é preservada.
 
 ## Estrutura
 
@@ -15,7 +31,7 @@ Aplicacao desktop para transcricao em tempo real com tela inicial, janelas flutu
 - src/transcription_window/main_window.py
   - tela inicial (home) e orquestracao das janelas
 - src/transcription_window/floating_windows.py
-  - janela de transcricao e barra flutuante de controles
+  - janela de transcricao, mensagens visuais e toolbar compacta
 - src/transcription_window/settings_window.py
   - tela de configuracao e testes com chat
 - src/transcription_window/settings_store.py
@@ -29,7 +45,9 @@ Aplicacao desktop para transcricao em tempo real com tela inicial, janelas flutu
 
 A janela e o controller ja conversam com uma ponte (bridge).
 
-No futuro, em vez de usar LocalBackendBridge, basta criar uma implementacao remota (por HTTP/WebSocket) com o mesmo contrato de run/stop.
+No futuro, em vez de usar LocalBackendBridge, basta criar uma implementacao
+remota com o mesmo contrato de sessao. Esse experimento esta planejado para a
+Entrega 2 e devera incluir seguranca e medicao da latencia de rede.
 
 Assim a interface grafica nao precisa ser reescrita.
 

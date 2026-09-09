@@ -16,12 +16,14 @@ class LocalBackendBridgeTests(unittest.TestCase):
             model_size="base",
             device="cpu",
             language="en",
+            capture_mode="push_to_talk",
             context_window=3,
             max_duration_s=10.0,
             vad_type="energy",
             speech_peak_threshold=0.003,
             min_speech_window_s=0.3,
             min_silence_window_s=0.5,
+            new_speech_silence_s=1.4,
             max_utterance_s=4.0,
             min_utterance_s=0.8,
             boundary_overlap_s=0.4,
@@ -44,6 +46,8 @@ class LocalBackendBridgeTests(unittest.TestCase):
         on_text = MagicMock()
         on_status = MagicMock()
         on_runtime_status = MagicMock()
+        on_speech_start = MagicMock()
+        on_voice_activity = MagicMock()
 
         with (
             patch.object(
@@ -72,6 +76,8 @@ class LocalBackendBridgeTests(unittest.TestCase):
                 on_text=on_text,
                 on_status=on_status,
                 on_runtime_status=on_runtime_status,
+                on_speech_start=on_speech_start,
+                on_voice_activity=on_voice_activity,
             )
 
         self.assertEqual(result, "texto final")
@@ -89,13 +95,19 @@ class LocalBackendBridgeTests(unittest.TestCase):
         self.assertIs(session_arguments["transcriber"], transcriber)
         self.assertIs(session_arguments["speech_detector"], detector)
         self.assertEqual(session_arguments["language"], "en")
+        self.assertEqual(session_arguments["capture_mode"], "push_to_talk")
         self.assertEqual(session_arguments["context_window"], 3)
+        self.assertEqual(session_arguments["new_speech_silence_s"], 1.4)
         self.assertEqual(session_arguments["tail_guard_words"], 3)
         session.run.assert_called_once_with(
             on_text=on_text,
             on_status=on_status,
+            on_speech_start=on_speech_start,
+            on_voice_activity=on_voice_activity,
             max_duration_s=10.0,
         )
+        session.set_talk_active.assert_called_once_with(False)
+        session.set_microphone_muted.assert_called_once_with(False)
 
     def test_stop_is_forwarded_to_active_session(self):
         bridge = bridge_module.LocalBackendBridge()
@@ -104,6 +116,24 @@ class LocalBackendBridgeTests(unittest.TestCase):
         bridge.stop()
 
         bridge._session.stop.assert_called_once_with()
+
+    def test_push_to_talk_state_is_forwarded_to_active_session(self):
+        bridge = bridge_module.LocalBackendBridge()
+        bridge._session = MagicMock()
+
+        bridge.set_talk_active(True)
+
+        self.assertTrue(bridge._talk_active)
+        bridge._session.set_talk_active.assert_called_once_with(True)
+
+    def test_microphone_mute_is_forwarded_to_active_session(self):
+        bridge = bridge_module.LocalBackendBridge()
+        bridge._session = MagicMock()
+
+        bridge.set_microphone_muted(True)
+
+        self.assertTrue(bridge._microphone_muted)
+        bridge._session.set_microphone_muted.assert_called_once_with(True)
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ DEFAULT_SETTINGS = {
     "model_size": "small",
     "device": "gpu",
     "language": "pt-br",
+    "capture_mode": "automatic",
     "context_window": 0,
     "max_duration_s": 0.0,
     "vad_type": "silero",
@@ -25,6 +26,10 @@ DEFAULT_SETTINGS = {
     "ui_transcription_font_size": 14,
     "ui_transcription_window_width": 500,
     "ui_transcription_window_height": 400,
+    "ui_transcription_window_x": -1,
+    "ui_transcription_window_y": -1,
+    "ui_toolbar_x": -1,
+    "ui_toolbar_y": -1,
 }
 
 

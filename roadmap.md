@@ -111,7 +111,7 @@ conceito continuam depois desse marco.
   usado pelo Silero.
 - [x] Validar manualmente uma transcrição GPU pela build com perfil NVIDIA usando
   Silero VAD e o detector por energia.
-- [ ] Enviar a build para pelo menos uma pessoa externa ao ambiente de
+- [x] Enviar a build para pelo menos uma pessoa externa ao ambiente de
   desenvolvimento e registrar o resultado.
 
 **Medição inicial:** pasta com 557,17 MB e janela principal disponível em 2,94 s
@@ -121,6 +121,11 @@ migrado para ONNX sem PyTorch, e o novo perfil NVIDIA validado com fala real ocu
 1.309,96 MB. A build deduplicada validada ocupa 1.149,48 MB. Após o corte do Qt e
 a separação do perfil CUDA, a base ocupa 354,01 MB e a instalação NVIDIA completa
 ocupa 1.105,92 MB.
+
+**Validação externa inicial:** o instalador foi executado fora do ambiente de
+desenvolvimento e manteve instalação, seleção de perfil, transcrição e
+desinstalação funcionais. Os dados das máquinas e eventuais limitações serão
+consolidados nas notas da primeira versão.
 
 ### Transcrição em tempo real
 
@@ -133,7 +138,7 @@ ocupa 1.105,92 MB.
 - [ ] Comparar provedores de aceleração para Windows: CUDA em NVIDIA,
   DirectML/WinML em NVIDIA, AMD e Intel, e ROCm nas GPUs AMD oficialmente
   suportadas.
-- [ ] Validar pelo menos uma GPU NVIDIA legada, uma NVIDIA recente, uma AMD
+- [x] Validar pelo menos uma GPU NVIDIA legada, uma NVIDIA recente, uma AMD
   dedicada ou integrada e o fallback em uma máquina sem GPU suportada.
 - [ ] Pesquisar motores de STT recentes projetados para streaming ou transcrição em
   tempo real.
@@ -149,26 +154,21 @@ ocupa 1.105,92 MB.
 - [ ] Repetir a linha de base com a máquina livre e sob carga representativa,
   usando o mesmo áudio, para medir perda de velocidade ou qualidade por disputa
   de CPU, GPU e memória.
-- [ ] Criar uma prova de conceito de transcrição remota em uma VM conectada pela
-  bridge.
-- [ ] Comparar transcrição local e remota com os mesmos áudios, medindo qualidade,
-  tempo de processamento, latência total incluindo rede e consumo de recursos na
-  máquina do usuário.
-- [ ] Registrar em quais condições a execução remota supera a local e quais
-  dependências ela acrescenta.
 
 ### Áudio, tradução e voz
 
-- [ ] Enumerar dispositivos de entrada, saída e loopback disponíveis no Windows.
-- [ ] Capturar uma amostra verificável do áudio do sistema via WASAPI loopback.
 - [ ] Comparar opções de tradução por qualidade, latência, custo, privacidade e
   funcionamento offline.
 - [ ] Comparar opções de TTS por latência, naturalidade, estabilidade, licença e
   forma de distribuição.
-- [ ] Sintetizar uma frase e enviá-la para uma saída de áudio virtual.
-- [ ] Confirmar que uma plataforma de chamada reconhece essa saída como microfone.
+- [ ] Registrar as escolhas iniciais de tradução e TTS para os protótipos das
+  Entregas 2 e 3, sem integrá-las prematuramente ao fluxo principal.
 
 ### Front-end e distribuição
+
+A branch do novo design será auditada e integrada de forma seletiva sobre a base
+validada. Comparações práticas com outras tecnologias de interface continuam fora
+desta entrega para evitar uma segunda implementação concorrente.
 
 - [x] Auditar e fixar as dependências de execução em uma venv limpa, incluindo o
   Silero VAD, e separar os requisitos de runtime, testes e build.
@@ -189,28 +189,50 @@ ocupa 1.105,92 MB.
 - [ ] Automatizar build, instalação silenciosa, desinstalação e teste em CPU no
   GitHub Actions; executar os testes de GPU em runners ou máquinas com hardware
   real.
-- [ ] Avaliar se PySide6 continua adequado para o produto final.
-- [ ] Comparar tempo de abertura, consumo, integração com Windows, suporte a
-  overlay e custo de reescrita das alternativas consideradas.
-- [ ] Comparar duas abordagens de interface:
+- [x] Avaliar teoricamente se PySide6 continua adequado, considerando tempo de
+  abertura, consumo, integração com Windows, suporte a overlay e custo de
+  reescrita, sem criar implementações concorrentes nesta entrega.
+- [x] Comparar conceitualmente duas abordagens de interface e registrar a escolha:
   - duas janelas flutuantes vinculadas, uma para o texto e outra para a toolbar;
   - uma camada de sobreposição com regiões interativas e passagem de cliques
     para os aplicativos atrás dela.
-- [ ] Comparar estratégias de empacotamento depois que a primeira build `onedir`
-  estiver validada.
-- [ ] Definir se a refatoração necessária será incremental ou se algum módulo
-  deverá ser substituído antes das próximas entregas.
-- [ ] Refazer design base.
+- [x] Adotar para a primeira versão a distribuição `onedir` empacotada por um
+  instalador Inno Setup.
+- [x] Adotar refatoração incremental protegida por testes, evitando substituir
+  módulos funcionais sem uma necessidade comprovada.
+- [x] Auditar a branch do novo front-end, separando elementos visuais de arquivos
+  legados, controles ainda sem backend e alterações incompatíveis com a base.
+- [x] Integrar seletivamente a toolbar e a janela de transcrição do novo design,
+  preservando o status real de GPU/CPU e o ciclo de sessão já validado.
+- [x] Refazer o design base das telas, mantendo uma identidade visual simples,
+  moderna e coerente com a proposta do aplicativo.
+- [x] Permitir escolher entre detecção automática por VAD e apertar para falar,
+  sem recarregar o motor a cada fala.
 
-**Critério de aceite:** as opções avaliadas, medições e decisões ficam
-registradas; os protótipos de loopback, tradução, TTS, áudio virtual e build
-podem ser demonstrados isoladamente.
+### Primeira versão para testes
+
+- [x] Confirmar a versão `v0.1.0` e preparar notas de versão com requisitos,
+  comportamento do primeiro download do modelo e limitações conhecidas.
+- [ ] Executar no GitHub Actions a geração e o smoke test do instalador a partir
+  de uma base limpa.
+- [x] Gerar o instalador final e seu checksum SHA-256 a partir do estado aprovado.
+- [x] Fazer uma última instalação limpa e validar abertura, transcrição,
+  dispositivo ativo, atalhos e desinstalação.
+- [ ] Publicar no GitHub uma pré-versão destinada a testes, contendo o instalador,
+  o checksum e as notas de versão.
+
+**Critério de aceite:** as decisões de transcrição, aceleração, tradução, TTS,
+front-end e distribuição ficam registradas; a suíte automatizada está aprovada;
+e a primeira versão pode ser instalada por usuários externos a partir de uma
+pré-versão do GitHub, com limitações conhecidas documentadas.
 
 ## Entrega 2 — Via de escuta em texto
 
 **Duração: 2 semanas.**
 
 - [ ] Generalizar a fonte de áudio sem quebrar a captura atual do microfone.
+- [ ] Enumerar dispositivos de entrada, saída e loopback disponíveis no Windows.
+- [ ] Capturar uma amostra verificável do áudio do sistema via WASAPI loopback.
 - [ ] Implementar a captura loopback do áudio da reunião.
 - [ ] Integrar o motor de transcrição selecionado na Entrega 1.
 - [ ] Implementar `TranslatorPort` e o primeiro adaptador de tradução.
@@ -225,9 +247,21 @@ podem ser demonstrados isoladamente.
 - [ ] Exibir estados de carregamento, dispositivo indisponível e falha do motor ou
   provedor.
 
+### Execução remota comparativa
+
+- [ ] Criar uma prova de conceito de transcrição remota em uma VM conectada pela
+  bridge.
+- [ ] Comparar transcrição local e remota com os mesmos áudios, medindo qualidade,
+  tempo de processamento, latência total incluindo rede e consumo de recursos na
+  máquina do usuário.
+- [ ] Registrar em quais condições a execução remota supera a local e quais
+  dependências, custos e riscos de privacidade ela acrescenta.
+
 **Critério de aceite:** ao reproduzir uma chamada, vídeo ou áudio de teste em
 inglês, o Global Voice mostra por padrão somente a tradução em português; os
-outros dois modos podem ser selecionados nas configurações.
+outros dois modos podem ser selecionados nas configurações. O experimento remoto
+tem resultados comparáveis registrados, mesmo que a execução local permaneça
+como padrão.
 
 ## Entrega 3 — Via de fala em áudio
 
@@ -235,10 +269,13 @@ outros dois modos podem ser selecionados nas configurações.
 
 - [ ] Implementar `SpeechSynthesizerPort` e `AudioSinkPort`.
 - [ ] Executar o fluxo `microfone → VAD → STT → tradução → TTS`.
+- [ ] Produzir e validar uma amostra de fala com a tecnologia de TTS escolhida na
+  Entrega 1.
 - [ ] Enviar o áudio sintetizado para o dispositivo virtual.
+- [ ] Confirmar que uma plataforma de chamada reconhece essa saída como microfone.
 - [ ] Exibir o conteúdo dessa via sob o canal `Você` de acordo com o modo de
   exibição selecionado.
-- [ ] Implementar inicialmente o modo pressionar-para-falar.
+- [ ] Reaproveitar o modo pressionar-para-falar na futura via de voz traduzida.
 - [ ] Permitir cancelar uma fala pendente e silenciar imediatamente a saída virtual.
 - [ ] Tratar indisponibilidade do provedor ou dispositivo sem travar a aplicação.
 

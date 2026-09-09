@@ -16,6 +16,8 @@ class RealtimeController(QObject):
     """
 
     transcript_chunk = Signal(str)
+    speech_started = Signal()
+    voice_activity_changed = Signal(bool)
     status_changed = Signal(str)
     runtime_changed = Signal(object)
     runtime_cleared = Signal()
@@ -73,6 +75,16 @@ class RealtimeController(QObject):
         if self._active_bridge is not None:
             self._active_bridge.stop()
 
+    def set_talk_active(self, active: bool) -> None:
+        """Encaminha o estado do botao de apertar para falar."""
+        if self._active_bridge is not None:
+            self._active_bridge.set_talk_active(active)
+
+    def set_microphone_muted(self, muted: bool) -> None:
+        """Muta ou reativa a captura na sessao automatica atual."""
+        if self._active_bridge is not None:
+            self._active_bridge.set_microphone_muted(muted)
+
     def _run_worker(self, request: SessionRequest) -> None:
         """Executa sessao e publica eventos de sucesso/erro para a UI."""
         bridge = self._bridge_factory()
@@ -84,6 +96,8 @@ class RealtimeController(QObject):
                 on_text=self._emit_chunk,
                 on_status=self.status_changed.emit,
                 on_runtime_status=self._publish_runtime_status,
+                on_speech_start=self.speech_started.emit,
+                on_voice_activity=self.voice_activity_changed.emit,
             )
             self.session_finished.emit(final_text)
             self.status_changed.emit("Sessao finalizada.")
@@ -91,6 +105,7 @@ class RealtimeController(QObject):
             self.error_raised.emit(str(exc))
             self.status_changed.emit("Sessao interrompida por erro.")
         finally:
+            self.voice_activity_changed.emit(False)
             self._active_bridge = None
             self._running = False
             self.running_changed.emit(False)
