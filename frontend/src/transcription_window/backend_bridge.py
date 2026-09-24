@@ -1,66 +1,42 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Callable, Optional, Protocol
 
 from backend.app.audio.audio_capture import MicrophoneAudioSource
-from backend.app.detectors.speech_detectors import build_speech_detector
 from backend.app.sessions.realtime_session import RealtimeTranscriptionSession
+from backend.app.detectors.speech_detectors import build_speech_detector
+from backend.app.runtime_status import RuntimeStatus
 from backend.app.transcribers.local_faster_whisper import LocalFasterWhisperTranscriber
 
 
 @dataclass
-class TranslationChunk:
-    """Representa um pacote de texto gerado pelo pipeline."""
-    channel: str = "meeting"  # "meeting" (Reunião) ou "user" (Você)
-    original_text: str = ""
-    translated_text: str = ""
-    display_mode: str = "translation_only"
-
-    def format_for_display(self) -> str:
-        if self.display_mode == "translation_only":
-            return self.translated_text or self.original_text
-        elif self.display_mode == "transcript_only":
-            return self.original_text
-        elif self.display_mode == "both":
-            if self.original_text and self.translated_text:
-                return f"[Orig] {self.original_text}\n[Trad] {self.translated_text}"
-            return self.translated_text or self.original_text
-        return self.translated_text
-
-
-@dataclass
 class SessionRequest:
-    """Parametros de execucao da sessao realtime."""
+    """Parametros de execucao da sessao realtime.
 
-    # Idiomas e canais (PFC 2)
-    source_language: Optional[str] = None
-    target_language: str = "en"
-    display_mode: str = "translation_only"
-    language: str = "pt-br"  # Compatibilidade com backend legado
-    input_device: str = "default"
-    loopback_device: str = "default"
-    virtual_device: str = "default"
-    # Parametros ASR
+    Este objeto e o formato unico de entrada entre UI e camada de execucao.
+    """
+
     model_size: str = "small"
-    device: str = "cpu"
+    device: str = "gpu"
+    language: str = "pt-br"
+    capture_mode: str = "automatic"
     context_window: int = 0
     max_duration_s: Optional[float] = None
 
-    # Config de detector de fala (VAD)
+    # Config de detector de fala.
     vad_type: str = "silero"
     speech_peak_threshold: float = 0.0018
     silero_threshold: float = 0.5
     silero_min_silence_ms: int = 120
     silero_speech_pad_ms: int = 30
 
-    # Janelas e limites de segmentacao
+    # Janelas e limites de segmentacao.
     min_speech_window_s: float = 0.2
     min_silence_window_s: float = 0.4
+    new_speech_silence_s: float = 1.2
     max_utterance_s: float = 3.2
     min_utterance_s: float = 0.7
 
-    # Regras de fronteira
+    # Regras de fronteira para cortes forcados.
     boundary_overlap_s: float = 0.45
     tail_guard_words: int = 4
     forced_split_policy: str = "protect_boundary"
@@ -68,18 +44,30 @@ class SessionRequest:
 
 
 class TranscriptionBridge(Protocol):
-    """Contrato da ponte entre frontend e backend."""
+    """Contrato da ponte entre frontend e backend.
+
+    Hoje a ponte e local. Futuramente pode ser remota mantendo a mesma API.
+    """
 
     def run(
         self,
         request: SessionRequest,
         on_text: Callable[[str], None],
         on_status: Optional[Callable[[str], None]] = None,
+        on_runtime_status: Optional[Callable[[RuntimeStatus], None]] = None,
+        on_speech_start: Optional[Callable[[], None]] = None,
+        on_voice_activity: Optional[Callable[[bool], None]] = None,
     ) -> str:
         """Starts a realtime session and returns the final transcript when done."""
 
     def stop(self) -> None:
         """Requests stop for the running session."""
+
+    def set_talk_active(self, active: bool) -> None:
+        """Controls microphone capture while push-to-talk is selected."""
+
+    def set_microphone_muted(self, muted: bool) -> None:
+        """Mutes microphone processing while automatic capture is selected."""
 
 
 class LocalBackendBridge:
@@ -87,16 +75,26 @@ class LocalBackendBridge:
 
     def __init__(self):
         self._session: Optional[RealtimeTranscriptionSession] = None
+        self._talk_active = False
+        self._microphone_muted = False
 
     def run(
         self,
         request: SessionRequest,
         on_text: Callable[[str], None],
         on_status: Optional[Callable[[str], None]] = None,
+        on_runtime_status: Optional[Callable[[RuntimeStatus], None]] = None,
+        on_speech_start: Optional[Callable[[], None]] = None,
+        on_voice_activity: Optional[Callable[[bool], None]] = None,
     ) -> str:
         """Monta dependencias locais e executa sessao realtime."""
         audio_source = MicrophoneAudioSource(step_duration_s=0.2, target_sample_rate=16000)
         transcriber = LocalFasterWhisperTranscriber(model_size=request.model_size, device=request.device)
+        runtime_status = transcriber.runtime_status
+        if on_runtime_status:
+            on_runtime_status(runtime_status)
+        if on_status:
+            on_status(runtime_status.user_message)
         speech_detector, _ = build_speech_detector(
             vad_type=request.vad_type,
             energy_peak_threshold=request.speech_peak_threshold,
@@ -106,19 +104,17 @@ class LocalBackendBridge:
             on_status=on_status,
         )
 
-        # Garante fallback de idioma
-        # Prioriza source_language se informado; senao usa language (legado); fallback "pt-br"
-        lang = request.source_language or request.language or "pt-br"
-
         self._session = RealtimeTranscriptionSession(
             audio_source=audio_source,
             transcriber=transcriber,
             speech_detector=speech_detector,
-            language=lang,
+            language=request.language,
+            capture_mode=request.capture_mode,
             context_window=request.context_window,
             speech_peak_threshold=request.speech_peak_threshold,
             min_speech_window_s=request.min_speech_window_s,
             min_silence_window_s=request.min_silence_window_s,
+            new_speech_silence_s=request.new_speech_silence_s,
             max_utterance_s=request.max_utterance_s,
             min_utterance_s=request.min_utterance_s,
             boundary_overlap_s=request.boundary_overlap_s,
@@ -127,9 +123,14 @@ class LocalBackendBridge:
             forced_split_extra_tail_words=request.forced_split_extra_tail_words,
         )
 
+        self._session.set_talk_active(self._talk_active)
+        self._session.set_microphone_muted(self._microphone_muted)
+
         return self._session.run(
             on_text=on_text,
             on_status=on_status,
+            on_speech_start=on_speech_start,
+            on_voice_activity=on_voice_activity,
             max_duration_s=request.max_duration_s,
         )
 
@@ -137,3 +138,13 @@ class LocalBackendBridge:
         """Encaminha pedido de parada para a sessao ativa."""
         if self._session is not None:
             self._session.stop()
+
+    def set_talk_active(self, active: bool) -> None:
+        self._talk_active = bool(active)
+        if self._session is not None:
+            self._session.set_talk_active(self._talk_active)
+
+    def set_microphone_muted(self, muted: bool) -> None:
+        self._microphone_muted = bool(muted)
+        if self._session is not None:
+            self._session.set_microphone_muted(self._microphone_muted)

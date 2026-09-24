@@ -18,21 +18,23 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from backend.app.runtime_status import ActiveDevice, RuntimeStatus
+
 from .backend_bridge import SessionRequest
 from .controller import RealtimeController
 from .settings_store import DEFAULT_SETTINGS, load_settings, save_settings
 
 
 class SettingsWindow(QMainWindow):
-    """Janela de configuracao e testes da aplicacao."""
+    """Janela de configuracao e testes da transcricao realtime."""
 
-    def __init__(self):
+    def __init__(self, controller: RealtimeController | None = None):
         super().__init__()
-        self.controller = RealtimeController()
+        self.controller = controller or RealtimeController()
 
         self.setWindowTitle("GlobalVoice - Configurações")
-        self.resize(900, 700)
-        self.setMinimumSize(680, 540)
+        self.resize(880, 680)
+        self.setMinimumSize(640, 520)
 
         self._build_ui()
         self._connect_signals()
@@ -46,7 +48,7 @@ class SettingsWindow(QMainWindow):
         layout = QFormLayout(container)
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setHorizontalSpacing(16)
-        layout.setVerticalSpacing(12)
+        layout.setVerticalSpacing(10)
         layout.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         layout.setFormAlignment(Qt.AlignTop)
         layout.setRowWrapPolicy(QFormLayout.WrapLongRows)
@@ -58,6 +60,7 @@ class SettingsWindow(QMainWindow):
         return container
 
     def _build_ui(self) -> None:
+        """Constroi os controles visuais e estilo base da janela."""
         root = QWidget()
         self.setCentralWidget(root)
 
@@ -65,19 +68,19 @@ class SettingsWindow(QMainWindow):
         main_layout.setContentsMargins(24, 24, 24, 24)
         main_layout.setSpacing(16)
 
-        # Cabeçalho
         header = QFrame()
         header.setObjectName("headerCard")
         header_layout = QVBoxLayout(header)
         header_layout.setContentsMargins(18, 16, 18, 16)
         header_layout.setSpacing(6)
 
-        title = QLabel("Configurações do Global Voice")
+        title = QLabel("Configurações de transcrição")
         title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         title.setObjectName("titleLabel")
 
         subtitle = QLabel(
-            "Configure os canais de áudio, preferências de tradução e hiperparâmetros de transcrição e segmentação."
+            "Ajuste o modelo, o controle do microfone, o VAD e a segmentação. "
+            "O diagnóstico usa os mesmos parâmetros técnicos salvos."
         )
         subtitle.setWordWrap(True)
         subtitle.setObjectName("subtitleLabel")
@@ -85,37 +88,30 @@ class SettingsWindow(QMainWindow):
         header_layout.addWidget(title)
         header_layout.addWidget(subtitle)
 
-        # ----------------- Controles de Uso Comum -----------------
-        self.source_lang_combo = QComboBox()
-        self.source_lang_combo.addItems(["Português (PT)", "Inglês (EN)", "Espanhol (ES)"])
-
-        self.target_lang_combo = QComboBox()
-        self.target_lang_combo.addItems(["Inglês (EN)", "Português (PT)", "Espanhol (ES)"])
-
-        self.display_mode_combo = QComboBox()
-        self.display_mode_combo.addItems(["Somente Tradução", "Somente Transcrição", "Ambos"])
-
-        self.input_device_combo = QComboBox()
-        self.input_device_combo.addItems(["Padrão do Sistema"])
-
-        self.loopback_device_combo = QComboBox()
-        self.loopback_device_combo.addItems(["Padrão do Sistema"])
-
-        self.virtual_device_combo = QComboBox()
-        self.virtual_device_combo.addItems(["Padrão do Sistema", "CABLE Input (VB-Audio Virtual Cable)"])
-
-        self.translation_provider_combo = QComboBox()
-        self.translation_provider_combo.addItems(["Local (CTranslate2/MarianMT)", "Remoto (API)"])
-
-        self.tts_engine_combo = QComboBox()
-        self.tts_engine_combo.addItems(["Local (Piper TTS)", "Remoto (Edge-TTS)", "Desabilitado"])
-
-        # ----------------- Controles Técnicos / Avançados -----------------
         self.model_combo = QComboBox()
         self.model_combo.addItems(["tiny", "base", "small", "medium", "large"])
 
         self.device_combo = QComboBox()
-        self.device_combo.addItems(["gpu", "cpu"])
+        self.device_combo.addItem("GPU (recomendado)", "gpu")
+        self.device_combo.addItem("CPU", "cpu")
+        self.device_combo.setToolTip(
+            "A GPU é priorizada. A CPU é usada somente por escolha ou fallback."
+        )
+
+        self.active_device_label = QLabel("Esperando iniciar...")
+        self.active_device_label.setObjectName("runtimeDeviceLabel")
+        self.active_device_label.setToolTip("Dispositivo em uso durante a sessão.")
+
+        self.language_combo = QComboBox()
+        self.language_combo.addItems(["pt-br", "en", "es"])
+
+        self.capture_mode_combo = QComboBox()
+        self.capture_mode_combo.addItem("Detecção automática", "automatic")
+        self.capture_mode_combo.addItem("Apertar para falar", "push_to_talk")
+        self.capture_mode_combo.setToolTip(
+            "No modo automático, o VAD identifica a fala. No modo manual, "
+            "o áudio só é processado enquanto o botão Falar estiver pressionado."
+        )
 
         self.context_spin = QSpinBox()
         self.context_spin.setRange(0, 20)
@@ -124,6 +120,7 @@ class SettingsWindow(QMainWindow):
         self.duration_spin.setRange(0.0, 600.0)
         self.duration_spin.setDecimals(1)
         self.duration_spin.setSingleStep(5.0)
+        self.duration_spin.setToolTip("0 = modo contínuo até clicar em Parar")
 
         self.vad_combo = QComboBox()
         self.vad_combo.addItems(["silero", "energy"])
@@ -132,6 +129,7 @@ class SettingsWindow(QMainWindow):
         self.speech_peak_spin.setRange(0.0001, 0.02)
         self.speech_peak_spin.setDecimals(4)
         self.speech_peak_spin.setSingleStep(0.0001)
+        self.speech_peak_spin.setToolTip("Usado no VAD por energia e como fallback")
 
         self.silero_threshold_spin = QDoubleSpinBox()
         self.silero_threshold_spin.setRange(0.10, 0.95)
@@ -180,27 +178,35 @@ class SettingsWindow(QMainWindow):
         self.forced_extra_tail_spin = QSpinBox()
         self.forced_extra_tail_spin.setRange(0, 8)
 
-        # Política de expansão para todos os controles
-        all_widgets = [
-            self.source_lang_combo, self.target_lang_combo, self.display_mode_combo,
-            self.input_device_combo, self.loopback_device_combo, self.virtual_device_combo,
-            self.translation_provider_combo, self.tts_engine_combo,
-            self.model_combo, self.device_combo, self.context_spin, self.duration_spin,
-            self.vad_combo, self.speech_peak_spin, self.silero_threshold_spin,
-            self.silero_min_silence_spin, self.silero_pad_spin, self.min_speech_window_spin,
-            self.min_silence_window_spin, self.max_utterance_spin, self.min_utterance_spin,
-            self.forced_policy_combo, self.boundary_overlap_spin, self.tail_guard_words_spin,
+        field_widgets = [
+            self.model_combo,
+            self.device_combo,
+            self.language_combo,
+            self.capture_mode_combo,
+            self.context_spin,
+            self.duration_spin,
+            self.vad_combo,
+            self.speech_peak_spin,
+            self.silero_threshold_spin,
+            self.silero_min_silence_spin,
+            self.silero_pad_spin,
+            self.min_speech_window_spin,
+            self.min_silence_window_spin,
+            self.max_utterance_spin,
+            self.min_utterance_spin,
+            self.forced_policy_combo,
+            self.boundary_overlap_spin,
+            self.tail_guard_words_spin,
             self.forced_extra_tail_spin,
         ]
-        for w in all_widgets:
-            w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        for widget in field_widgets:
+            widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
-        # Botões de Ação
-        self.start_button = QPushButton("Iniciar Teste")
+        self.start_button = QPushButton("Iniciar")
         self.stop_button = QPushButton("Parar")
         self.clear_button = QPushButton("Limpar")
-        self.save_button = QPushButton("Salvar Configurações")
-        self.reset_button = QPushButton("Restaurar Padrões")
+        self.save_button = QPushButton("Salvar")
+        self.reset_button = QPushButton("Restaurar")
         self.close_button = QPushButton("Fechar")
 
         self.stop_button.setEnabled(False)
@@ -213,69 +219,59 @@ class SettingsWindow(QMainWindow):
         self.close_button.setProperty("kind", "ghost")
 
         for button in (
-            self.start_button, self.stop_button, self.clear_button,
-            self.save_button, self.reset_button, self.close_button,
+            self.start_button,
+            self.stop_button,
+            self.clear_button,
+            self.save_button,
+            self.reset_button,
+            self.close_button,
         ):
             button.setCursor(Qt.PointingHandCursor)
 
         self.output = QPlainTextEdit()
         self.output.setReadOnly(True)
-        self.output.setPlaceholderText("A transcrição/tradução de teste aparecerá aqui...")
+        self.output.setPlaceholderText("A transcrição aparecerá aqui...")
         self.output.setMinimumHeight(140)
         self.output.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        self.status_label = QLabel("Pronto.")
+        self.status_label = QLabel("Pronto para iniciar.")
         self.status_label.setObjectName("statusLabel")
 
-        # Organização das Abas
         self.tabs = QTabWidget()
         self.tabs.setObjectName("configTabs")
         self.tabs.setDocumentMode(True)
 
-        # 1. Aba Geral / Uso Comum
-        general_rows = [
-            ("Idioma de Origem (Você)", self.source_lang_combo),
-            ("Idioma Alvo (Reunião)", self.target_lang_combo),
-            ("Modo de Exibição Padrão", self.display_mode_combo),
-            ("Provedor de Tradução", self.translation_provider_combo),
-            ("Motor de Voz (TTS)", self.tts_engine_combo),
+        base_rows = [
+            ("Modelo", self.model_combo),
+            ("Preferência", self.device_combo),
+            ("Dispositivo ativo", self.active_device_label),
+            ("Idioma", self.language_combo),
+            ("Controle do microfone", self.capture_mode_combo),
+            ("Contexto", self.context_spin),
+            ("Duração máxima (s)", self.duration_spin),
         ]
-        # 2. Aba Dispositivos de Áudio
-        devices_rows = [
-            ("Microfone (Entrada)", self.input_device_combo),
-            ("Áudio da Reunião (Loopback)", self.loopback_device_combo),
-            ("Microfone Virtual (Envio)", self.virtual_device_combo),
-        ]
-        # 3. Aba Modelo ASR
-        asr_rows = [
-            ("Tamanho do Modelo Whisper", self.model_combo),
-            ("Dispositivo de Processamento", self.device_combo),
-            ("Janela de Contexto", self.context_spin),
-            ("Duração Máxima (s)", self.duration_spin),
-        ]
-        # 4. Aba VAD & Segmentação Avançada
         vad_rows = [
-            ("Tipo de VAD", self.vad_combo),
-            ("Limiar Pico Energia", self.speech_peak_spin),
+            ("VAD ativo", self.vad_combo),
+            ("Limiar pico energia", self.speech_peak_spin),
             ("Limiar Silero", self.silero_threshold_spin),
-            ("Silero Silêncio Mínimo (ms)", self.silero_min_silence_spin),
-            ("Silero Speech Pad (ms)", self.silero_pad_spin),
-            ("Janela Mínima Fala (s)", self.min_speech_window_spin),
-            ("Janela Mínima Silêncio (s)", self.min_silence_window_spin),
-            ("Enunciado Máximo (s)", self.max_utterance_spin),
-            ("Enunciado Mínimo (s)", self.min_utterance_spin),
-            ("Política Forced Split", self.forced_policy_combo),
-            ("Overlap Fronteira (s)", self.boundary_overlap_spin),
-            ("Tail Guard (palavras)", self.tail_guard_words_spin),
-            ("Tail Extra Forced", self.forced_extra_tail_spin),
+            ("Silero min. silêncio (ms)", self.silero_min_silence_spin),
+            ("Silero speech pad (ms)", self.silero_pad_spin),
+        ]
+        segment_rows = [
+            ("Janela mínima de fala (s)", self.min_speech_window_spin),
+            ("Janela mínima de silêncio (s)", self.min_silence_window_spin),
+            ("Enunciado máximo (s)", self.max_utterance_spin),
+            ("Enunciado mínimo (s)", self.min_utterance_spin),
+            ("Política de corte forçado", self.forced_policy_combo),
+            ("Overlap fronteira (s)", self.boundary_overlap_spin),
+            ("Tail guard (palavras)", self.tail_guard_words_spin),
+            ("Tail extra forced", self.forced_extra_tail_spin),
         ]
 
-        self.tabs.addTab(self._build_form_tab(general_rows), "Geral")
-        self.tabs.addTab(self._build_form_tab(devices_rows), "Dispositivos")
-        self.tabs.addTab(self._build_form_tab(asr_rows), "Modelo ASR")
-        self.tabs.addTab(self._build_form_tab(vad_rows), "VAD & Segmentação")
+        self.tabs.addTab(self._build_form_tab(base_rows), "Básico")
+        self.tabs.addTab(self._build_form_tab(vad_rows), "VAD")
+        self.tabs.addTab(self._build_form_tab(segment_rows), "Segmentação")
 
-        # Aba de Teste
         test_tab = QWidget()
         test_layout = QVBoxLayout(test_tab)
         test_layout.setContentsMargins(16, 16, 16, 16)
@@ -290,7 +286,8 @@ class SettingsWindow(QMainWindow):
 
         test_layout.addLayout(test_buttons)
         test_layout.addWidget(self.output, stretch=1)
-        self.tabs.addTab(test_tab, "Diagnóstico / Teste")
+
+        self.tabs.addTab(test_tab, "Teste")
 
         action_row = QHBoxLayout()
         action_row.setSpacing(10)
@@ -327,7 +324,7 @@ class SettingsWindow(QMainWindow):
             }
             QTabWidget::pane {
                 border: 1px solid rgba(70, 73, 251, 0.3);
-                border-radius: 14px;
+                border-radius: 12px;
                 background: rgba(15, 30, 45, 0.85);
                 padding: 6px;
             }
@@ -348,7 +345,7 @@ class SettingsWindow(QMainWindow):
             QComboBox, QSpinBox, QDoubleSpinBox, QPlainTextEdit {
                 background: rgba(4, 0, 58, 0.7);
                 border: 1px solid rgba(70, 73, 251, 0.25);
-                border-radius: 8px;
+                border-radius: 10px;
                 padding: 6px 10px;
                 min-height: 28px;
             }
@@ -360,8 +357,15 @@ class SettingsWindow(QMainWindow):
                 color: #AFC3FF;
                 font-weight: 600;
             }
+            QLabel#runtimeDeviceLabel {
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 10px;
+                padding: 7px 10px;
+                font-weight: 700;
+            }
             QPushButton {
-                border-radius: 12px;
+                border-radius: 10px;
                 padding: 8px 16px;
                 font-weight: 600;
             }
@@ -408,6 +412,7 @@ class SettingsWindow(QMainWindow):
         )
 
     def _connect_signals(self) -> None:
+        """Conecta botoes/sinais da UI aos handlers e ao controller."""
         self.start_button.clicked.connect(self._on_start_clicked)
         self.stop_button.clicked.connect(self._on_stop_clicked)
         self.clear_button.clicked.connect(self.output.clear)
@@ -418,6 +423,8 @@ class SettingsWindow(QMainWindow):
 
         self.controller.transcript_chunk.connect(self._on_transcript_chunk)
         self.controller.status_changed.connect(self._set_status)
+        self.controller.runtime_changed.connect(self._on_runtime_changed)
+        self.controller.runtime_cleared.connect(self._reset_runtime_status)
         self.controller.error_raised.connect(self._on_error)
         self.controller.session_finished.connect(self._on_session_finished)
         self.controller.running_changed.connect(self._on_running_changed)
@@ -429,20 +436,31 @@ class SettingsWindow(QMainWindow):
         else:
             combo.setCurrentText(fallback)
 
+    def _device_preference(self) -> str:
+        return str(self.device_combo.currentData() or "gpu")
+
+    def _capture_mode(self) -> str:
+        return str(self.capture_mode_combo.currentData() or "automatic")
+
+    def _set_device_preference(self, value: str) -> None:
+        normalized = "cpu" if value == "cpu" else "gpu"
+        index = self.device_combo.findData(normalized)
+        self.device_combo.setCurrentIndex(max(index, 0))
+
+    def _set_capture_mode(self, value: str) -> None:
+        index = self.capture_mode_combo.findData(value)
+        self.capture_mode_combo.setCurrentIndex(max(index, 0))
+
     def _collect_settings(self) -> dict:
+        duration_value = float(self.duration_spin.value())
+
         return {
-            "source_language": self.source_lang_combo.currentText(),
-            "target_language": self.target_lang_combo.currentText(),
-            "display_mode": self.display_mode_combo.currentText(),
-            "audio_input_device": self.input_device_combo.currentText(),
-            "audio_loopback_device": self.loopback_device_combo.currentText(),
-            "audio_virtual_device": self.virtual_device_combo.currentText(),
-            "translation_provider": self.translation_provider_combo.currentText(),
-            "tts_engine": self.tts_engine_combo.currentText(),
             "model_size": self.model_combo.currentText(),
-            "device": self.device_combo.currentText(),
+            "device": self._device_preference(),
+            "language": self.language_combo.currentText(),
+            "capture_mode": self._capture_mode(),
             "context_window": int(self.context_spin.value()),
-            "max_duration_s": float(self.duration_spin.value()),
+            "max_duration_s": duration_value,
             "vad_type": self.vad_combo.currentText(),
             "speech_peak_threshold": float(self.speech_peak_spin.value()),
             "silero_threshold": float(self.silero_threshold_spin.value()),
@@ -452,39 +470,36 @@ class SettingsWindow(QMainWindow):
             "min_silence_window_s": float(self.min_silence_window_spin.value()),
             "max_utterance_s": float(self.max_utterance_spin.value()),
             "min_utterance_s": float(self.min_utterance_spin.value()),
-            "forced_split_policy": self.forced_policy_combo.currentText(),
             "boundary_overlap_s": float(self.boundary_overlap_spin.value()),
             "tail_guard_words": int(self.tail_guard_words_spin.value()),
+            "forced_split_policy": self.forced_policy_combo.currentText(),
             "forced_split_extra_tail_words": int(self.forced_extra_tail_spin.value()),
         }
 
     def _apply_settings(self, values: dict) -> None:
-        self._set_combo_value(self.source_lang_combo, values.get("source_language", DEFAULT_SETTINGS["source_language"]), DEFAULT_SETTINGS["source_language"])
-        self._set_combo_value(self.target_lang_combo, values.get("target_language", DEFAULT_SETTINGS["target_language"]), DEFAULT_SETTINGS["target_language"])
-        self._set_combo_value(self.display_mode_combo, values.get("display_mode", DEFAULT_SETTINGS["display_mode"]), DEFAULT_SETTINGS["display_mode"])
-        self._set_combo_value(self.input_device_combo, values.get("audio_input_device", DEFAULT_SETTINGS["audio_input_device"]), DEFAULT_SETTINGS["audio_input_device"])
-        self._set_combo_value(self.loopback_device_combo, values.get("audio_loopback_device", DEFAULT_SETTINGS["audio_loopback_device"]), DEFAULT_SETTINGS["audio_loopback_device"])
-        self._set_combo_value(self.virtual_device_combo, values.get("audio_virtual_device", DEFAULT_SETTINGS["audio_virtual_device"]), DEFAULT_SETTINGS["audio_virtual_device"])
-        self._set_combo_value(self.translation_provider_combo, values.get("translation_provider", DEFAULT_SETTINGS["translation_provider"]), DEFAULT_SETTINGS["translation_provider"])
-        self._set_combo_value(self.tts_engine_combo, values.get("tts_engine", DEFAULT_SETTINGS["tts_engine"]), DEFAULT_SETTINGS["tts_engine"])
-
-        self._set_combo_value(self.model_combo, values.get("model_size", DEFAULT_SETTINGS["model_size"]), DEFAULT_SETTINGS["model_size"])
-        self._set_combo_value(self.device_combo, values.get("device", DEFAULT_SETTINGS["device"]), DEFAULT_SETTINGS["device"])
-        self.context_spin.setValue(int(values.get("context_window", DEFAULT_SETTINGS["context_window"])))
-        self.duration_spin.setValue(float(values.get("max_duration_s", DEFAULT_SETTINGS["max_duration_s"])))
-        self._set_combo_value(self.vad_combo, values.get("vad_type", DEFAULT_SETTINGS["vad_type"]), DEFAULT_SETTINGS["vad_type"])
-        self.speech_peak_spin.setValue(float(values.get("speech_peak_threshold", DEFAULT_SETTINGS["speech_peak_threshold"])))
-        self.silero_threshold_spin.setValue(float(values.get("silero_threshold", DEFAULT_SETTINGS["silero_threshold"])))
-        self.silero_min_silence_spin.setValue(int(values.get("silero_min_silence_ms", DEFAULT_SETTINGS["silero_min_silence_ms"])))
-        self.silero_pad_spin.setValue(int(values.get("silero_speech_pad_ms", DEFAULT_SETTINGS["silero_speech_pad_ms"])))
-        self.min_speech_window_spin.setValue(float(values.get("min_speech_window_s", DEFAULT_SETTINGS["min_speech_window_s"])))
-        self.min_silence_window_spin.setValue(float(values.get("min_silence_window_s", DEFAULT_SETTINGS["min_silence_window_s"])))
-        self.max_utterance_spin.setValue(float(values.get("max_utterance_s", DEFAULT_SETTINGS["max_utterance_s"])))
-        self.min_utterance_spin.setValue(float(values.get("min_utterance_s", DEFAULT_SETTINGS["min_utterance_s"])))
-        self._set_combo_value(self.forced_policy_combo, values.get("forced_split_policy", DEFAULT_SETTINGS["forced_split_policy"]), DEFAULT_SETTINGS["forced_split_policy"])
-        self.boundary_overlap_spin.setValue(float(values.get("boundary_overlap_s", DEFAULT_SETTINGS["boundary_overlap_s"])))
-        self.tail_guard_words_spin.setValue(int(values.get("tail_guard_words", DEFAULT_SETTINGS["tail_guard_words"])))
-        self.forced_extra_tail_spin.setValue(int(values.get("forced_split_extra_tail_words", DEFAULT_SETTINGS["forced_split_extra_tail_words"])))
+        self._set_combo_value(self.model_combo, values["model_size"], DEFAULT_SETTINGS["model_size"])
+        self._set_device_preference(values["device"])
+        self._set_combo_value(self.language_combo, values["language"], DEFAULT_SETTINGS["language"])
+        self._set_capture_mode(values["capture_mode"])
+        self.context_spin.setValue(int(values["context_window"]))
+        self.duration_spin.setValue(float(values["max_duration_s"]))
+        self._set_combo_value(self.vad_combo, values["vad_type"], DEFAULT_SETTINGS["vad_type"])
+        self.speech_peak_spin.setValue(float(values["speech_peak_threshold"]))
+        self.silero_threshold_spin.setValue(float(values["silero_threshold"]))
+        self.silero_min_silence_spin.setValue(int(values["silero_min_silence_ms"]))
+        self.silero_pad_spin.setValue(int(values["silero_speech_pad_ms"]))
+        self.min_speech_window_spin.setValue(float(values["min_speech_window_s"]))
+        self.min_silence_window_spin.setValue(float(values["min_silence_window_s"]))
+        self.max_utterance_spin.setValue(float(values["max_utterance_s"]))
+        self.min_utterance_spin.setValue(float(values["min_utterance_s"]))
+        self._set_combo_value(
+            self.forced_policy_combo,
+            values["forced_split_policy"],
+            DEFAULT_SETTINGS["forced_split_policy"],
+        )
+        self.boundary_overlap_spin.setValue(float(values["boundary_overlap_s"]))
+        self.tail_guard_words_spin.setValue(int(values["tail_guard_words"]))
+        self.forced_extra_tail_spin.setValue(int(values["forced_split_extra_tail_words"]))
 
         self._on_vad_type_changed(self.vad_combo.currentText())
 
@@ -495,6 +510,9 @@ class SettingsWindow(QMainWindow):
     def _on_save_clicked(self) -> None:
         values = self._collect_settings()
         save_settings(values)
+        runtime_status = self.controller.runtime_status
+        if runtime_status and runtime_status.preference.value != values["device"]:
+            self.controller.reset_runtime_status()
         self._set_status("Configurações salvas.")
 
     def _on_reset_clicked(self) -> None:
@@ -503,27 +521,16 @@ class SettingsWindow(QMainWindow):
         self._set_status("Configurações restauradas.")
 
     def _build_request(self) -> SessionRequest:
+        """Traduz os valores da UI para o objeto de requisicao da sessao."""
         duration_value = float(self.duration_spin.value())
         max_duration = duration_value if duration_value > 0 else None
 
-        # Mapeamento do idioma de origem para o backend
-        source_map = {"Português (PT)": "pt-br", "Inglês (EN)": "en", "Espanhol (ES)": "es"}
-        target_map = {"Português (PT)": "pt", "Inglês (EN)": "en", "Espanhol (ES)": "es"}
-        display_map = {
-            "Somente Tradução": "translation_only",
-            "Somente Transcrição": "transcript_only",
-            "Ambos": "both",
-        }
-
         return SessionRequest(
-            source_language=source_map.get(self.source_lang_combo.currentText(), "pt-br"),
-            target_language=target_map.get(self.target_lang_combo.currentText(), "en"),
-            display_mode=display_map.get(self.display_mode_combo.currentText(), "translation_only"),
-            input_device=self.input_device_combo.currentText(),
-            loopback_device=self.loopback_device_combo.currentText(),
-            virtual_device=self.virtual_device_combo.currentText(),
             model_size=self.model_combo.currentText(),
-            device=self.device_combo.currentText(),
+            device=self._device_preference(),
+            language=self.language_combo.currentText(),
+            # O diagnostico desta janela nao possui o botao de PTT; usa VAD.
+            capture_mode="automatic",
             context_window=int(self.context_spin.value()),
             max_duration_s=max_duration,
             vad_type=self.vad_combo.currentText(),
@@ -542,26 +549,50 @@ class SettingsWindow(QMainWindow):
         )
 
     def _on_vad_type_changed(self, vad_type: str) -> None:
+        """Habilita ajustes especificos do Silero apenas quando necessario."""
         use_silero = vad_type == "silero"
         self.silero_threshold_spin.setEnabled(use_silero)
         self.silero_min_silence_spin.setEnabled(use_silero)
         self.silero_pad_spin.setEnabled(use_silero)
 
     def _on_start_clicked(self) -> None:
+        """Inicia sessao com os parametros selecionados."""
         request = self._build_request()
         self.controller.start_session(request)
 
     def _on_stop_clicked(self) -> None:
+        """Solicita parada da sessao ativa."""
         self.controller.stop_session()
 
     def _on_running_changed(self, is_running: bool) -> None:
+        """Ajusta estado dos controles conforme sessao ativa/inativa."""
         self.start_button.setEnabled(not is_running)
         self.stop_button.setEnabled(is_running)
-        self.tabs.setEnabled(not is_running or self.tabs.currentIndex() == 4)  # Permite ver a aba de teste
+
+        self.model_combo.setEnabled(not is_running)
+        self.device_combo.setEnabled(not is_running)
+        self.language_combo.setEnabled(not is_running)
+        self.capture_mode_combo.setEnabled(not is_running)
+        self.context_spin.setEnabled(not is_running)
+        self.duration_spin.setEnabled(not is_running)
+        self.vad_combo.setEnabled(not is_running)
+        self.speech_peak_spin.setEnabled(not is_running)
+        self.silero_threshold_spin.setEnabled(not is_running and self.vad_combo.currentText() == "silero")
+        self.silero_min_silence_spin.setEnabled(not is_running and self.vad_combo.currentText() == "silero")
+        self.silero_pad_spin.setEnabled(not is_running and self.vad_combo.currentText() == "silero")
+        self.min_speech_window_spin.setEnabled(not is_running)
+        self.min_silence_window_spin.setEnabled(not is_running)
+        self.max_utterance_spin.setEnabled(not is_running)
+        self.min_utterance_spin.setEnabled(not is_running)
+        self.forced_policy_combo.setEnabled(not is_running)
+        self.boundary_overlap_spin.setEnabled(not is_running)
+        self.tail_guard_words_spin.setEnabled(not is_running)
+        self.forced_extra_tail_spin.setEnabled(not is_running)
         self.save_button.setEnabled(not is_running)
         self.reset_button.setEnabled(not is_running)
 
-    def _on_transcript_chunk(self, chunk) -> None:
+    def _on_transcript_chunk(self, chunk: str) -> None:
+        """Acrescenta novos trechos ao fim do campo de transcricao."""
         if not chunk:
             return
 
@@ -569,21 +600,51 @@ class SettingsWindow(QMainWindow):
         cursor.movePosition(QTextCursor.End)
         self.output.setTextCursor(cursor)
 
-        if hasattr(chunk, "format_for_display"):
-            text = f"\n{chunk.format_for_display()}"
-        else:
-            prefix = " " if self.output.toPlainText() and not self.output.toPlainText().endswith((" ", "\n")) else ""
-            text = f"{prefix}{chunk}"
+        content = self.output.toPlainText()
+        if content and not content.endswith(" "):
+            self.output.insertPlainText(" ")
 
-        self.output.insertPlainText(text)
+        self.output.insertPlainText(chunk)
         self.output.ensureCursorVisible()
 
     def _on_session_finished(self, final_text: str) -> None:
+        """Garante texto final em tela caso nenhum chunk incremental tenha sido exibido."""
         if final_text and not self.output.toPlainText().strip():
             self.output.setPlainText(final_text)
 
     def _on_error(self, message: str) -> None:
-        QMessageBox.critical(self, "Erro na execução", message)
+        """Exibe erro de execucao para o usuario."""
+        QMessageBox.critical(self, "Erro na transcrição", message)
+
+    def _on_runtime_changed(self, status: RuntimeStatus) -> None:
+        """Mostra o dispositivo efetivo sem alterar a preferencia salva."""
+        self.active_device_label.setText(status.display_label)
+        self.active_device_label.setToolTip(status.tooltip)
+        self.device_combo.setToolTip(status.tooltip)
+
+        if status.active_device == ActiveDevice.GPU:
+            color = "rgba(34, 197, 94, 0.28)"
+            border = "rgba(34, 197, 94, 0.75)"
+        elif status.is_fallback:
+            color = "rgba(245, 158, 11, 0.24)"
+            border = "rgba(245, 158, 11, 0.75)"
+        else:
+            color = "rgba(70, 73, 251, 0.24)"
+            border = "rgba(70, 73, 251, 0.75)"
+
+        self.active_device_label.setStyleSheet(
+            f"background: {color}; border: 1px solid {border}; "
+            "border-radius: 10px; padding: 7px 10px; font-weight: 700;"
+        )
+
+    def _reset_runtime_status(self) -> None:
+        self.active_device_label.setText("Esperando iniciar...")
+        self.active_device_label.setToolTip("Dispositivo em uso durante a sessão.")
+        self.active_device_label.setStyleSheet("")
+        self.device_combo.setToolTip(
+            "A GPU e priorizada. A CPU e usada somente por escolha ou fallback."
+        )
 
     def _set_status(self, message: str) -> None:
+        """Atualiza mensagem de status na barra inferior."""
         self.status_label.setText(message)
