@@ -8,6 +8,8 @@ DEFAULT_SETTINGS = {
     "device": "gpu",
     "language": "pt-br",
     "capture_mode": "automatic",
+    "audio_source": "microphone",
+    "audio_device_id": "",
     "context_window": 0,
     "max_duration_s": 0.0,
     "vad_type": "silero",

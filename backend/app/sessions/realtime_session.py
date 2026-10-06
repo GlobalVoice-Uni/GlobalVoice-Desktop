@@ -5,8 +5,7 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from ..audio.audio_capture import MicrophoneAudioSource
-from ..ports import SpeechDetectorPort, TranscriberPort
+from ..ports import AudioSourcePort, SpeechDetectorPort, TranscriberPort
 from ..detectors.speech_detectors import EnergySpeechDetector
 
 
@@ -19,7 +18,7 @@ class RealtimeTranscriptionSession:
 
     def __init__(
         self,
-        audio_source: MicrophoneAudioSource,
+        audio_source: AudioSourcePort,
         transcriber: TranscriberPort,
         speech_detector: Optional[SpeechDetectorPort] = None,
         language: str = "pt-br",
@@ -173,9 +172,11 @@ class RealtimeTranscriptionSession:
             overlap_samples = int(self.boundary_overlap_s * self.audio_source.target_sample_rate)
 
             if on_status:
+                source_name = getattr(self.audio_source, "display_name", "Fonte de audio")
                 on_status(
-                    "Microfone ativo em "
-                    f"{self.audio_source.input_sample_rate} Hz (ASR: {self.audio_source.target_sample_rate} Hz)."
+                    f"Captura ativa: {source_name} em "
+                    f"{self.audio_source.input_sample_rate} Hz "
+                    f"(ASR: {self.audio_source.target_sample_rate} Hz)."
                 )
 
             while not self._stop_requested:

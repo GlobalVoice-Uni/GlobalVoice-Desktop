@@ -1,6 +1,24 @@
-from typing import Optional, Protocol
+from typing import Optional, Protocol, Tuple
 
 import numpy as np
+
+
+class AudioSourcePort(Protocol):
+    """Contrato comum para microfone e audio de saida do sistema."""
+
+    step_duration_s: float
+    target_sample_rate: int
+    input_sample_rate: int
+    display_name: str
+
+    def __enter__(self):
+        """Abre a fonte e retorna a propria instancia."""
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        """Fecha a fonte mesmo quando a sessao termina com erro."""
+
+    def read_step(self, timeout_s: float = 2.0) -> Tuple[np.ndarray, float]:
+        """Retorna um bloco mono em 16 kHz e seu pico de amplitude."""
 
 
 class TranscriberPort(Protocol):

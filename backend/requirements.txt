@@ -6,6 +6,7 @@ ctranslate2==4.7.1
 numpy==2.4.4
 scipy==1.17.1
 sounddevice==0.5.5
+SoundCard==0.4.6
 
 # VAD principal executado pelo modelo ONNX versionado no projeto.
 onnxruntime==1.29.0

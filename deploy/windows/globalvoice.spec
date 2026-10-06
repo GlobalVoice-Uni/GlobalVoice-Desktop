@@ -18,12 +18,15 @@ binaries = []
 hiddenimports = [
     "ctranslate2._ext",
     "faster_whisper.assets",
+    "soundcard",
+    "soundcard.mediafoundation",
 ]
 
 # Os hooks padrao tratam PySide6, PyAV, NumPy, SciPy e sounddevice. Coletar todos
 # os submodulos de Hugging Face ou CTranslate2 inclui CLIs e frameworks opcionais
 # (Torch, TensorFlow etc.) que nao participam do fluxo de transcricao.
 datas.extend(collect_data_files("faster_whisper"))
+datas.extend(collect_data_files("soundcard"))
 datas.extend(
     [
         (
@@ -48,7 +51,7 @@ cpp_runtime_candidates = (
 )
 binaries.extend((path, ".") for path in cpp_runtime_candidates if os.path.isfile(path))
 
-for distribution in ("faster-whisper", "ctranslate2", "onnxruntime"):
+for distribution in ("faster-whisper", "ctranslate2", "onnxruntime", "SoundCard"):
     try:
         datas.extend(copy_metadata(distribution))
     except Exception:

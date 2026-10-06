@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from typing import Callable, Optional, Protocol
 
-from backend.app.audio.audio_capture import MicrophoneAudioSource
+from backend.app.audio.audio_capture import MicrophoneAudioSource, create_audio_source
+from backend.app.audio.devices import AudioDeviceCatalog, enumerate_audio_devices
 from backend.app.sessions.realtime_session import RealtimeTranscriptionSession
 from backend.app.detectors.speech_detectors import build_speech_detector
 from backend.app.runtime_status import RuntimeStatus
@@ -19,6 +20,8 @@ class SessionRequest:
     device: str = "gpu"
     language: str = "pt-br"
     capture_mode: str = "automatic"
+    audio_source: str = "microphone"
+    audio_device_id: Optional[str] = None
     context_window: int = 0
     max_duration_s: Optional[float] = None
 
@@ -88,7 +91,21 @@ class LocalBackendBridge:
         on_voice_activity: Optional[Callable[[bool], None]] = None,
     ) -> str:
         """Monta dependencias locais e executa sessao realtime."""
-        audio_source = MicrophoneAudioSource(step_duration_s=0.2, target_sample_rate=16000)
+        if request.audio_source == "loopback":
+            audio_source = create_audio_source(
+                source="loopback",
+                device_id=request.audio_device_id,
+                step_duration_s=0.2,
+                target_sample_rate=16000,
+            )
+        else:
+            microphone_options = {
+                "step_duration_s": 0.2,
+                "target_sample_rate": 16000,
+            }
+            if request.audio_device_id not in (None, ""):
+                microphone_options["input_device"] = request.audio_device_id
+            audio_source = MicrophoneAudioSource(**microphone_options)
         transcriber = LocalFasterWhisperTranscriber(model_size=request.model_size, device=request.device)
         runtime_status = transcriber.runtime_status
         if on_runtime_status:
@@ -148,3 +165,9 @@ class LocalBackendBridge:
         self._microphone_muted = bool(muted)
         if self._session is not None:
             self._session.set_microphone_muted(self._microphone_muted)
+
+
+def get_audio_device_catalog() -> AudioDeviceCatalog:
+    """Disponibiliza a enumeracao sem acoplar a UI aos backends de audio."""
+
+    return enumerate_audio_devices()

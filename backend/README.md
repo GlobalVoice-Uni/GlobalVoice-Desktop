@@ -10,10 +10,13 @@ Este modulo concentra a logica de negocio da transcricao em tempo real.
 ## Estrutura
 
 - app/audio/audio_capture.py
-  - leitura de audio do microfone em passos fixos (step)
-  - conversao para 16 kHz
+  - leitura do microfone ou da saida do Windows em passos fixos (step)
+  - captura WASAPI loopback, downmix e conversao para 16 kHz
+- app/audio/devices.py
+  - catalogo de entradas, saidas e endpoints de loopback
 - app/ports.py
-  - contratos de transcricao e detector de fala (TranscriberPort / SpeechDetectorPort)
+  - contratos de fonte, transcricao e detector de fala
+    (AudioSourcePort / TranscriberPort / SpeechDetectorPort)
 - app/detectors/speech_detectors.py
   - implementacoes de detector (Silero principal + energia como fallback)
 - app/detectors/silero_onnx.py

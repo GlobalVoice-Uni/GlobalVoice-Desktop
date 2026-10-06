@@ -13,6 +13,10 @@ O Silero VAD faz parte do runtime principal e executa em CPU pelo ONNX Runtime.
 `torch` e `torchaudio` não fazem parte do ambiente de execução. A aceleração do
 Faster-Whisper continua sendo responsabilidade do CTranslate2.
 
+O `sounddevice` continua responsável pela captura do microfone. O `SoundCard`
+foi adicionado especificamente para abrir saídas do Windows em modo WASAPI
+loopback; ele permite captar o áudio reproduzido sem exigir `Mixagem estéreo`.
+
 O perfil NVIDIA usa cuBLAS para CUDA 12 fora do lock Python. As bibliotecas são
 extraídas do pacote oficial `nvidia-cublas-cu12==12.8.4.1`, com versão e hashes
 fixados em `deploy/windows/runtime-profiles/nvidia-cuda12.json`. A build base não

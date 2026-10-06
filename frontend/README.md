@@ -8,6 +8,7 @@ flutuantes e tela de configuracoes.
 - exibir a transcricao em uma janela flutuante, sem depender do terminal;
 - oferecer uma tela de configuracoes com parametros persistentes;
 - permitir captura com deteccao automatica de voz ou no modo apertar para falar;
+- permitir escolher o microfone ou o audio reproduzido por uma saida do Windows;
 - manter os controles compactos em uma toolbar sempre visivel durante a sessao;
 - manter a UI desacoplada da implementacao de backend por meio de uma ponte.
 
@@ -23,6 +24,10 @@ informado ao Faster-Whisper; eles ainda não representam tradução. O botão
 central inverte o par e a escolha fica persistida para a próxima sessão. No modo
 automático, o botão do microfone acende quando o VAD detecta voz e alterna o mudo
 ao ser clicado. A posição da toolbar também é preservada.
+
+Na Entrega 2, a tela de configuracoes passou a enumerar entradas e saidas. A
+opcao `Audio da reuniao (WASAPI)` captura a mistura reproduzida na saida
+selecionada sem depender de `Mixagem estereo` ou de um dispositivo virtual.
 
 ## Estrutura
 

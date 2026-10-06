@@ -190,7 +190,10 @@ class MainWindow(QMainWindow):
         values = load_settings()
         font_size = int(values.get("ui_transcription_font_size", 14))
         self.transcription_window.apply_font_size(font_size)
-        self.toolbar.set_capture_mode(values.get("capture_mode", "automatic"))
+        capture_mode = values.get("capture_mode", "automatic")
+        if values.get("audio_source") == "loopback":
+            capture_mode = "automatic"
+        self.toolbar.set_capture_mode(capture_mode)
         self.toolbar.set_source_language(values.get("language", "pt-br"))
 
     def _restore_home(self) -> None:
@@ -224,6 +227,10 @@ class MainWindow(QMainWindow):
         values = load_settings()
         max_duration = float(values["max_duration_s"])
         max_duration = max_duration if max_duration > 0 else None
+        audio_source = values.get("audio_source", "microphone")
+        capture_mode = values.get("capture_mode", "automatic")
+        if audio_source == "loopback":
+            capture_mode = "automatic"
 
         return SessionRequest(
             model_size=values["model_size"],
@@ -231,7 +238,9 @@ class MainWindow(QMainWindow):
             language=str(
                 self.toolbar.source_combo.currentData() or values["language"]
             ),
-            capture_mode=values.get("capture_mode", "automatic"),
+            capture_mode=capture_mode,
+            audio_source=audio_source,
+            audio_device_id=values.get("audio_device_id") or None,
             context_window=int(values["context_window"]),
             max_duration_s=max_duration,
             vad_type=values["vad_type"],
@@ -262,9 +271,16 @@ class MainWindow(QMainWindow):
     def _on_toolbar_start_clicked(self) -> None:
         self._show_floating_windows()
         values = load_settings()
-        self.toolbar.set_capture_mode(values.get("capture_mode", "automatic"))
+        capture_mode = values.get("capture_mode", "automatic")
+        if values.get("audio_source") == "loopback":
+            capture_mode = "automatic"
+        self.toolbar.set_capture_mode(capture_mode)
         self.toolbar.set_source_language(values.get("language", "pt-br"))
-        source = self.toolbar.source_combo.currentText()
+        source = (
+            "áudio da reunião"
+            if values.get("audio_source") == "loopback"
+            else self.toolbar.source_combo.currentText()
+        )
         self.controller.set_talk_active(False)
         self.controller.set_microphone_muted(False)
         self.toolbar.reset_microphone_state()
@@ -314,7 +330,7 @@ class MainWindow(QMainWindow):
 
     def _set_status(self, message: str) -> None:
         normalized = message.lower()
-        if "microfone ativo" in normalized:
+        if "captura ativa" in normalized:
             self._loading_session = False
             self.toolbar.set_active(message)
             self.toolbar.set_buttons_state(True, allow_stop=True)

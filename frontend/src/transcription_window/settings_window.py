@@ -18,9 +18,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from backend.app.audio.devices import AudioDeviceKind
 from backend.app.runtime_status import ActiveDevice, RuntimeStatus
 
-from .backend_bridge import SessionRequest
+from .backend_bridge import SessionRequest, get_audio_device_catalog
 from .controller import RealtimeController
 from .settings_store import DEFAULT_SETTINGS, load_settings, save_settings
 
@@ -102,6 +103,16 @@ class SettingsWindow(QMainWindow):
         self.active_device_label.setObjectName("runtimeDeviceLabel")
         self.active_device_label.setToolTip("Dispositivo em uso durante a sessão.")
 
+        self.audio_source_combo = QComboBox()
+        self.audio_source_combo.addItem("Microfone", "microphone")
+        self.audio_source_combo.addItem("Áudio da reunião (WASAPI)", "loopback")
+        self.audio_source_combo.setToolTip(
+            "Escolha se a sessão escuta o microfone ou o áudio reproduzido pelo Windows."
+        )
+
+        self.audio_device_combo = QComboBox()
+        self.audio_device_combo.setToolTip("Dispositivo usado como origem da captura.")
+
         self.language_combo = QComboBox()
         self.language_combo.addItems(["pt-br", "en", "es"])
 
@@ -181,6 +192,8 @@ class SettingsWindow(QMainWindow):
         field_widgets = [
             self.model_combo,
             self.device_combo,
+            self.audio_source_combo,
+            self.audio_device_combo,
             self.language_combo,
             self.capture_mode_combo,
             self.context_spin,
@@ -245,6 +258,8 @@ class SettingsWindow(QMainWindow):
             ("Modelo", self.model_combo),
             ("Preferência", self.device_combo),
             ("Dispositivo ativo", self.active_device_label),
+            ("Fonte de áudio", self.audio_source_combo),
+            ("Entrada/saída", self.audio_device_combo),
             ("Idioma", self.language_combo),
             ("Controle do microfone", self.capture_mode_combo),
             ("Contexto", self.context_spin),
@@ -420,6 +435,9 @@ class SettingsWindow(QMainWindow):
         self.reset_button.clicked.connect(self._on_reset_clicked)
         self.close_button.clicked.connect(self.close)
         self.vad_combo.currentTextChanged.connect(self._on_vad_type_changed)
+        self.audio_source_combo.currentIndexChanged.connect(
+            self._on_audio_source_changed
+        )
 
         self.controller.transcript_chunk.connect(self._on_transcript_chunk)
         self.controller.status_changed.connect(self._set_status)
@@ -442,6 +460,12 @@ class SettingsWindow(QMainWindow):
     def _capture_mode(self) -> str:
         return str(self.capture_mode_combo.currentData() or "automatic")
 
+    def _audio_source(self) -> str:
+        return str(self.audio_source_combo.currentData() or "microphone")
+
+    def _audio_device_id(self) -> str:
+        return str(self.audio_device_combo.currentData() or "")
+
     def _set_device_preference(self, value: str) -> None:
         normalized = "cpu" if value == "cpu" else "gpu"
         index = self.device_combo.findData(normalized)
@@ -451,6 +475,59 @@ class SettingsWindow(QMainWindow):
         index = self.capture_mode_combo.findData(value)
         self.capture_mode_combo.setCurrentIndex(max(index, 0))
 
+    def _set_audio_source(self, value: str) -> None:
+        normalized = "loopback" if value == "loopback" else "microphone"
+        index = self.audio_source_combo.findData(normalized)
+        self.audio_source_combo.setCurrentIndex(max(index, 0))
+
+    def _refresh_audio_devices(self, preferred_id: str = "") -> None:
+        catalog = get_audio_device_catalog()
+        kind = (
+            AudioDeviceKind.LOOPBACK
+            if self._audio_source() == "loopback"
+            else AudioDeviceKind.INPUT
+        )
+
+        self.audio_device_combo.blockSignals(True)
+        try:
+            self.audio_device_combo.clear()
+            for device in catalog.of_kind(kind):
+                default_suffix = " (padrão)" if device.is_default else ""
+                self.audio_device_combo.addItem(
+                    f"{device.name}{default_suffix}",
+                    device.id,
+                )
+
+            if self.audio_device_combo.count() == 0:
+                self.audio_device_combo.addItem("Nenhum dispositivo compatível", "")
+                self.audio_device_combo.setEnabled(False)
+            else:
+                self.audio_device_combo.setEnabled(not self.controller.is_running)
+                selected_index = self.audio_device_combo.findData(str(preferred_id or ""))
+                if selected_index >= 0:
+                    self.audio_device_combo.setCurrentIndex(selected_index)
+                else:
+                    default_index = next(
+                        (
+                            index
+                            for index, device in enumerate(catalog.of_kind(kind))
+                            if device.is_default
+                        ),
+                        0,
+                    )
+                    self.audio_device_combo.setCurrentIndex(default_index)
+        finally:
+            self.audio_device_combo.blockSignals(False)
+
+        self.audio_device_combo.setToolTip(
+            "\n".join(catalog.warnings)
+            if catalog.warnings
+            else "Dispositivo usado como origem da captura."
+        )
+
+    def _on_audio_source_changed(self, _index: int = -1) -> None:
+        self._refresh_audio_devices()
+
     def _collect_settings(self) -> dict:
         duration_value = float(self.duration_spin.value())
 
@@ -459,6 +536,8 @@ class SettingsWindow(QMainWindow):
             "device": self._device_preference(),
             "language": self.language_combo.currentText(),
             "capture_mode": self._capture_mode(),
+            "audio_source": self._audio_source(),
+            "audio_device_id": self._audio_device_id(),
             "context_window": int(self.context_spin.value()),
             "max_duration_s": duration_value,
             "vad_type": self.vad_combo.currentText(),
@@ -481,6 +560,8 @@ class SettingsWindow(QMainWindow):
         self._set_device_preference(values["device"])
         self._set_combo_value(self.language_combo, values["language"], DEFAULT_SETTINGS["language"])
         self._set_capture_mode(values["capture_mode"])
+        self._set_audio_source(values.get("audio_source", "microphone"))
+        self._refresh_audio_devices(values.get("audio_device_id", ""))
         self.context_spin.setValue(int(values["context_window"]))
         self.duration_spin.setValue(float(values["max_duration_s"]))
         self._set_combo_value(self.vad_combo, values["vad_type"], DEFAULT_SETTINGS["vad_type"])
@@ -531,6 +612,8 @@ class SettingsWindow(QMainWindow):
             language=self.language_combo.currentText(),
             # O diagnostico desta janela nao possui o botao de PTT; usa VAD.
             capture_mode="automatic",
+            audio_source=self._audio_source(),
+            audio_device_id=self._audio_device_id() or None,
             context_window=int(self.context_spin.value()),
             max_duration_s=max_duration,
             vad_type=self.vad_combo.currentText(),
@@ -573,6 +656,10 @@ class SettingsWindow(QMainWindow):
         self.device_combo.setEnabled(not is_running)
         self.language_combo.setEnabled(not is_running)
         self.capture_mode_combo.setEnabled(not is_running)
+        self.audio_source_combo.setEnabled(not is_running)
+        self.audio_device_combo.setEnabled(
+            not is_running and bool(self._audio_device_id())
+        )
         self.context_spin.setEnabled(not is_running)
         self.duration_spin.setEnabled(not is_running)
         self.vad_combo.setEnabled(not is_running)

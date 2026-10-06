@@ -230,11 +230,11 @@ pré-versão do GitHub, com limitações conhecidas documentadas.
 
 **Duração: 2 semanas.**
 
-- [ ] Generalizar a fonte de áudio sem quebrar a captura atual do microfone.
-- [ ] Enumerar dispositivos de entrada, saída e loopback disponíveis no Windows.
-- [ ] Capturar uma amostra verificável do áudio do sistema via WASAPI loopback.
-- [ ] Implementar a captura loopback do áudio da reunião.
-- [ ] Integrar o motor de transcrição selecionado na Entrega 1.
+- [x] Generalizar a fonte de áudio sem quebrar a captura atual do microfone.
+- [x] Enumerar dispositivos de entrada, saída e loopback disponíveis no Windows.
+- [x] Capturar uma amostra verificável do áudio do sistema via WASAPI loopback.
+- [x] Implementar a captura loopback do áudio da reunião.
+- [x] Integrar o motor de transcrição selecionado na Entrega 1.
 - [ ] Implementar `TranslatorPort` e o primeiro adaptador de tradução.
 - [ ] Executar o fluxo `loopback → VAD → STT → tradução` em uma sessão cancelável.
 - [ ] Exibir o conteúdo da via de escuta sob o canal `Reunião`, sem exigir
