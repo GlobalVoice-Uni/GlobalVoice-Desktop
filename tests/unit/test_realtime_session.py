@@ -1,3 +1,4 @@
+import threading
 import unittest
 
 import numpy as np
@@ -97,6 +98,28 @@ class SpyTranscriber:
             }
         )
         return self.result
+
+
+class CaptureAwareTranscriber(SpyTranscriber):
+    def __init__(self, capture_finished):
+        super().__init__(result="captura continua")
+        self.capture_finished = capture_finished
+        self.capture_continued_during_stt = False
+
+    def transcribe(self, audio_16k, language, context_prompt=None):
+        self.capture_continued_during_stt = self.capture_finished.wait(timeout=0.5)
+        return super().transcribe(audio_16k, language, context_prompt)
+
+
+class CaptureAwareAudioSource(SequencedAudioSource):
+    def __init__(self, speech_states, capture_finished):
+        super().__init__(speech_states)
+        self.capture_finished = capture_finished
+
+    def read_step(self):
+        if self.index >= len(self.speech_states):
+            self.capture_finished.set()
+        return super().read_step()
 
 
 class RealtimeTranscriptionSessionTests(unittest.TestCase):
@@ -260,6 +283,31 @@ class RealtimeTranscriptionSessionTests(unittest.TestCase):
 
         self.assertEqual(transcriber.calls, [])
         self.assertEqual(voice_activity, [])
+
+    def test_capture_continues_while_stt_processes_previous_utterance(self):
+        capture_finished = threading.Event()
+        source = CaptureAwareAudioSource(
+            [True, True, False, False, False],
+            capture_finished,
+        )
+        transcriber = CaptureAwareTranscriber(capture_finished)
+        session = self.build_session(
+            audio_source=source,
+            transcriber=transcriber,
+            speech_detector=PeakSpeechDetector(),
+            min_speech_window_s=0.2,
+            min_silence_window_s=0.4,
+            min_utterance_s=0.2,
+        )
+        source.session = session
+
+        session.run(on_text=lambda _text: None)
+
+        self.assertTrue(transcriber.capture_continued_during_stt)
+        timing = session.get_last_transcription_timing()
+        self.assertIsNotNone(timing)
+        self.assertGreater(timing.audio_duration_s, 0.0)
+        self.assertGreaterEqual(timing.queue_wait_s, 0.0)
 
 
 if __name__ == "__main__":

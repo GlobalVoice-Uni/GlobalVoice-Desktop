@@ -235,6 +235,8 @@ pré-versão do GitHub, com limitações conhecidas documentadas.
 - [x] Capturar uma amostra verificável do áudio do sistema via WASAPI loopback.
 - [x] Implementar a captura loopback do áudio da reunião.
 - [x] Integrar o motor de transcrição selecionado na Entrega 1.
+- [x] Manter captura e VAD ativos durante o STT, medindo o fator de tempo real e
+  a espera acumulada antes de cada transcrição.
 - [ ] Implementar `TranslatorPort` e o primeiro adaptador de tradução.
 - [ ] Executar o fluxo `loopback → VAD → STT → tradução` em uma sessão cancelável.
 - [ ] Exibir o conteúdo da via de escuta sob o canal `Reunião`, sem exigir
@@ -362,6 +364,8 @@ correspondem a apenas duas semanas.
 ### Testes e regressão
 
 - [ ] Executar testes automatizados em toda alteração relevante.
+- [ ] Revalidar o atraso acumulado em sessão prolongada, com microfone e sob
+  carga representativa, após integrar a tradução.
 - [ ] Criar testes unitários para VAD, deduplicação, tail guard, reconciliação e
   regras de exibição.
 - [ ] Usar adapters falsos nos testes para não depender de hardware ou serviços
