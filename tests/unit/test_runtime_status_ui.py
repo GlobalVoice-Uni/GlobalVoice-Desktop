@@ -22,7 +22,7 @@ from frontend.src.transcription_window.floating_windows import (
     FloatingToolbar,
     FloatingTranscriptionWindow,
 )
-from frontend.src.transcription_window.dialogs import ConfirmationDialog
+from frontend.src.transcription_window.dialogs import ConfirmationDialog, ErrorDialog
 from frontend.src.transcription_window.controller import RealtimeController
 from frontend.src.transcription_window.main_window import MainWindow
 from frontend.src.transcription_window.settings_window import SettingsWindow
@@ -228,6 +228,23 @@ class RuntimeStatusUiTests(unittest.TestCase):
         self.assertEqual(toolbar.source_combo.currentData(), "en")
         self.assertFalse(popup.isVisible())
         toolbar.close()
+
+    def test_language_selector_closes_popup_on_second_click(self):
+        toolbar = FloatingToolbar()
+        toolbar.show()
+        self.app.processEvents()
+
+        QTest.mouseClick(toolbar.source_combo.lineEdit(), Qt.LeftButton)
+        QTest.qWait(20)
+        popup = toolbar.source_combo._language_popup
+        self.assertIsNotNone(popup)
+        self.assertTrue(popup.isVisible())
+
+        QTest.mouseClick(toolbar.source_combo.lineEdit(), Qt.LeftButton)
+        QTest.qWait(20)
+        self.assertFalse(popup.isVisible())
+        toolbar.close()
+
 
     def test_spanish_can_be_selected_as_whisper_source_language(self):
         toolbar = FloatingToolbar()
@@ -501,6 +518,27 @@ class RuntimeStatusUiTests(unittest.TestCase):
         ) / 2
         self.assertAlmostEqual(buttons_center, dialog.width() / 2, delta=2)
         dialog.close()
+
+    def test_error_dialog_matches_compact_centered_style_without_icon(self):
+        dialog = ErrorDialog(
+            None,
+            "Não foi possível iniciar",
+            "O par de idiomas selecionado não está instalado.",
+        )
+        dialog.show()
+        self.app.processEvents()
+
+        self.assertEqual(dialog.width(), 380)
+        self.assertEqual(dialog.message_label.alignment(), Qt.AlignCenter)
+        self.assertEqual(len(dialog.findChildren(QLabel)), 1)
+        self.assertEqual(len(dialog.findChildren(QPushButton)), 1)
+        button_center = (
+            dialog.acknowledge_button.x()
+            + (dialog.acknowledge_button.width() / 2)
+        )
+        self.assertAlmostEqual(button_center, dialog.width() / 2, delta=2)
+        dialog.close()
+
 
     def test_settings_dropdown_uses_custom_spaced_popup(self):
         window = SettingsWindow()

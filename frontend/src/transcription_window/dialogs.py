@@ -5,39 +5,37 @@ from PySide6.QtWidgets import (
     QDialog,
     QHBoxLayout,
     QLabel,
-    QMessageBox,
     QPushButton,
     QVBoxLayout,
     QWidget,
 )
 
 
-_DIALOG_STYLE = """
-QMessageBox {
+_BASE_DIALOG_STYLE = """
+QDialog {
     background: #0F1E2D;
 }
-QMessageBox QLabel {
+QLabel {
     background: transparent;
     color: #F8FAFC;
-    min-width: 320px;
     font-family: 'Bahnschrift', 'Segoe UI';
     font-size: 13px;
+    font-weight: 600;
 }
-QMessageBox QPushButton {
-    min-width: 92px;
+QPushButton {
     min-height: 32px;
     background: rgba(30, 41, 59, 0.92);
     color: #FFFFFF;
     border: 1px solid rgba(70, 73, 251, 0.5);
     border-radius: 10px;
-    padding: 4px 14px;
+    padding: 1px 10px;
     font-family: 'Bahnschrift', 'Segoe UI';
     font-weight: 600;
 }
-QMessageBox QPushButton:hover {
+QPushButton:hover {
     background: rgba(70, 73, 251, 0.72);
 }
-QMessageBox QPushButton:pressed {
+QPushButton:pressed {
     background: rgba(70, 73, 251, 0.55);
 }
 """
@@ -62,33 +60,10 @@ class ConfirmationDialog(QDialog):
         self.setModal(True)
         self.setFixedWidth(380)
         self.setStyleSheet(
-            """
-            QDialog {
-                background: #0F1E2D;
-            }
+            _BASE_DIALOG_STYLE
+            + """
             QLabel#confirmationMessage {
-                background: transparent;
-                color: #F8FAFC;
-                font-family: 'Bahnschrift', 'Segoe UI';
-                font-size: 13px;
-                font-weight: 600;
-            }
-            QPushButton {
-                min-width: 102px;
-                min-height: 32px;
-                background: rgba(30, 41, 59, 0.92);
-                color: #FFFFFF;
-                border: 1px solid rgba(70, 73, 251, 0.5);
-                border-radius: 10px;
-                padding: 1px 10px;
-                font-family: 'Bahnschrift', 'Segoe UI';
-                font-weight: 600;
-            }
-            QPushButton:hover {
-                background: rgba(70, 73, 251, 0.72);
-            }
-            QPushButton:pressed {
-                background: rgba(70, 73, 251, 0.55);
+                qproperty-alignment: AlignCenter;
             }
             QPushButton#confirmationPrimary {
                 background: rgba(70, 73, 251, 0.9);
@@ -135,6 +110,52 @@ class ConfirmationDialog(QDialog):
         self.adjustSize()
 
 
+class ErrorDialog(QDialog):
+    """Aviso de erro compacto, sem ícone e com conteúdo centralizado."""
+
+    def __init__(
+        self,
+        parent: QWidget | None,
+        title: str,
+        message: str,
+        *,
+        details: str | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setWindowModality(Qt.ApplicationModal)
+        self.setModal(True)
+        self.setFixedWidth(380)
+        self.setStyleSheet(_BASE_DIALOG_STYLE)
+        self.details = details.strip() if details else ""
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 20, 24, 18)
+        layout.setSpacing(18)
+
+        self.message_label = QLabel(
+            message or "Não foi possível concluir a operação."
+        )
+        self.message_label.setObjectName("errorMessage")
+        self.message_label.setWordWrap(True)
+        self.message_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.message_label)
+
+        button_row = QHBoxLayout()
+        button_row.addStretch(1)
+        self.acknowledge_button = QPushButton("Entendi")
+        self.acknowledge_button.setFixedWidth(102)
+        self.acknowledge_button.setCursor(Qt.PointingHandCursor)
+        self.acknowledge_button.setDefault(True)
+        self.acknowledge_button.clicked.connect(self.accept)
+        button_row.addWidget(self.acknowledge_button)
+        button_row.addStretch(1)
+        layout.addLayout(button_row)
+
+        self.acknowledge_button.setFocus()
+        self.adjustSize()
+
+
 def ask_confirmation(
     parent: QWidget | None,
     title: str,
@@ -164,17 +185,7 @@ def show_error(
     *,
     details: str | None = None,
 ) -> None:
-    """Mostra uma falha em linguagem direta, preservando detalhes sob demanda."""
+    """Mostra uma falha em linguagem direta com o padrão visual da aplicação."""
 
-    dialog = QMessageBox(parent)
-    dialog.setWindowModality(Qt.ApplicationModal)
-    dialog.setWindowTitle(title)
-    dialog.setText(message or "Não foi possível concluir a operação.")
-    if details and details.strip() and details.strip() != message.strip():
-        dialog.setDetailedText(details.strip())
-    dialog.setIcon(QMessageBox.Critical)
-    dialog.setStandardButtons(QMessageBox.Ok)
-    dialog.setDefaultButton(QMessageBox.Ok)
-    dialog.setStyleSheet(_DIALOG_STYLE)
-    dialog.button(QMessageBox.Ok).setText("Entendi")
+    dialog = ErrorDialog(parent, title, message, details=details)
     dialog.exec()

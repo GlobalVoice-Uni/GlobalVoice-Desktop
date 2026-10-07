@@ -129,6 +129,7 @@ class LanguageComboBox(QComboBox):
         self.currentIndexChanged.connect(self._sync_compact_text)
         self._language_popup: QWidget | None = None
         self._popup_buttons: list[QToolButton] = []
+        self._close_popup_on_release = False
 
     def add_language(self, abbreviation: str, name: str, code: str) -> None:
         self.addItem(abbreviation, code)
@@ -138,9 +139,16 @@ class LanguageComboBox(QComboBox):
     def eventFilter(self, watched, event) -> bool:
         if watched is self.lineEdit():
             if event.type() == QEvent.MouseButtonPress:
+                self._close_popup_on_release = bool(
+                    self._language_popup is not None
+                    and self._language_popup.isVisible()
+                )
                 return True
             if event.type() == QEvent.MouseButtonRelease:
-                if self.isEnabled():
+                if self._close_popup_on_release:
+                    self._close_popup_on_release = False
+                    self.hidePopup()
+                elif self.isEnabled():
                     # Abre somente após o clique terminar para a própria soltura
                     # do mouse não fechar o menu imediatamente.
                     QTimer.singleShot(0, self.showPopup)
