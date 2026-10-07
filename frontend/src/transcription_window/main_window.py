@@ -29,7 +29,10 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(520, 380)
 
         self.controller = RealtimeController()
-        self.settings_window = SettingsWindow(controller=self.controller)
+        self.settings_window = SettingsWindow(
+            controller=self.controller,
+            show_controller_errors=False,
+        )
         self.transcription_window = FloatingTranscriptionWindow()
         self.toolbar = FloatingToolbar()
         self._loading_session = False
@@ -386,7 +389,8 @@ class MainWindow(QMainWindow):
         self._loading_session = False
         self.toolbar.set_idle()
         self.toolbar.set_buttons_state(False)
-        show_error(self, "Não foi possível iniciar", message)
+        dialog_parent = self.settings_window if self.settings_window.isVisible() else self
+        show_error(dialog_parent, "Não foi possível iniciar", message)
 
     def _set_status(self, message: str) -> None:
         normalized = message.lower()

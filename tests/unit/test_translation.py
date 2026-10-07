@@ -98,8 +98,10 @@ class TranslationTests(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 TranslationModelUnavailable, "Configurações > Idiomas"
-            ):
+            ) as error:
                 translator.translate("Hola", "es", "pt-br")
+
+            self.assertIn("instalado.\nAbra Configurações", str(error.exception))
 
     def test_transcript_chunk_formats_each_display_mode(self):
         original = "Hello"

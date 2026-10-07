@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication, QFrame, QLabel, QPushButton
+from PySide6.QtWidgets import QApplication, QDialog, QFrame, QLabel, QPushButton
 from PySide6.QtTest import QTest
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent
@@ -243,6 +243,23 @@ class RuntimeStatusUiTests(unittest.TestCase):
         QTest.mouseClick(toolbar.source_combo.lineEdit(), Qt.LeftButton)
         QTest.qWait(20)
         self.assertFalse(popup.isVisible())
+        toolbar.close()
+
+    def test_language_selector_does_not_reopen_after_native_popup_hide(self):
+        toolbar = FloatingToolbar()
+        toolbar.show()
+        self.app.processEvents()
+
+        QTest.mouseClick(toolbar.source_combo.lineEdit(), Qt.LeftButton)
+        QTest.qWait(20)
+        popup = toolbar.source_combo._language_popup
+        popup.hide()
+
+        QTest.mouseClick(toolbar.source_combo.lineEdit(), Qt.LeftButton)
+        QTest.qWait(20)
+
+        self.assertFalse(popup.isVisible())
+        self.assertFalse(toolbar.source_combo._popup_open)
         toolbar.close()
 
 
@@ -495,6 +512,33 @@ class RuntimeStatusUiTests(unittest.TestCase):
             label = window.tabs.widget(0).layout().labelForField(window.model_combo)
             self.assertLess(label.geometry().right(), window.model_combo.geometry().left())
 
+        window._on_runtime_changed(
+            RuntimeStatus(
+                preference=DevicePreference.GPU,
+                active_device=ActiveDevice.GPU,
+                engine="engine",
+                provider=RuntimeProvider.CUDA,
+            )
+        )
+
+        base_fields = [
+            window.model_combo,
+            window.device_combo,
+            window.active_device_label,
+            window.audio_source_combo,
+            window.audio_device_combo,
+            window.user_language_combo,
+            window.meeting_language_combo,
+            window.display_mode_combo,
+            window.capture_mode_combo,
+        ]
+        gaps = [
+            following.y() - (current.y() + current.height())
+            for current, following in zip(base_fields, base_fields[1:])
+        ]
+        self.assertTrue(all(gap >= 7 for gap in gaps))
+        self.assertEqual(window.active_device_label.height(), window.model_combo.height())
+
         window.close()
 
     def test_confirmation_dialog_is_compact_and_centered_without_icon(self):
@@ -539,6 +583,39 @@ class RuntimeStatusUiTests(unittest.TestCase):
         self.assertAlmostEqual(button_center, dialog.width() / 2, delta=2)
         dialog.close()
 
+    def test_error_dialog_closes_on_first_button_press(self):
+        dialog = ErrorDialog(
+            None,
+            "Não foi possível iniciar",
+            "Falha de teste.",
+        )
+        dialog.show()
+        self.app.processEvents()
+
+        QTest.mousePress(dialog.acknowledge_button, Qt.LeftButton)
+
+        self.assertEqual(dialog.result(), QDialog.Accepted)
+        self.assertFalse(dialog.isVisible())
+
+    def test_shared_controller_opens_only_one_error_dialog(self):
+        with (
+            patch(
+                "frontend.src.transcription_window.main_window.show_error"
+            ) as main_error,
+            patch(
+                "frontend.src.transcription_window.settings_window.show_error"
+            ) as settings_error,
+        ):
+            window = MainWindow()
+            window.settings_window.show()
+            self.app.processEvents()
+            window.controller.error_raised.emit("Falha de teste.")
+
+            main_error.assert_called_once()
+            settings_error.assert_not_called()
+            self.assertIs(main_error.call_args.args[0], window.settings_window)
+            window.close()
+
 
     def test_settings_dropdown_uses_custom_spaced_popup(self):
         window = SettingsWindow()
@@ -563,6 +640,21 @@ class RuntimeStatusUiTests(unittest.TestCase):
         self.assertIsNotNone(window.model_combo._settings_popup)
         self.assertTrue(window.model_combo._settings_popup.isVisible())
         window.model_combo.hidePopup()
+        window.close()
+
+    def test_settings_dropdown_does_not_reopen_after_native_popup_hide(self):
+        window = SettingsWindow()
+        window.show()
+        self.app.processEvents()
+
+        window.model_combo.showPopup()
+        popup = window.model_combo._settings_popup
+        popup.hide()
+        QTest.mouseClick(window.model_combo, Qt.LeftButton)
+        QTest.qWait(20)
+
+        self.assertIsNone(window.model_combo._settings_popup)
+        self.assertFalse(window.model_combo._popup_open)
         window.close()
 
 

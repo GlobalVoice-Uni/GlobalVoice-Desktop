@@ -147,7 +147,9 @@ class ErrorDialog(QDialog):
         self.acknowledge_button.setFixedWidth(102)
         self.acknowledge_button.setCursor(Qt.PointingHandCursor)
         self.acknowledge_button.setDefault(True)
-        self.acknowledge_button.clicked.connect(self.accept)
+        # Um aviso informativo não deve exigir um segundo clique caso o
+        # Windows ainda esteja transferindo o foco para a janela modal.
+        self.acknowledge_button.pressed.connect(self.accept)
         button_row.addWidget(self.acknowledge_button)
         button_row.addStretch(1)
         layout.addLayout(button_row)

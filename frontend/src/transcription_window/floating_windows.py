@@ -129,6 +129,7 @@ class LanguageComboBox(QComboBox):
         self.currentIndexChanged.connect(self._sync_compact_text)
         self._language_popup: QWidget | None = None
         self._popup_buttons: list[QToolButton] = []
+        self._popup_open = False
         self._close_popup_on_release = False
 
     def add_language(self, abbreviation: str, name: str, code: str) -> None:
@@ -139,10 +140,7 @@ class LanguageComboBox(QComboBox):
     def eventFilter(self, watched, event) -> bool:
         if watched is self.lineEdit():
             if event.type() == QEvent.MouseButtonPress:
-                self._close_popup_on_release = bool(
-                    self._language_popup is not None
-                    and self._language_popup.isVisible()
-                )
+                self._close_popup_on_release = self._popup_open
                 return True
             if event.type() == QEvent.MouseButtonRelease:
                 if self._close_popup_on_release:
@@ -153,6 +151,12 @@ class LanguageComboBox(QComboBox):
                     # do mouse não fechar o menu imediatamente.
                     QTimer.singleShot(0, self.showPopup)
                 return True
+        if watched is self._language_popup and event.type() == QEvent.Hide:
+            popup = watched
+            # Em Windows, Qt.Popup pode ser ocultado automaticamente antes de
+            # o seletor receber o clique. O pequeno atraso preserva o estado
+            # necessário para interpretar esse clique como "recolher".
+            QTimer.singleShot(150, lambda: self._release_auto_hidden_popup(popup))
         return super().eventFilter(watched, event)
 
     def showPopup(self) -> None:
@@ -163,10 +167,12 @@ class LanguageComboBox(QComboBox):
         self._refresh_popup_selection()
         popup_position = self.mapToGlobal(QPoint(0, self.height() + 2))
         self._language_popup.move(popup_position)
+        self._popup_open = True
         self._language_popup.show()
         self._language_popup.raise_()
 
     def hidePopup(self) -> None:
+        self._popup_open = False
         if self._language_popup is not None:
             self._language_popup.hide()
 
@@ -230,6 +236,19 @@ class LanguageComboBox(QComboBox):
 
         popup.setFixedSize(self.width(), (self.count() * 25) + 3)
         self._language_popup = popup
+        popup.installEventFilter(self)
+
+    def _release_auto_hidden_popup(self, popup: QWidget) -> None:
+        if self._language_popup is not popup:
+            return
+        try:
+            popup_visible = popup.isVisible()
+        except RuntimeError:
+            # A toolbar pode ser encerrada antes do temporizador disparar.
+            self._language_popup = None
+            popup_visible = False
+        if not popup_visible:
+            self._popup_open = False
 
     def _select_popup_language(self, index: int) -> None:
         self.setCurrentIndex(index)

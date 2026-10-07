@@ -37,11 +37,12 @@ class ModernComboBox(QComboBox):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._settings_popup: QWidget | None = None
+        self._popup_open = False
 
     def showPopup(self) -> None:
         if not self.isEnabled() or self.count() == 0:
             return
-        if self._settings_popup is not None:
+        if self._popup_open:
             self.hidePopup()
             return
 
@@ -109,11 +110,13 @@ class ModernComboBox(QComboBox):
                 popup_position = self.mapToGlobal(QPoint(0, -popup_height - 2))
         popup.move(popup_position)
         self._settings_popup = popup
+        self._popup_open = True
         popup.installEventFilter(self)
         popup.show()
         popup.raise_()
 
     def hidePopup(self) -> None:
+        self._popup_open = False
         if self._settings_popup is None:
             return
         self._settings_popup.hide()
@@ -125,7 +128,7 @@ class ModernComboBox(QComboBox):
         self.hidePopup()
 
     def mousePressEvent(self, event) -> None:
-        if event.button() == Qt.LeftButton and self._settings_popup is not None:
+        if event.button() == Qt.LeftButton and self._popup_open:
             self.hidePopup()
             event.accept()
             return
@@ -134,13 +137,25 @@ class ModernComboBox(QComboBox):
     def eventFilter(self, watched, event) -> bool:
         if watched is self._settings_popup and event.type() == QEvent.Hide:
             popup = watched
-            QTimer.singleShot(0, lambda: self._release_hidden_popup(popup))
+            # Qt.Popup fecha antes de repassar ao combo o clique feito sobre
+            # ele. Adiar a limpeza permite que o mesmo clique apenas recolha
+            # o menu, em vez de abri-lo novamente.
+            QTimer.singleShot(150, lambda: self._release_hidden_popup(popup))
         return super().eventFilter(watched, event)
 
     def _release_hidden_popup(self, popup: QWidget) -> None:
-        if self._settings_popup is popup and not popup.isVisible():
-            popup.deleteLater()
+        if self._settings_popup is not popup:
+            return
+        try:
+            popup_visible = popup.isVisible()
+        except RuntimeError:
             self._settings_popup = None
+            popup_visible = False
+        if not popup_visible:
+            self._popup_open = False
+            if self._settings_popup is popup:
+                popup.deleteLater()
+                self._settings_popup = None
 
 
 class SettingsWindow(QMainWindow):
@@ -153,10 +168,12 @@ class SettingsWindow(QMainWindow):
         self,
         controller: RealtimeController | None = None,
         language_manager_factory=ArgosModelManager,
+        show_controller_errors: bool = True,
     ):
         super().__init__()
         self.controller = controller or RealtimeController()
         self._language_manager_factory = language_manager_factory
+        self._show_controller_errors = show_controller_errors
         self._language_pack_busy = False
         self._language_pack_thread = None
         self._saved_settings_snapshot: dict = {}
@@ -396,6 +413,7 @@ class SettingsWindow(QMainWindow):
             widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             widget.setMinimumWidth(280)
             widget.setMaximumWidth(560)
+            widget.setFixedHeight(30)
             if isinstance(widget, QAbstractSpinBox):
                 widget.setButtonSymbols(QAbstractSpinBox.NoButtons)
 
@@ -597,8 +615,8 @@ class SettingsWindow(QMainWindow):
                 background: rgba(30, 41, 59, 0.86);
                 border: 1px solid rgba(70, 73, 251, 0.25);
                 border-radius: 10px;
-                padding: 4px 10px;
-                min-height: 24px;
+                padding: 3px 10px;
+                min-height: 20px;
             }
             QComboBox {
                 padding-right: 38px;
@@ -639,8 +657,8 @@ class SettingsWindow(QMainWindow):
                 background: rgba(255, 255, 255, 0.08);
                 border: 1px solid rgba(255, 255, 255, 0.2);
                 border-radius: 10px;
-                padding: 4px 10px;
-                min-height: 24px;
+                padding: 3px 10px;
+                min-height: 20px;
                 font-weight: 700;
             }
             QFrame#languageCard {
@@ -722,7 +740,8 @@ class SettingsWindow(QMainWindow):
         self.controller.status_changed.connect(self._set_status)
         self.controller.runtime_changed.connect(self._on_runtime_changed)
         self.controller.runtime_cleared.connect(self._reset_runtime_status)
-        self.controller.error_raised.connect(self._on_error)
+        if self._show_controller_errors:
+            self.controller.error_raised.connect(self._on_error)
         self.controller.session_finished.connect(self._on_session_finished)
         self.controller.running_changed.connect(self._on_running_changed)
 
@@ -1209,7 +1228,7 @@ class SettingsWindow(QMainWindow):
 
         self.active_device_label.setStyleSheet(
             f"background: {color}; border: 1px solid {border}; "
-            "border-radius: 10px; padding: 7px 10px; font-weight: 700;"
+            "border-radius: 10px; padding: 3px 10px; font-weight: 700;"
         )
 
     def _reset_runtime_status(self) -> None:

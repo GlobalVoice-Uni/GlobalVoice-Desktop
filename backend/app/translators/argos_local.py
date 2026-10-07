@@ -205,7 +205,7 @@ class ArgosLocalTranslator:
 
         raise TranslationModelUnavailable(
             "O modelo de tradução "
-            f"{source_language.upper()} → {target_language.upper()} não está instalado. "
+            f"{source_language.upper()} → {target_language.upper()} não está instalado.\n"
             "Abra Configurações > Idiomas para instalá-lo."
         )
 
