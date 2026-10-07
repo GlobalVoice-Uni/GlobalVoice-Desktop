@@ -1,6 +1,6 @@
 # Roadmap — Global Voice (PFC 2)
 
-> Atualizado em 26 de agosto de 2026.
+> Atualizado em 7 de outubro de 2026.
 
 ## Visão do produto
 
@@ -86,9 +86,13 @@ meio da bridge já existente.
 **Critério de aceite:** a base atual continua funcionando, a documentação está
 alinhada ao PFC 2 e existe uma estrutura mínima de testes automatizados.
 
-## Entrega 1 — Viabilidade e decisões técnicas
+## Entrega 1 — Base distribuível e decisões iniciais
 
 **Duração: 2 semanas.**
+
+**Estado:** concluída e disponibilizada como pré-versão `v0.1.0`. As pesquisas
+comparativas que não bloquearam a primeira distribuição foram realocadas para as
+trilhas contínuas e para as entregas em que serão aplicadas.
 
 ### Marco imediato — executável de validação
 
@@ -135,34 +139,11 @@ consolidados nas notas da primeira versão.
   fabricante de GPU.
 - [x] Confirmar o Silero VAD como detector principal e manter o detector por
   energia apenas como fallback de segurança.
-- [ ] Comparar provedores de aceleração para Windows: CUDA em NVIDIA,
-  DirectML/WinML em NVIDIA, AMD e Intel, e ROCm nas GPUs AMD oficialmente
-  suportadas.
 - [x] Validar pelo menos uma GPU NVIDIA legada, uma NVIDIA recente, uma AMD
   dedicada ou integrada e o fallback em uma máquina sem GPU suportada.
-- [ ] Pesquisar motores de STT recentes projetados para streaming ou transcrição em
-  tempo real.
-- [ ] Comparar essas opções com o Faster-Whisper usando os mesmos áudios e o mesmo
-  hardware.
-- [ ] Avaliar qualidade textual, latência, consumo de CPU/GPU, suporte a idiomas,
-  licença e facilidade de distribuição.
-- [ ] Decidir se o Faster-Whisper continuará como motor principal, fallback ou
-  referência de comparação.
 - [x] Medir o tempo atual do pipeline no hardware do grupo para criar uma **linha de
   base**: um valor de referência que permita saber objetivamente se as mudanças
   seguintes melhoraram ou pioraram o sistema.
-- [ ] Repetir a linha de base com a máquina livre e sob carga representativa,
-  usando o mesmo áudio, para medir perda de velocidade ou qualidade por disputa
-  de CPU, GPU e memória.
-
-### Áudio, tradução e voz
-
-- [ ] Comparar opções de tradução por qualidade, latência, custo, privacidade e
-  funcionamento offline.
-- [ ] Comparar opções de TTS por latência, naturalidade, estabilidade, licença e
-  forma de distribuição.
-- [ ] Registrar as escolhas iniciais de tradução e TTS para os protótipos das
-  Entregas 2 e 3, sem integrá-las prematuramente ao fluxo principal.
 
 ### Front-end e distribuição
 
@@ -172,8 +153,6 @@ desta entrega para evitar uma segunda implementação concorrente.
 
 - [x] Auditar e fixar as dependências de execução em uma venv limpa, incluindo o
   Silero VAD, e separar os requisitos de runtime, testes e build.
-- [ ] Definir requisitos separados de desenvolvimento e de cada perfil de
-  aceleração depois da escolha dos provedores de GPU.
 - [x] Isolar o Silero em ONNX, comparar seu comportamento com a implementação
   anterior e remover PyTorch e Torchaudio do runtime.
 - [x] Validar a build que elimina cópias idênticas de DLLs do CTranslate2, PyAV,
@@ -186,9 +165,6 @@ desta entrega para evitar uma segunda implementação concorrente.
   adequado ao hardware detectado, sem exigir configuração manual do usuário.
 - [x] Validar manualmente o fluxo visual do instalador, os atalhos, a execução do
   aplicativo instalado e a remoção completa.
-- [ ] Automatizar build, instalação silenciosa, desinstalação e teste em CPU no
-  GitHub Actions; executar os testes de GPU em runners ou máquinas com hardware
-  real.
 - [x] Avaliar teoricamente se PySide6 continua adequado, considerando tempo de
   abertura, consumo, integração com Windows, suporte a overlay e custo de
   reescrita, sem criar implementações concorrentes nesta entrega.
@@ -213,41 +189,113 @@ desta entrega para evitar uma segunda implementação concorrente.
 
 - [x] Confirmar a versão `v0.1.0` e preparar notas de versão com requisitos,
   comportamento do primeiro download do modelo e limitações conhecidas.
-- [ ] Executar no GitHub Actions a geração e o smoke test do instalador a partir
-  de uma base limpa.
 - [x] Gerar o instalador final e seu checksum SHA-256 a partir do estado aprovado.
 - [x] Fazer uma última instalação limpa e validar abertura, transcrição,
   dispositivo ativo, atalhos e desinstalação.
 - [x] Publicar no GitHub uma pré-versão destinada a testes, contendo o instalador,
   o checksum e as notas de versão.
 
-**Critério de aceite:** as decisões de transcrição, aceleração, tradução, TTS,
-front-end e distribuição ficam registradas; a suíte automatizada está aprovada;
-e a primeira versão pode ser instalada por usuários externos a partir de uma
-pré-versão do GitHub, com limitações conhecidas documentadas.
+**Critério de aceite:** a base executável mantém a transcrição validada, a suíte
+automatizada está aprovada e a primeira versão pode ser instalada por usuários
+externos a partir de uma pré-versão do GitHub, com limitações conhecidas
+documentadas.
 
 ## Entrega 2 — Via de escuta em texto
 
 **Duração: 2 semanas.**
 
-- [ ] Generalizar a fonte de áudio sem quebrar a captura atual do microfone.
-- [ ] Enumerar dispositivos de entrada, saída e loopback disponíveis no Windows.
-- [ ] Capturar uma amostra verificável do áudio do sistema via WASAPI loopback.
-- [ ] Implementar a captura loopback do áudio da reunião.
-- [ ] Integrar o motor de transcrição selecionado na Entrega 1.
-- [ ] Implementar `TranslatorPort` e o primeiro adaptador de tradução.
-- [ ] Executar o fluxo `loopback → VAD → STT → tradução` em uma sessão cancelável.
-- [ ] Exibir o conteúdo da via de escuta sob o canal `Reunião`, sem exigir
+**Estado:** em andamento. A captura do áudio do sistema, a transcrição, a
+tradução local inicial e a interface dos três modos de exibição já foram
+integradas e validadas. A prioridade restante é decidir o motor de tradução,
+medir o fluxo completo e estabilizar seu comportamento em sessões prolongadas.
+
+- [x] Generalizar a fonte de áudio sem quebrar a captura atual do microfone.
+- [x] Enumerar dispositivos de entrada, saída e loopback disponíveis no Windows.
+- [x] Capturar uma amostra verificável do áudio do sistema via WASAPI loopback.
+- [x] Implementar a captura loopback do áudio da reunião.
+- [x] Integrar o motor de transcrição selecionado na Entrega 1.
+- [x] Manter captura e VAD ativos durante o STT, medindo o fator de tempo real e
+  a espera acumulada antes de cada transcrição.
+- [x] Implementar `TranslatorPort` e o primeiro adaptador de tradução local com
+  CTranslate2, SentencePiece e modelos no formato Argos.
+- [x] Executar o fluxo `loopback → VAD → STT → tradução` em uma sessão cancelável.
+- [x] Exibir o conteúdo da via de escuta sob o canal `Reunião`, sem exigir
   identificação automática de cada participante.
-- [ ] Implementar os três modos de exibição:
-  - [ ] somente tradução, selecionado por padrão;
-  - [ ] somente transcrição original;
-  - [ ] transcrição original e tradução.
-- [ ] Permitir selecionar dispositivo, idioma de origem e idioma de destino.
-- [ ] Exibir estados de carregamento, dispositivo indisponível e falha do motor ou
+- [x] Implementar os três modos de exibição:
+  - [x] somente tradução, selecionado por padrão;
+  - [x] somente transcrição original;
+  - [x] transcrição original e tradução.
+- [x] Permitir selecionar dispositivo, idioma de origem e idioma de destino.
+- [x] Oferecer no instalador os pacotes de tradução iniciais, com português como
+  base, inglês selecionado por padrão e espanhol opcional.
+- [x] Permitir instalar e desinstalar pacotes de tradução em
+  `Configurações > Idiomas`, sem download silencioso e sem incorporá-los ao
+  executável principal.
+- [x] Exibir estados de carregamento, dispositivo indisponível e falha do motor ou
   provedor.
 
+### Decisão do motor de tradução
+
+**Referência de tamanho:** os pacotes atuais ocupam aproximadamente 156,66 MiB
+para inglês ↔ português e 138,66 MiB para espanhol ↔ português. O checkpoint
+oficial do M2M-100 418M em precisão original ocupa cerca de 1,94 GB; a estimativa
+próxima de 500 MB se refere a uma conversão quantizada, cujo tamanho real ainda
+deve ser medido no formato de distribuição do Global Voice.
+
+- [x] Validar o primeiro fluxo offline com modelos direcionais no formato Argos.
+- [x] Identificar a limitação de crescimento por pares: cada nova combinação de
+  idiomas exige modelos próprios nos dois sentidos.
+- [x] Rejeitar o uso do português como idioma intermediário entre outros pares,
+  pois acrescenta latência e pode acumular perdas de qualidade.
+- [ ] Preparar uma prova de conceito do M2M-100 418M convertido para CTranslate2 e
+  quantizado, sem substituir o adaptador atual antes da comparação.
+- [ ] Disponibilizar temporariamente, nas configurações de teste, os motores
+  `Argos direcional`, `M2M-100 FP32` e `M2M-100 INT8`, carregando apenas o motor
+  selecionado na memória.
+- [ ] Gerar uma distribuição de laboratório separada da versão pública, com nome,
+  diretório e configurações próprios, para não sobrescrever a instalação estável.
+- [ ] Distribuir os modelos grandes como componentes opcionais ou instaladores de
+  modelos separados, permitindo que a equipe faça os testes sem preparar Python,
+  dependências ou comandos manualmente.
+- [ ] Comparar Argos e M2M-100 nos seis sentidos entre português, inglês e
+  espanhol, usando o mesmo corpus e o mesmo hardware.
+- [ ] Medir tamanho em disco, memória, tempo de carregamento, latência por trecho,
+  uso de CPU/GPU e qualidade da tradução.
+- [ ] Avaliar especialmente concordância, paralelismo verbal, termos técnicos,
+  frases incompletas e traduções diretas sem idioma intermediário.
+- [ ] Registrar em `docs/entrega-2-avaliacao-tradutores.md` o corpus, método,
+  versões, hardware, parâmetros, saídas, medições, avaliação humana e conclusão.
+- [ ] Decidir qual motor será principal, alternativo ou descartado e somente então
+  revisar os componentes de idiomas do instalador e remover código, dependências,
+  modelos, testes e referências das alternativas rejeitadas.
+
+### Estabilização e fidelidade textual
+
+Esta frente não deve apagar hesitações, pedidos de correção ou qualquer conteúdo
+que tenha sido efetivamente falado. O objetivo é reduzir instabilidade visual e
+melhorar a coerência linguística sem mudar o sentido do enunciado.
+
+- [ ] Separar cada fala em prefixo confirmado e trecho provisório, mantendo apenas
+  a cauda recente como mutável.
+- [ ] Exibir hipóteses provisórias com menor destaque visual e promover para texto
+  confirmado apenas as palavras estáveis entre atualizações sucessivas.
+- [ ] Avaliar uma estratégia inspirada no Whisper-Streaming para hipóteses
+  incrementais, medindo o custo de retranscrever janelas sobrepostas com
+  Faster-Whisper.
+- [ ] Enviar para a tradução somente unidades confirmadas e permitir revisão, no
+  máximo, do último fragmento ainda aberto.
+- [ ] Investigar uma revisão linguística local e leve que compare original e
+  tradução, preservando todas as informações faladas e corrigindo incoerências
+  como concordância e paralelismo verbal.
+- [ ] Comparar pós-processamento, tradução com contexto maior e seleção entre
+  múltiplas hipóteses do tradutor antes de escolher a abordagem.
+- [ ] Medir separadamente ganho de qualidade, alterações indevidas e latência
+  acrescentada; permitir desativar o recurso caso ele seja adotado.
+
 ### Execução remota comparativa
+
+Esta comparação complementa a validação em máquinas limitadas, mas não substitui
+nem bloqueia a conclusão do fluxo local, que continua sendo o objetivo principal.
 
 - [ ] Criar uma prova de conceito de transcrição remota em uma VM conectada pela
   bridge.
@@ -257,20 +305,23 @@ pré-versão do GitHub, com limitações conhecidas documentadas.
 - [ ] Registrar em quais condições a execução remota supera a local e quais
   dependências, custos e riscos de privacidade ela acrescenta.
 
-**Critério de aceite:** ao reproduzir uma chamada, vídeo ou áudio de teste em
-inglês, o Global Voice mostra por padrão somente a tradução em português; os
-outros dois modos podem ser selecionados nas configurações. O experimento remoto
-tem resultados comparáveis registrados, mesmo que a execução local permaneça
-como padrão.
+**Critério de aceite:** ao reproduzir uma chamada, vídeo ou áudio de teste, o
+Global Voice captura o som do sistema e mostra por padrão a tradução no idioma do
+usuário; os outros dois modos podem ser selecionados nas configurações. O motor
+de tradução escolhido e as limitações de qualidade, latência e idiomas ficam
+registrados com resultados reproduzíveis.
 
 ## Entrega 3 — Via de fala em áudio
 
 **Duração: 2 semanas.**
 
+- [ ] Comparar opções de TTS por latência, naturalidade, estabilidade, licença,
+  idiomas suportados e forma de distribuição.
+- [ ] Registrar a escolha inicial de TTS antes de integrá-la ao fluxo principal.
 - [ ] Implementar `SpeechSynthesizerPort` e `AudioSinkPort`.
 - [ ] Executar o fluxo `microfone → VAD → STT → tradução → TTS`.
 - [ ] Produzir e validar uma amostra de fala com a tecnologia de TTS escolhida na
-  Entrega 1.
+  própria entrega.
 - [ ] Enviar o áudio sintetizado para o dispositivo virtual.
 - [ ] Confirmar que uma plataforma de chamada reconhece essa saída como microfone.
 - [ ] Exibir o conteúdo dessa via sob o canal `Você` de acordo com o modo de
@@ -308,23 +359,25 @@ O novo front-end deve evoluir junto com as entregas anteriores. Esta etapa
 consolida a interface completa, em vez de iniciar seu desenvolvimento somente
 neste ciclo.
 
-- [ ] Consolidar o novo front-end sobre a base validada, usando a tecnologia
+- [x] Consolidar o novo front-end sobre a base validada, usando a tecnologia
   escolhida na Entrega 1.
-- [ ] Manter uma home normal para início, configuração e encerramento da aplicação.
-- [ ] Implementar a janela flutuante de texto e a toolbar conforme a abordagem
+- [x] Manter uma home normal para início, configuração e encerramento da aplicação.
+- [x] Implementar a janela flutuante de texto e a toolbar conforme a abordagem
   escolhida na Entrega 1.
-- [ ] Permitir mover, redimensionar e manter a área de texto sempre no topo.
+- [x] Permitir mover, redimensionar e manter a área de texto sempre no topo.
 - [ ] Persistir posição, tamanho e preferências de exibição.
-- [ ] Disponibilizar na toolbar os controles rápidos de iniciar/parar, idiomas,
+- [x] Disponibilizar na toolbar os controles rápidos de iniciar/parar, idiomas,
   configurações, pressionar-para-falar e mostrar/ocultar texto.
-- [ ] Definir e implementar o ciclo de vida das janelas. A proposta inicial é:
-  - fechar a janela de texto apenas oculta ou minimiza essa janela;
-  - a toolbar permite reabrir a janela de texto;
-  - a opção `Encerrar` fecha as janelas e finaliza todos os processos de áudio.
-- [ ] Separar configurações de uso comum dos parâmetros técnicos avançados.
-- [ ] Exibir claramente idiomas, dispositivos, canais ativos e estado de cada
+- [x] Definir e implementar o ciclo de vida das janelas:
+  - [x] fechar a janela de texto apenas oculta essa janela;
+  - [x] a toolbar permite reabrir a janela de texto;
+  - [x] fechar a home encerra as janelas e os processos, com confirmação quando
+    existe sessão ativa ou configuração não salva.
+- [x] Separar configurações por finalidade e manter os parâmetros técnicos fora
+  dos controles rápidos da toolbar.
+- [x] Exibir claramente idiomas, dispositivos, canais ativos e estado de cada
   pipeline.
-- [ ] Implementar mensagens de erro que indiquem como o usuário pode corrigir o
+- [x] Implementar mensagens de erro que indiquem como o usuário pode corrigir o
   problema.
 - [ ] Validar contraste, tamanho de fonte e uso por teclado.
 
@@ -362,6 +415,8 @@ correspondem a apenas duas semanas.
 ### Testes e regressão
 
 - [ ] Executar testes automatizados em toda alteração relevante.
+- [ ] Revalidar o atraso acumulado em sessão prolongada, com microfone e sob
+  carga representativa, após integrar a tradução.
 - [ ] Criar testes unitários para VAD, deduplicação, tail guard, reconciliação e
   regras de exibição.
 - [ ] Usar adapters falsos nos testes para não depender de hardware ou serviços
@@ -375,8 +430,26 @@ correspondem a apenas duas semanas.
 - [ ] Gerar uma build utilizável ao final de cada entrega, começando na Entrega 1.
 - [ ] Acompanhar tempo de abertura, tamanho do pacote e consumo de memória.
 - [ ] Testar periodicamente em outra máquina do grupo.
+- [ ] Definir requisitos separados de desenvolvimento e de cada perfil de
+  aceleração depois da escolha dos provedores de GPU.
+- [ ] Automatizar build, instalação silenciosa, desinstalação e smoke test em CPU
+  no GitHub Actions; executar os testes de GPU em máquinas com hardware real.
 - [ ] Evitar deixar decisões de instalador, driver ou empacotamento para o último
   ciclo.
+
+### Pesquisa de motores e aceleração
+
+- [ ] Comparar provedores de aceleração para Windows: CUDA em NVIDIA,
+  DirectML/WinML em NVIDIA, AMD e Intel, e ROCm nas GPUs AMD oficialmente
+  suportadas.
+- [ ] Pesquisar motores de STT projetados para streaming ou transcrição em tempo
+  real e compará-los com o Faster-Whisper usando os mesmos áudios e hardware.
+- [ ] Avaliar qualidade textual, latência, consumo de CPU/GPU, suporte a idiomas,
+  licença e facilidade de distribuição.
+- [ ] Decidir se o Faster-Whisper continuará como motor principal, fallback ou
+  referência de comparação.
+- [ ] Repetir a linha de base com a máquina livre e sob carga representativa para
+  medir perda de velocidade ou qualidade por disputa de recursos.
 
 ### Validação acadêmica
 
@@ -407,7 +480,7 @@ correspondem a apenas duas semanas.
 |Ciclo     |Entrega  |Resultado principal                          |
 |----------|---------|---------------------------------------------|
 |Preparação|Entrega 0|Base, documentação e testes iniciais         |
-|1         |Entrega 1|Decisões técnicas e protótipos de viabilidade|
+|1         |Entrega 1|Base instalável e primeira pré-versão         |
 |2         |Entrega 2|Áudio da reunião traduzido em texto          |
 |3         |Entrega 3|Voz do usuário traduzida dentro da chamada   |
 |4         |Entrega 4|Operação bidirecional                        |

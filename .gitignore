@@ -37,9 +37,13 @@ docs/respostas-atualizacao-pfc2.md
 # Resultados locais de experimentos
 # ========================
 experiments/asr_baseline/results/*.json
+experiments/loopback_probe/results/*.wav
+experiments/loopback_probe/results/*.wav
+experiments/loopback_probe/results/*.wav
 
 # ========================
 # Artefatos locais de build
 # ========================
 .build/
 dist/
+.local-translation/

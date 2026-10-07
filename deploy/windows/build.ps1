@@ -65,6 +65,14 @@ try {
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     }
 
+    & $pythonPath -c "import ctranslate2, sentencepiece"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error (
+            "Dependencias de traducao ausentes. Instale requirements\runtime-windows.lock."
+        )
+        exit 1
+    }
+
     if (-not (Test-Path $buildPythonPath)) {
         & $pythonPath -m venv $buildVenvPath
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

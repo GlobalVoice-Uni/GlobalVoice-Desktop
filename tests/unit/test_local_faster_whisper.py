@@ -162,7 +162,7 @@ class LocalFasterWhisperTranscriberTests(unittest.TestCase):
             transcriber.runtime_status.fallback_reason,
             FallbackReason.ACCELERATOR_NOT_FOUND,
         )
-        self.assertIn("GPU compativel nao encontrada", transcriber.fallback_message)
+        self.assertIn("GPU compatível não encontrada", transcriber.fallback_message)
 
     def test_gpu_preference_explains_unsupported_amd_adapter(self):
         with (
@@ -216,7 +216,7 @@ class LocalFasterWhisperTranscriberTests(unittest.TestCase):
             transcriber.runtime_status.fallback_reason,
             FallbackReason.NVIDIA_DRIVER_UNAVAILABLE,
         )
-        self.assertIn("driver nao disponibilizou CUDA", transcriber.fallback_message)
+        self.assertIn("driver não disponibilizou CUDA", transcriber.fallback_message)
 
     def test_gpu_probe_error_still_explains_unsupported_amd_adapter(self):
         with (
@@ -275,7 +275,7 @@ class LocalFasterWhisperTranscriberTests(unittest.TestCase):
             transcriber.runtime_status.fallback_reason,
             FallbackReason.CUDA_LIBRARIES_MISSING,
         )
-        self.assertIn("componentes de aceleracao NVIDIA", transcriber.fallback_message)
+        self.assertIn("componentes de aceleração NVIDIA", transcriber.fallback_message)
 
 
 if __name__ == "__main__":

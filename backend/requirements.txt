@@ -2,10 +2,14 @@
 faster-whisper==1.2.1
 ctranslate2==4.7.1
 
+# Tradução local sobre o mesmo CTranslate2, usando modelos no formato Argos.
+sentencepiece==0.2.2
+
 # Captura e processamento de audio
 numpy==2.4.4
 scipy==1.17.1
 sounddevice==0.5.5
+SoundCard==0.4.6
 
 # VAD principal executado pelo modelo ONNX versionado no projeto.
 onnxruntime==1.29.0

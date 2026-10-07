@@ -65,34 +65,34 @@ class RuntimeStatus:
     @property
     def user_message(self) -> str:
         if self.active_device == ActiveDevice.GPU:
-            return "Transcricao carregada na GPU."
+            return "Transcrição carregada na GPU."
         if self.fallback_reason == FallbackReason.ACCELERATOR_NOT_FOUND:
-            return "GPU compativel nao encontrada. A sessao esta usando CPU."
+            return "GPU compatível não encontrada. A sessão está usando CPU."
         if self.fallback_reason == FallbackReason.UNSUPPORTED_GRAPHICS_VENDOR:
             return (
                 "Uma GPU AMD ou Intel foi detectada, mas o motor atual acelera "
-                "somente em NVIDIA. A sessao esta usando CPU."
+                "somente em NVIDIA. A sessão está usando CPU."
             )
         if self.fallback_reason == FallbackReason.NVIDIA_DRIVER_UNAVAILABLE:
             return (
-                "Uma GPU NVIDIA foi detectada, mas o driver nao disponibilizou "
-                "CUDA para o motor atual. A sessao esta usando CPU."
+                "Uma GPU NVIDIA foi detectada, mas o driver não disponibilizou "
+                "CUDA para o motor atual. A sessão está usando CPU."
             )
         if self.fallback_reason == FallbackReason.CUDA_LIBRARIES_MISSING:
             return (
-                "Os componentes de aceleracao NVIDIA nao estao disponiveis. "
-                "A sessao esta usando CPU."
+                "Os componentes de aceleração NVIDIA não estão disponíveis. "
+                "A sessão está usando CPU."
             )
         if self.fallback_reason == FallbackReason.RUNTIME_UNAVAILABLE:
-            return "O suporte de GPU nao esta disponivel. A sessao esta usando CPU."
+            return "O suporte de GPU não está disponível. A sessão está usando CPU."
         if self.fallback_reason == FallbackReason.INITIALIZATION_FAILED:
-            return "A GPU nao pode ser inicializada. A sessao esta usando CPU."
-        return "Transcricao carregada na CPU por escolha do usuario."
+            return "A GPU não pôde ser inicializada. A sessão está usando CPU."
+        return "Transcrição carregada na CPU por escolha do usuário."
 
     @property
     def tooltip(self) -> str:
         if self.active_device == ActiveDevice.GPU:
-            compute = f" com computacao {self.compute_type}" if self.compute_type else ""
+            compute = f" com computação {self.compute_type}" if self.compute_type else ""
             return (
                 f"Dispositivo ativo: GPU. Provedor: {self.provider.value.upper()}{compute}."
             )

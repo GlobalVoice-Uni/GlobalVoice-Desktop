@@ -8,6 +8,9 @@ from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, co
 
 project_root = os.path.abspath(os.path.join(SPECPATH, "..", ".."))
 entry_point = os.path.join(project_root, "frontend", "src", "main.py")
+application_icon = os.path.join(
+    project_root, "frontend", "assets", "globalvoice.ico"
+)
 diagnostic_console = os.environ.get("GLOBALVOICE_DIAGNOSTIC_CONSOLE") == "1"
 runtime_packages_path = os.environ.get(
     "GLOBALVOICE_RUNTIME_SITE_PACKAGES",
@@ -18,12 +21,16 @@ binaries = []
 hiddenimports = [
     "ctranslate2._ext",
     "faster_whisper.assets",
+    "sentencepiece",
+    "soundcard",
+    "soundcard.mediafoundation",
 ]
 
 # Os hooks padrao tratam PySide6, PyAV, NumPy, SciPy e sounddevice. Coletar todos
 # os submodulos de Hugging Face ou CTranslate2 inclui CLIs e frameworks opcionais
 # (Torch, TensorFlow etc.) que nao participam do fluxo de transcricao.
 datas.extend(collect_data_files("faster_whisper"))
+datas.extend(collect_data_files("soundcard"))
 datas.extend(
     [
         (
@@ -34,9 +41,18 @@ datas.extend(
             os.path.join(project_root, "backend", "assets", "SILERO_VAD_LICENSE.txt"),
             os.path.join("backend", "assets"),
         ),
+        (
+            application_icon,
+            os.path.join("frontend", "assets"),
+        ),
+        (
+            os.path.join(project_root, "frontend", "assets", "chevron-down.svg"),
+            os.path.join("frontend", "assets"),
+        ),
     ]
 )
 binaries.extend(collect_dynamic_libs("ctranslate2"))
+binaries.extend(collect_dynamic_libs("sentencepiece"))
 
 # Inclui o runtime C++ usado pelo Qt mesmo quando ele ja esta instalado na
 # maquina de desenvolvimento. A build nao deve depender desse pre-requisito na
@@ -48,7 +64,13 @@ cpp_runtime_candidates = (
 )
 binaries.extend((path, ".") for path in cpp_runtime_candidates if os.path.isfile(path))
 
-for distribution in ("faster-whisper", "ctranslate2", "onnxruntime"):
+for distribution in (
+    "faster-whisper",
+    "ctranslate2",
+    "onnxruntime",
+    "SoundCard",
+    "sentencepiece",
+):
     try:
         datas.extend(copy_metadata(distribution))
     except Exception:
@@ -73,6 +95,8 @@ analysis = Analysis(
         "silero_vad",
         "torch",
         "torchaudio",
+        "spacy",
+        "stanza",
         "PySide6.QtNetwork",
     ],
     noarchive=False,
@@ -225,6 +249,7 @@ executable = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=application_icon,
 )
 
 bundle = COLLECT(

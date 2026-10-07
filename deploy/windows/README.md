@@ -102,8 +102,14 @@ Para baixar, validar e instalar essa versão do compilador somente dentro de
 Com a build e o perfil NVIDIA preparados:
 
 ```powershell
+.\deploy\windows\prepare-translation-models.ps1
 .\deploy\windows\build-installer.ps1 -AppVersion "0.1.0"
 ```
+
+A preparação baixa os modelos oficiais do Argos Translate, valida os arquivos e
+separa os pares bidirecionais em componentes do Inno Setup. Eles não entram no
+executável: são copiados para os dados locais do usuário somente quando o idioma
+é selecionado.
 
 O resultado compactado fica em
 `dist\installer\GlobalVoice-Setup-0.1.0.exe`, acompanhado por um arquivo
@@ -118,6 +124,14 @@ O instalador normal solicita permissão administrativa, sugere `Arquivos de
 Programas\Global Voice`, permite alterar o destino, cria um atalho no menu Iniciar
 e oferece um atalho opcional na área de trabalho. Português do Brasil e inglês
 estão incluídos.
+
+Na mesma tela de componentes, português do Brasil aparece como idioma base,
+inglês é selecionado por padrão e espanhol permanece opcional. Cada idioma
+adicional inclui os dois sentidos de tradução. Os modelos atuais ocupam cerca de
+157 MB para inglês e 139 MB para espanhol antes da compactação final. Depois da
+instalação, a tela `Configurações > Idiomas`
+permite baixar, instalar ou remover esses pacotes sem reinstalar a aplicação; o
+tamanho é informado e o download sempre exige confirmação.
 
 Uma consulta ao Registro do Windows procura um dispositivo PCI NVIDIA da classe
 de adaptadores de vídeo. Quando ele existe, o componente CUDA 12/cuBLAS é

@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 from backend.app.runtime_status import (
     ActiveDevice,
@@ -100,7 +100,7 @@ class LocalBackendBridgeTests(unittest.TestCase):
         self.assertEqual(session_arguments["new_speech_silence_s"], 1.4)
         self.assertEqual(session_arguments["tail_guard_words"], 3)
         session.run.assert_called_once_with(
-            on_text=on_text,
+            on_text=ANY,
             on_status=on_status,
             on_speech_start=on_speech_start,
             on_voice_activity=on_voice_activity,
@@ -109,6 +109,12 @@ class LocalBackendBridgeTests(unittest.TestCase):
         session.set_talk_active.assert_called_once_with(False)
         session.set_microphone_muted.assert_called_once_with(False)
 
+        publish_chunk = session.run.call_args.kwargs["on_text"]
+        publish_chunk("hello")
+        emitted = on_text.call_args.args[0]
+        self.assertEqual(emitted.channel, "user")
+        self.assertEqual(emitted.original_text, "hello")
+
     def test_stop_is_forwarded_to_active_session(self):
         bridge = bridge_module.LocalBackendBridge()
         bridge._session = MagicMock()
@@ -116,6 +122,60 @@ class LocalBackendBridgeTests(unittest.TestCase):
         bridge.stop()
 
         bridge._session.stop.assert_called_once_with()
+
+    def test_loopback_translates_confirmed_chunks_to_user_language(self):
+        request = bridge_module.SessionRequest(
+            device="cpu",
+            audio_source="loopback",
+            language="en",
+            target_language="pt-br",
+            display_mode="both",
+        )
+        runtime_status = RuntimeStatus(
+            preference=DevicePreference.CPU,
+            active_device=ActiveDevice.CPU,
+            engine="faster-whisper",
+            provider=RuntimeProvider.CPU,
+            compute_type="int8",
+        )
+        translator = MagicMock()
+        translator.translate.return_value = "olá"
+        translator_factory = MagicMock(return_value=translator)
+        session = MagicMock()
+        session.run.return_value = "hello"
+        on_text = MagicMock()
+
+        with (
+            patch.object(bridge_module, "create_audio_source", return_value=object()),
+            patch.object(
+                bridge_module,
+                "LocalFasterWhisperTranscriber",
+                return_value=MagicMock(runtime_status=runtime_status),
+            ),
+            patch.object(
+                bridge_module,
+                "build_speech_detector",
+                return_value=(object(), "silero"),
+            ),
+            patch.object(
+                bridge_module,
+                "RealtimeTranscriptionSession",
+                return_value=session,
+            ),
+        ):
+            bridge_module.LocalBackendBridge(
+                translator_factory=translator_factory
+            ).run(request=request, on_text=on_text)
+
+        translator.ensure_available.assert_called_once_with("en", "pt-br")
+        publish_chunk = session.run.call_args.kwargs["on_text"]
+        publish_chunk("hello")
+        translator.translate.assert_called_once_with("hello", "en", "pt-br")
+        chunk = on_text.call_args.args[0]
+        self.assertEqual(chunk.channel, "meeting")
+        self.assertEqual(chunk.original_text, "hello")
+        self.assertEqual(chunk.translated_text, "olá")
+        self.assertEqual(chunk.display_mode, "both")
 
     def test_push_to_talk_state_is_forwarded_to_active_session(self):
         bridge = bridge_module.LocalBackendBridge()

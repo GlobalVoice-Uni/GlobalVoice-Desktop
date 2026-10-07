@@ -13,6 +13,7 @@ from PySide6.QtGui import (
     QPainterPath,
     QPen,
     QPixmap,
+    QTextCharFormat,
     QTextCursor,
     QWheelEvent,
 )
@@ -67,6 +68,12 @@ class TranscriptionTextEdit(QTextEdit):
         font.setPointSize(self._display_font_size)
         self.setFont(font)
         self.document().setDefaultFont(font)
+        if not self.document().isEmpty():
+            cursor = QTextCursor(self.document())
+            cursor.select(QTextCursor.Document)
+            text_format = QTextCharFormat()
+            text_format.setFontPointSize(self._display_font_size)
+            cursor.mergeCharFormat(text_format)
         self._empty_state_label.setFont(font)
         self._layout_empty_state()
         self.viewport().update()
@@ -122,6 +129,8 @@ class LanguageComboBox(QComboBox):
         self.currentIndexChanged.connect(self._sync_compact_text)
         self._language_popup: QWidget | None = None
         self._popup_buttons: list[QToolButton] = []
+        self._popup_open = False
+        self._close_popup_on_release = False
 
     def add_language(self, abbreviation: str, name: str, code: str) -> None:
         self.addItem(abbreviation, code)
@@ -131,13 +140,23 @@ class LanguageComboBox(QComboBox):
     def eventFilter(self, watched, event) -> bool:
         if watched is self.lineEdit():
             if event.type() == QEvent.MouseButtonPress:
+                self._close_popup_on_release = self._popup_open
                 return True
             if event.type() == QEvent.MouseButtonRelease:
-                if self.isEnabled():
+                if self._close_popup_on_release:
+                    self._close_popup_on_release = False
+                    self.hidePopup()
+                elif self.isEnabled():
                     # Abre somente após o clique terminar para a própria soltura
                     # do mouse não fechar o menu imediatamente.
                     QTimer.singleShot(0, self.showPopup)
                 return True
+        if watched is self._language_popup and event.type() == QEvent.Hide:
+            popup = watched
+            # Em Windows, Qt.Popup pode ser ocultado automaticamente antes de
+            # o seletor receber o clique. O pequeno atraso preserva o estado
+            # necessário para interpretar esse clique como "recolher".
+            QTimer.singleShot(150, lambda: self._release_auto_hidden_popup(popup))
         return super().eventFilter(watched, event)
 
     def showPopup(self) -> None:
@@ -148,10 +167,12 @@ class LanguageComboBox(QComboBox):
         self._refresh_popup_selection()
         popup_position = self.mapToGlobal(QPoint(0, self.height() + 2))
         self._language_popup.move(popup_position)
+        self._popup_open = True
         self._language_popup.show()
         self._language_popup.raise_()
 
     def hidePopup(self) -> None:
+        self._popup_open = False
         if self._language_popup is not None:
             self._language_popup.hide()
 
@@ -215,6 +236,19 @@ class LanguageComboBox(QComboBox):
 
         popup.setFixedSize(self.width(), (self.count() * 25) + 3)
         self._language_popup = popup
+        popup.installEventFilter(self)
+
+    def _release_auto_hidden_popup(self, popup: QWidget) -> None:
+        if self._language_popup is not popup:
+            return
+        try:
+            popup_visible = popup.isVisible()
+        except RuntimeError:
+            # A toolbar pode ser encerrada antes do temporizador disparar.
+            self._language_popup = None
+            popup_visible = False
+        if not popup_visible:
+            self._popup_open = False
 
     def _select_popup_language(self, index: int) -> None:
         self.setCurrentIndex(index)
@@ -234,7 +268,7 @@ class LanguageComboBox(QComboBox):
 
 
 class FloatingTranscriptionWindow(QWidget):
-    """Janela flutuante (overlay) para exibicao em baloes de chat (estilo WhatsApp)."""
+    """Janela flutuante para leitura continua das falas da sessao."""
 
     closed = Signal()
 
@@ -246,6 +280,8 @@ class FloatingTranscriptionWindow(QWidget):
 
         self.drag_position = QPoint()
         self._new_speech_pending = True
+        self._active_channel: str | None = None
+        self._group_chunk_count = 0
         self._build_ui()
         self._apply_saved_ui()
 
@@ -325,7 +361,7 @@ class FloatingTranscriptionWindow(QWidget):
 
         layout.addWidget(header)
 
-        # Area de exibicao em baloes de mensagens
+        # Área de exibição contínua das mensagens
         self.transcription_area = TranscriptionTextEdit()
         self.transcription_area.setReadOnly(True)
         self.transcription_area.set_empty_state_text(
@@ -412,8 +448,18 @@ class FloatingTranscriptionWindow(QWidget):
         )
         super().resizeEvent(event)
 
+    def _insert_compact_pair_spacing(self) -> None:
+        """Separa pares original/tradução com menos de uma linha vazia."""
+        cursor = self.transcription_area.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        cursor.insertBlock()
+        block_format = cursor.blockFormat()
+        block_format.setTopMargin(5.0)
+        cursor.setBlockFormat(block_format)
+        self.transcription_area.setTextCursor(cursor)
+
     def append_chunk(self, chunk: Union[object, str]) -> None:
-        """Renderiza as falas como baloes de conversa (estilo WhatsApp)."""
+        """Agrupa trechos da mesma fala sem criar barras ou rotulos repetidos."""
         if not chunk:
             return
 
@@ -427,44 +473,48 @@ class FloatingTranscriptionWindow(QWidget):
             trad = html.escape(getattr(chunk, "translated_text", "")).strip()
             display_mode = getattr(chunk, "display_mode", "translation_only")
 
-            if channel_name == "user":
-                align = "right"
-                bubble_bg = "#075E54"
-                border_color = "#128C7E"
-                sender_label = "Você"
-                badge_color = "#25D366"
-            else:
-                align = "left"
-                bubble_bg = "#1E293B"
-                border_color = "#334155"
-                sender_label = "Reunião"
-                badge_color = "#818CF8"
+            starts_new_group = (
+                not self.transcription_area.toPlainText().strip()
+                or self._new_speech_pending
+                or self._active_channel != channel_name
+            )
+            if starts_new_group:
+                if self.transcription_area.toPlainText().strip():
+                    self.transcription_area.insertHtml("<br><br>")
+                sender_label = "VOCÊ" if channel_name == "user" else "REUNIÃO"
+                sender_color = "#34D399" if channel_name == "user" else "#818CF8"
+                self.transcription_area.insertHtml(
+                    f'<span style="font-weight: 700; color: {sender_color};">'
+                    f"{sender_label}</span><br>"
+                )
+                self._group_chunk_count = 0
+            elif self._group_chunk_count:
+                if display_mode == "both":
+                    self._insert_compact_pair_spacing()
+                else:
+                    self.transcription_area.insertHtml("<br>")
 
             content_parts = []
             if display_mode in ("transcript_only", "both") and orig:
+                original_color = "#94A3B8" if display_mode == "both" else "#F8FAFC"
                 content_parts.append(
-                    f'<div style="font-size: 11px; color: #94A3B8; margin-bottom: 2px;">{orig}</div>'
+                    f'<span style="color: {original_color};">{orig}</span>'
                 )
             if display_mode in ("translation_only", "both") and trad:
+                if content_parts:
+                    content_parts.append("<br>")
                 content_parts.append(
-                    f'<div style="font-size: 13px; font-weight: 600; color: #F8FAFC;">{trad}</div>'
+                    f'<span style="font-weight: 600; color: #F8FAFC;">{trad}</span>'
+                )
+            if not content_parts:
+                content_parts.append(
+                    f'<span style="color: #F8FAFC;">{orig or trad}</span>'
                 )
 
-            if not content_parts:
-                content_parts.append(f'<div style="font-size: 13px; color: #F8FAFC;">{orig or trad}</div>')
-
-            inner_content = "".join(content_parts)
-
-            bubble_html = (
-                f'<div align="{align}" style="margin-top: 6px; margin-bottom: 6px;">'
-                f'<div style="display: inline-block; max-width: 82%; background-color: {bubble_bg}; '
-                f'border: 1px solid {border_color}; border-radius: 12px; padding: 8px 12px; text-align: left;">'
-                f'<div style="font-size: 10px; font-weight: bold; color: {badge_color}; '
-                f'text-transform: uppercase; margin-bottom: 3px;">{sender_label}</div>'
-                f'{inner_content}'
-                f'</div></div>'
-            )
-            self.transcription_area.insertHtml(bubble_html)
+            self.transcription_area.insertHtml("".join(content_parts))
+            self._new_speech_pending = False
+            self._active_channel = channel_name
+            self._group_chunk_count += 1
         else:
             escaped_text = html.escape(str(chunk).strip())
             if self._new_speech_pending:
@@ -494,6 +544,8 @@ class FloatingTranscriptionWindow(QWidget):
     def clear(self) -> None:
         self.transcription_area.clear()
         self._new_speech_pending = True
+        self._active_channel = None
+        self._group_chunk_count = 0
 
     def apply_font_size(self, size: int) -> None:
         self.transcription_area.set_display_font_size(size)
@@ -703,6 +755,7 @@ class FloatingToolbar(QWidget):
     ptt_released = Signal()
     microphone_mute_changed = Signal(bool)
     source_language_changed = Signal(str)
+    target_language_changed = Signal(str)
     toggle_chat_requested = Signal()
 
     def __init__(self, parent=None):
@@ -822,7 +875,7 @@ class FloatingToolbar(QWidget):
         self.settings_btn.setIcon(_build_gear_icon(16))
         self.settings_btn.setIconSize(QSize(16, 16))
         self.settings_btn.setFixedSize(28, 28)
-        self.settings_btn.setToolTip("Opções")
+        self.settings_btn.setToolTip("Configurações")
         self.settings_btn.setCursor(Qt.PointingHandCursor)
         self.settings_btn.setAutoRaise(True)
         self.settings_btn.clicked.connect(self.settings_requested.emit)
@@ -907,8 +960,8 @@ class FloatingToolbar(QWidget):
         self.target_combo.add_language("PT", "Português", "pt-br")
         self.target_combo.add_language("ES", "Espanhol", "es")
         self._configure_language_combo(self.target_combo)
-        self.source_combo.setToolTip("Idioma do usuário")
-        self.target_combo.setToolTip("Idioma da chamada")
+        self.source_combo.setToolTip("Você")
+        self.target_combo.setToolTip("Chamada")
         self.swap_btn.setToolTip("Inverter idiomas")
         self.source_combo.currentIndexChanged.connect(
             self._on_source_language_changed
@@ -941,7 +994,7 @@ class FloatingToolbar(QWidget):
         self.ptt_btn.setIcon(_build_microphone_icon(15))
         self.ptt_btn.setIconSize(QSize(15, 15))
         self.ptt_btn.setToolTip(
-            "Selecione 'Apertar para falar' nas configurações para usar este controle."
+            "Controle do microfone."
         )
         self.ptt_btn.setCursor(Qt.PointingHandCursor)
         self.ptt_btn.setEnabled(False)
@@ -1034,6 +1087,28 @@ class FloatingToolbar(QWidget):
         finally:
             self._updating_languages = False
 
+    def set_target_language(self, language: str) -> None:
+        normalized = language if language in {"pt-br", "en", "es"} else "en"
+        self._updating_languages = True
+        try:
+            self._set_combo_language(self.target_combo, normalized)
+        finally:
+            self._updating_languages = False
+
+    def set_language_pair(self, user_language: str, meeting_language: str) -> None:
+        self._updating_languages = True
+        try:
+            self._set_combo_language(
+                self.source_combo,
+                user_language if user_language in {"pt-br", "en", "es"} else "pt-br",
+            )
+            self._set_combo_language(
+                self.target_combo,
+                meeting_language if meeting_language in {"pt-br", "en", "es"} else "en",
+            )
+        finally:
+            self._updating_languages = False
+
     def _emit_source_language(self) -> None:
         language = str(self.source_combo.currentData() or "pt-br")
         self.source_language_changed.emit(language)
@@ -1044,9 +1119,10 @@ class FloatingToolbar(QWidget):
         self._emit_source_language()
 
     def _on_target_language_changed(self) -> None:
-        # O segundo idioma permanece independente. Nesta entrega, somente o
-        # primeiro idioma configura a decodificação do Whisper.
-        return
+        if self._updating_languages:
+            return
+        language = str(self.target_combo.currentData() or "en")
+        self.target_language_changed.emit(language)
 
     def _swap_languages(self) -> None:
         source = str(self.source_combo.currentData() or "pt-br")
@@ -1058,6 +1134,9 @@ class FloatingToolbar(QWidget):
         finally:
             self._updating_languages = False
         self._emit_source_language()
+        self.target_language_changed.emit(
+            str(self.target_combo.currentData() or "en")
+        )
 
     def _on_action_clicked(self) -> None:
         if not self._is_active:
