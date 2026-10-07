@@ -47,6 +47,9 @@ Name: "custom"; Description: "Instalação personalizada"; Flags: iscustom
 [Components]
 Name: "base"; Description: "Aplicação e processamento por CPU (AMD, Intel ou fallback)"; Types: automatic custom; Flags: fixed
 Name: "nvidia"; Description: "Aceleração para GPU NVIDIA (CUDA 12/cuBLAS)"; Types: automatic
+Name: "languages"; Description: "Português (Brasil) — idioma base"; Types: automatic custom; Flags: fixed
+Name: "languages\english"; Description: "Inglês — Português"; Types: automatic custom
+Name: "languages\spanish"; Description: "Espanhol — Português"; Types: custom
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -54,6 +57,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "..\..\..\dist\GlobalVoice\*"; DestDir: "{app}"; Excludes: "_internal\runtime\nvidia\cuda12\*"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: base
 Source: "..\..\..\dist\runtime-profiles\nvidia-cuda12\*"; DestDir: "{app}\_internal\runtime\nvidia\cuda12"; Flags: ignoreversion; Components: nvidia
+Source: "..\..\..\dist\translation-packs\en\packages\*"; DestDir: "{localappdata}\GlobalVoice\translation\packages"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: languages\english
+Source: "..\..\..\dist\translation-packs\es\packages\*"; DestDir: "{localappdata}\GlobalVoice\translation\packages"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: languages\spanish
 
 [InstallDelete]
 Type: filesandordirs; Name: "{app}\_internal\runtime\nvidia\cuda12"
@@ -126,7 +131,7 @@ begin
 
   NvidiaDetected := HasNvidiaDisplayAdapter;
   if NvidiaDetected then
-    WizardSelectComponents('base,nvidia')
+    WizardSelectComponents('base,nvidia,languages,languages\english,!languages\spanish')
   else
-    WizardSelectComponents('base,!nvidia');
+    WizardSelectComponents('base,!nvidia,languages,languages\english,!languages\spanish');
 end;

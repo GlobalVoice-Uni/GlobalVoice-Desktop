@@ -9,6 +9,16 @@ Os arquivos desta pasta separam as dependencias por finalidade:
   adicional;
 - `../deploy/windows/requirements-build.txt`: ferramentas isoladas de build.
 
+O primeiro adaptador de tradução local usa o CTranslate2 já presente na
+transcrição e o SentencePiece para ler modelos oficiais no formato Argos. O
+Global Voice gerencia esses pacotes diretamente, sem instalar a biblioteca
+Python do Argos e, portanto, sem acrescentar spaCy, Stanza ou Torch. Para
+preparar um ambiente limpo:
+
+```powershell
+python -m pip install -r requirements/runtime-windows.lock
+```
+
 O Silero VAD faz parte do runtime principal e executa em CPU pelo ONNX Runtime.
 `torch` e `torchaudio` não fazem parte do ambiente de execução. A aceleração do
 Faster-Whisper continua sendo responsabilidade do CTranslate2.

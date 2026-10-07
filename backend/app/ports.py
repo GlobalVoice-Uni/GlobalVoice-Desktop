@@ -43,6 +43,25 @@ class TranscriberPort(Protocol):
         """
 
 
+class TranslatorPort(Protocol):
+    """Contrato para tradução local ou remota de um trecho confirmado."""
+
+    def ensure_available(
+        self,
+        source_language: str,
+        target_language: str,
+    ) -> None:
+        """Valida o par antes de iniciar uma sessão."""
+
+    def translate(
+        self,
+        text: str,
+        source_language: str,
+        target_language: str,
+    ) -> str:
+        """Traduz texto entre dois códigos de idioma suportados."""
+
+
 class SpeechDetectorPort(Protocol):
     """Contrato de detector de fala para segmentacao em tempo real."""
 

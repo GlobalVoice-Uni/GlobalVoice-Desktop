@@ -22,6 +22,7 @@ class SettingsStoreTests(unittest.TestCase):
         self.assertEqual(values["capture_mode"], "automatic")
         self.assertEqual(values["ui_toolbar_x"], -1)
         self.assertEqual(values["ui_toolbar_y"], -1)
+        self.assertEqual(values["min_silence_window_s"], 0.55)
 
     def test_valid_saved_preferences_are_preserved(self):
         saved = FakeSettings({"device": "cpu", "vad_type": "energy"})
@@ -32,6 +33,26 @@ class SettingsStoreTests(unittest.TestCase):
         self.assertEqual(values["device"], "cpu")
         self.assertEqual(values["vad_type"], "energy")
 
+    def test_previous_default_silence_is_migrated_to_longer_grouping(self):
+        saved = FakeSettings({"min_silence_window_s": 0.4})
+
+        with patch.object(settings_store, "QSettings", return_value=saved):
+            values = settings_store.load_settings()
+
+        self.assertEqual(values["min_silence_window_s"], 0.55)
+
+    def test_custom_silence_window_is_preserved_during_migration(self):
+        saved = FakeSettings(
+            {
+                "settings_revision": 1,
+                "min_silence_window_s": 0.7,
+            }
+        )
+
+        with patch.object(settings_store, "QSettings", return_value=saved):
+            values = settings_store.load_settings()
+
+        self.assertEqual(values["min_silence_window_s"], 0.7)
 
 if __name__ == "__main__":
     unittest.main()

@@ -18,7 +18,7 @@ def _load_soundcard():
         import soundcard as sc
     except (ImportError, OSError) as exc:
         raise AudioSourceError(
-            "O componente de captura do audio do sistema nao esta disponivel."
+            "A captura do áudio do sistema não está disponível nesta instalação."
         ) from exc
     return sc
 
@@ -79,7 +79,7 @@ class MicrophoneAudioSource:
 
         self.input_sample_rate = target_sample_rate
         self.step_samples = self.target_step_samples
-        self.display_name = "Microfone padrao"
+        self.display_name = "Microfone padrão"
 
         self._audio_queue: queue.Queue[np.ndarray] = queue.Queue()
         self._audio_remainder = np.zeros(0, dtype=np.float32)
@@ -102,10 +102,10 @@ class MicrophoneAudioSource:
             self.input_sample_rate = int(
                 device_info.get("default_samplerate", self.target_sample_rate)
             )
-            self.display_name = str(device_info.get("name", "Microfone padrao"))
+            self.display_name = str(device_info.get("name", "Microfone padrão"))
         except Exception as exc:
             raise AudioSourceError(
-                "O microfone selecionado nao esta disponivel. Escolha outra entrada."
+                "O microfone selecionado não está disponível. Escolha outra entrada."
             ) from exc
 
         self.step_samples = int(self.input_sample_rate * self.step_duration_s)
@@ -126,7 +126,7 @@ class MicrophoneAudioSource:
         except Exception as exc:
             self._stream = None
             raise AudioSourceError(
-                "Nao foi possivel iniciar o microfone selecionado."
+                "Não foi possível iniciar o microfone selecionado."
             ) from exc
 
     def close(self) -> None:
@@ -159,7 +159,7 @@ class MicrophoneAudioSource:
             peak: amplitude de pico no bloco valido (usada no VAD simples).
         """
         if self._stream is None:
-            raise RuntimeError("Audio source is not open.")
+            raise AudioSourceError("O microfone não foi iniciado corretamente.")
 
         parts = []
         total = 0
@@ -218,7 +218,7 @@ class WasapiLoopbackAudioSource:
         self.output_device = output_device
         self.input_sample_rate = capture_sample_rate
         self.step_samples = int(capture_sample_rate * step_duration_s)
-        self.display_name = "Audio do sistema"
+        self.display_name = "Áudio do sistema"
         self._soundcard_module = soundcard_module
         self._recorder_context = None
         self._recorder = None
@@ -233,7 +233,7 @@ class WasapiLoopbackAudioSource:
     def open(self) -> None:
         if sys.platform != "win32" and self._soundcard_module is None:
             raise AudioSourceError(
-                "A captura do audio do sistema esta disponivel somente no Windows."
+                "A captura do áudio do sistema está disponível somente no Windows."
             )
 
         sc = self._soundcard_module or _load_soundcard()
@@ -243,14 +243,14 @@ class WasapiLoopbackAudioSource:
                 default_speaker = sc.default_speaker()
                 if default_speaker is None:
                     raise AudioSourceError(
-                        "Nenhuma saida de audio padrao foi encontrada no Windows."
+                        "Nenhuma saída de áudio padrão foi encontrada no Windows."
                     )
                 device_id = str(default_speaker.id)
 
             loopback = sc.get_microphone(str(device_id), include_loopback=True)
             if not bool(getattr(loopback, "isloopback", False)):
                 raise AudioSourceError(
-                    "O dispositivo selecionado nao oferece captura WASAPI loopback."
+                    "O dispositivo selecionado não oferece captura WASAPI loopback."
                 )
 
             channel_count = max(1, int(getattr(loopback, "channels", 2)))
@@ -265,15 +265,15 @@ class WasapiLoopbackAudioSource:
                 exclusive_mode=False,
             )
             self._recorder = self._recorder_context.__enter__()
-            self.display_name = f"Audio do sistema - {loopback.name}"
+            self.display_name = f"Áudio do sistema — {loopback.name}"
         except AudioSourceError:
             self.close()
             raise
         except Exception as exc:
             self.close()
             raise AudioSourceError(
-                "Nao foi possivel iniciar a captura do audio do sistema. "
-                "Verifique a saida selecionada."
+                "Não foi possível iniciar a captura do áudio do sistema. "
+                "Verifique a saída selecionada."
             ) from exc
 
     def close(self) -> None:
@@ -286,13 +286,13 @@ class WasapiLoopbackAudioSource:
     def read_step(self, timeout_s: float = 2.0) -> Tuple[np.ndarray, float]:
         del timeout_s
         if self._recorder is None:
-            raise RuntimeError("Audio source is not open.")
+            raise AudioSourceError("A captura do áudio do sistema não foi iniciada.")
 
         try:
             captured = self._recorder.record(numframes=self.step_samples)
         except Exception as exc:
             raise AudioSourceError(
-                "A saida de audio foi desconectada ou ficou indisponivel."
+                "A saída de áudio foi desconectada ou ficou indisponível."
             ) from exc
 
         mono = _to_mono(captured)

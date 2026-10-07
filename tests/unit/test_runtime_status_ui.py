@@ -1,13 +1,16 @@
 import os
+import time
 import unittest
 from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QFrame, QLabel, QPushButton
 from PySide6.QtTest import QTest
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QCloseEvent
 
+from backend.app.transcript import TranscriptChunk
 from backend.app.runtime_status import (
     ActiveDevice,
     DevicePreference,
@@ -19,9 +22,11 @@ from frontend.src.transcription_window.floating_windows import (
     FloatingToolbar,
     FloatingTranscriptionWindow,
 )
+from frontend.src.transcription_window.dialogs import ConfirmationDialog
 from frontend.src.transcription_window.controller import RealtimeController
 from frontend.src.transcription_window.main_window import MainWindow
 from frontend.src.transcription_window.settings_window import SettingsWindow
+from frontend.src.transcription_window.settings_store import DEFAULT_SETTINGS
 
 
 class RuntimeStatusUiTests(unittest.TestCase):
@@ -44,7 +49,7 @@ class RuntimeStatusUiTests(unittest.TestCase):
 
         self.assertEqual(window.device_combo.currentData(), "gpu")
         self.assertEqual(window.active_device_label.text(), "CPU · fallback")
-        self.assertIn("nao pode ser inicializada", window.active_device_label.toolTip())
+        self.assertIn("não pôde ser inicializada", window.active_device_label.toolTip())
         window.close()
 
     def test_toolbar_shows_the_provider_that_is_really_active(self):
@@ -259,6 +264,129 @@ class RuntimeStatusUiTests(unittest.TestCase):
         self.assertEqual(request.language, "en")
         window.close()
 
+    def test_language_pair_stays_synchronized_between_settings_and_toolbar(self):
+        values = dict(DEFAULT_SETTINGS)
+        with (
+            patch(
+                "frontend.src.transcription_window.main_window.load_settings",
+                return_value=values,
+            ),
+            patch(
+                "frontend.src.transcription_window.settings_window.load_settings",
+                return_value=values,
+            ),
+        ):
+            window = MainWindow()
+
+        with (
+            patch("frontend.src.transcription_window.main_window.save_settings"),
+            patch("frontend.src.transcription_window.settings_window.save_settings"),
+        ):
+            window.settings_window.user_language_combo.setCurrentIndex(
+                window.settings_window.user_language_combo.findData("es")
+            )
+            window.settings_window.meeting_language_combo.setCurrentIndex(
+                window.settings_window.meeting_language_combo.findData("pt-br")
+            )
+
+            self.assertEqual(window.toolbar.source_combo.currentData(), "pt-br")
+            self.assertEqual(window.toolbar.target_combo.currentData(), "en")
+            window.settings_window._on_save_clicked()
+
+            self.assertEqual(window.toolbar.source_combo.currentData(), "es")
+            self.assertEqual(window.toolbar.target_combo.currentData(), "pt-br")
+
+            window.toolbar.source_combo.setCurrentIndex(
+                window.toolbar.source_combo.findData("en")
+            )
+            window.toolbar.target_combo.setCurrentIndex(
+                window.toolbar.target_combo.findData("es")
+            )
+
+        self.assertEqual(
+            window.settings_window.user_language_combo.currentData(), "en"
+        )
+        self.assertEqual(
+            window.settings_window.meeting_language_combo.currentData(), "es"
+        )
+        window.close()
+
+    def test_settings_diagnostic_uses_only_saved_values(self):
+        values = dict(DEFAULT_SETTINGS)
+        window = SettingsWindow()
+        window.user_language_combo.setCurrentIndex(
+            window.user_language_combo.findData("es")
+        )
+
+        with (
+            patch(
+                "frontend.src.transcription_window.settings_window.load_settings",
+                return_value=values,
+            ),
+            patch.object(window.controller, "start_session") as start_session,
+        ):
+            window._on_start_clicked()
+
+        request = start_session.call_args.args[0]
+        self.assertEqual(request.language, "pt-br")
+        self.assertEqual(window.user_language_combo.currentData(), "pt-br")
+        window.close()
+
+    def test_toolbar_language_context_is_explained_only_by_tooltip(self):
+        toolbar = FloatingToolbar()
+
+        self.assertEqual(toolbar.source_combo.toolTip(), "Você")
+        self.assertEqual(toolbar.target_combo.toolTip(), "Chamada")
+        visible_labels = {child.text() for child in toolbar.findChildren(QLabel)}
+        self.assertNotIn("Você", visible_labels)
+        self.assertNotIn("Chamada", visible_labels)
+        toolbar.close()
+
+    def test_loopback_uses_meeting_language_and_translates_to_user_language(self):
+        values = dict(DEFAULT_SETTINGS)
+        values.update(
+            audio_source="loopback",
+            user_language="pt-br",
+            meeting_language="en",
+            display_mode="both",
+        )
+        with patch(
+            "frontend.src.transcription_window.main_window.load_settings",
+            return_value=values,
+        ):
+            window = MainWindow()
+            request = window._build_request()
+
+        self.assertEqual(request.language, "en")
+        self.assertEqual(request.target_language, "pt-br")
+        self.assertEqual(request.display_mode, "both")
+        window.close()
+
+    def test_language_pack_tab_reports_installed_and_optional_models(self):
+        class FakeLanguageManager:
+            @staticmethod
+            def language_packs():
+                from backend.app.translators.argos_local import ArgosModelManager
+
+                return ArgosModelManager.language_packs()
+
+            @staticmethod
+            def is_installed(code):
+                return code == "en"
+
+        window = SettingsWindow(language_manager_factory=FakeLanguageManager)
+        window._start_language_pack_task("status")
+        deadline = time.time() + 1.0
+        while window._language_pack_busy and time.time() < deadline:
+            self.app.processEvents()
+            time.sleep(0.01)
+
+        self.assertEqual(window.language_pack_status_labels["en"].text(), "Instalado")
+        self.assertEqual(window.language_pack_buttons["en"].text(), "Desinstalar")
+        self.assertEqual(window.language_pack_status_labels["es"].text(), "Não instalado")
+        self.assertEqual(window.language_pack_buttons["es"].text(), "Instalar")
+        window.close()
+
     def test_runtime_indicator_uses_idle_loading_and_active_states(self):
         toolbar = FloatingToolbar()
 
@@ -282,6 +410,209 @@ class RuntimeStatusUiTests(unittest.TestCase):
         self.assertEqual(transcription.transcription_area._empty_state_label.font().pointSize(), 13)
         self.assertFalse(transcription.transcription_area._empty_state_label.isHidden())
         transcription.close()
+
+    def test_font_size_changes_existing_transcription_text(self):
+        transcription = FloatingTranscriptionWindow()
+        transcription.append_chunk(
+            TranscriptChunk("meeting", "Hello", "Olá", "both")
+        )
+
+        transcription.apply_font_size(19)
+
+        translated_text = transcription.transcription_area.document().find("Olá")
+        content = transcription.transcription_area.toPlainText()
+        self.assertEqual(translated_text.charFormat().fontPointSize(), 19)
+        self.assertEqual(content.count("REUNIÃO"), 1)
+        transcription.close()
+
+    def test_chat_groups_continuations_without_repeating_sender_or_blank_lines(self):
+        transcription = FloatingTranscriptionWindow()
+        transcription.append_chunk(
+            TranscriptChunk("user", "primeiro", "first", "translation_only")
+        )
+        transcription.append_chunk(
+            TranscriptChunk("user", "segundo", "second", "translation_only")
+        )
+
+        content = transcription.transcription_area.toPlainText()
+        self.assertEqual(content, "VOCÊ\nfirst\nsecond")
+        self.assertEqual(content.count("VOCÊ"), 1)
+
+        transcription.begin_speech()
+        transcription.append_chunk(
+            TranscriptChunk("user", "terceiro", "third", "translation_only")
+        )
+        self.assertIn("second\n\nVOCÊ\nthird", transcription.transcription_area.toPlainText())
+        transcription.close()
+
+    def test_chat_separates_original_and_translation_without_background_bars(self):
+        transcription = FloatingTranscriptionWindow()
+        transcription.append_chunk(
+            TranscriptChunk("meeting", "Hello", "Olá", "both")
+        )
+        transcription.append_chunk(
+            TranscriptChunk("meeting", "How are you?", "Como você está?", "both")
+        )
+
+        content = transcription.transcription_area.toPlainText()
+        html_content = transcription.transcription_area.toHtml()
+        self.assertEqual(
+            content,
+            "REUNIÃO\nHello\nOlá\nHow are you?\nComo você está?",
+        )
+        self.assertNotIn("background-color:#075e54", html_content.lower())
+        self.assertNotIn("background-color:#1e293b", html_content.lower())
+        transcription.close()
+
+    def test_settings_fields_remain_compact_on_wide_and_medium_windows(self):
+        window = SettingsWindow()
+        window.show()
+
+        for width in (1500, 700):
+            window.resize(width, 680)
+            self.app.processEvents()
+            self.assertLessEqual(window.model_combo.width(), 560)
+            self.assertEqual(window.active_device_label.width(), window.model_combo.width())
+            self.assertEqual(window.active_device_label.height(), window.model_combo.height())
+            self.assertGreaterEqual(window.height(), 670)
+            label = window.tabs.widget(0).layout().labelForField(window.model_combo)
+            self.assertLess(label.geometry().right(), window.model_combo.geometry().left())
+
+        window.close()
+
+    def test_confirmation_dialog_is_compact_and_centered_without_icon(self):
+        dialog = ConfirmationDialog(
+            None,
+            "Encerrar o GlobalVoice?",
+            "Existem configurações não salvas. Deseja encerrar mesmo assim?",
+            confirm_text="Encerrar",
+            cancel_text="Continuar usando",
+            default_confirm=False,
+        )
+        dialog.show()
+        self.app.processEvents()
+
+        self.assertEqual(dialog.width(), 380)
+        self.assertEqual(dialog.message_label.alignment(), Qt.AlignCenter)
+        self.assertEqual(len(dialog.findChildren(QLabel)), 1)
+        self.assertEqual(len(dialog.findChildren(QPushButton)), 2)
+        buttons_center = (
+            dialog.confirm_button.x() + dialog.cancel_button.geometry().right()
+        ) / 2
+        self.assertAlmostEqual(buttons_center, dialog.width() / 2, delta=2)
+        dialog.close()
+
+    def test_settings_dropdown_uses_custom_spaced_popup(self):
+        window = SettingsWindow()
+        window.show()
+        self.app.processEvents()
+
+        window.model_combo.showPopup()
+        self.app.processEvents()
+
+        popup = window.model_combo._settings_popup
+        self.assertIsNotNone(popup)
+        self.assertEqual(popup.width(), window.model_combo.width())
+        options = popup.findChildren(QPushButton)
+        self.assertEqual(len(options), window.model_combo.count())
+        self.assertTrue(all(option.minimumHeight() >= 34 for option in options))
+        self.assertIn("#0F172A", popup.findChild(QFrame).styleSheet())
+        QTest.mouseClick(window.model_combo, Qt.LeftButton)
+        self.app.processEvents()
+        self.assertIsNone(window.model_combo._settings_popup)
+        QTest.mouseClick(window.model_combo, Qt.LeftButton)
+        self.app.processEvents()
+        self.assertIsNotNone(window.model_combo._settings_popup)
+        self.assertTrue(window.model_combo._settings_popup.isVisible())
+        window.model_combo.hidePopup()
+        window.close()
+
+
+    def test_settings_track_unsaved_changes_until_save(self):
+        window = SettingsWindow()
+        original_index = window.model_combo.currentIndex()
+        changed_index = (original_index + 1) % window.model_combo.count()
+
+        window.model_combo.setCurrentIndex(changed_index)
+
+        self.assertTrue(window.has_unsaved_changes())
+        with patch("frontend.src.transcription_window.settings_window.save_settings"):
+            window._on_save_clicked()
+        self.assertFalse(window.has_unsaved_changes())
+        window.close()
+
+    def test_closing_settings_discards_unsaved_changes(self):
+        values = dict(DEFAULT_SETTINGS)
+        with patch(
+            "frontend.src.transcription_window.settings_window.load_settings",
+            return_value=values,
+        ):
+            window = SettingsWindow()
+            saved_index = window.model_combo.currentIndex()
+            changed_index = (saved_index + 1) % window.model_combo.count()
+            window.show()
+            window.model_combo.setCurrentIndex(changed_index)
+
+            self.assertTrue(window.has_unsaved_changes())
+            window.close()
+            self.app.processEvents()
+
+        self.assertEqual(window.model_combo.currentIndex(), saved_index)
+        self.assertFalse(window.has_unsaved_changes())
+        window.show()
+        self.assertEqual(window.model_combo.currentIndex(), saved_index)
+        window.close()
+
+    def test_home_close_warns_and_can_cancel_when_work_would_be_lost(self):
+        window = MainWindow()
+        original_index = window.settings_window.model_combo.currentIndex()
+        changed_index = (
+            original_index + 1
+        ) % window.settings_window.model_combo.count()
+        window.settings_window.model_combo.setCurrentIndex(changed_index)
+        window.controller._running = True
+        event = QCloseEvent()
+
+        with (
+            patch(
+                "frontend.src.transcription_window.main_window.ask_confirmation",
+                return_value=False,
+            ) as confirmation,
+            patch.object(window.controller, "stop_session") as stop_session,
+        ):
+            window.closeEvent(event)
+
+        self.assertFalse(event.isAccepted())
+        stop_session.assert_not_called()
+        message = confirmation.call_args.args[2]
+        self.assertIn("transcrição está em andamento", message)
+        self.assertIn("configurações não salvas", message)
+        self.assertIn(".\nDeseja encerrar", message)
+        window.controller._running = False
+        window.hide()
+        window.settings_window.hide()
+        window.toolbar.hide()
+        window.transcription_window.hide()
+
+    def test_home_close_stops_session_and_hides_auxiliary_windows_when_confirmed(self):
+        window = MainWindow()
+        window.controller._running = True
+        event = QCloseEvent()
+
+        with (
+            patch(
+                "frontend.src.transcription_window.main_window.ask_confirmation",
+                return_value=True,
+            ),
+            patch.object(window.controller, "stop_session") as stop_session,
+        ):
+            window.closeEvent(event)
+
+        self.assertTrue(event.isAccepted())
+        stop_session.assert_called_once_with()
+        self.assertFalse(window.settings_window.isVisible())
+        self.assertFalse(window.toolbar.isVisible())
+        self.assertFalse(window.transcription_window.isVisible())
 
     def test_saved_toolbar_position_is_reused_when_windows_are_shown(self):
         window = MainWindow()

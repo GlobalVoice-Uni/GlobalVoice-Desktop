@@ -4,9 +4,13 @@ SETTINGS_ORG = "GlobalVoice"
 SETTINGS_APP = "RealtimeSettings"
 
 DEFAULT_SETTINGS = {
+    "settings_revision": 2,
     "model_size": "small",
     "device": "gpu",
     "language": "pt-br",
+    "user_language": "pt-br",
+    "meeting_language": "en",
+    "display_mode": "translation_only",
     "capture_mode": "automatic",
     "audio_source": "microphone",
     "audio_device_id": "",
@@ -18,7 +22,7 @@ DEFAULT_SETTINGS = {
     "silero_min_silence_ms": 120,
     "silero_speech_pad_ms": 30,
     "min_speech_window_s": 0.2,
-    "min_silence_window_s": 0.4,
+    "min_silence_window_s": 0.55,
     "max_utterance_s": 3.2,
     "min_utterance_s": 0.7,
     "boundary_overlap_s": 0.45,
@@ -57,6 +61,13 @@ def load_settings():
         values[key] = _coerce_value(settings.value(key, default), default)
     if values["device"] == "auto":
         values["device"] = "gpu"
+    saved_revision = _coerce_value(settings.value("settings_revision", 1), 1)
+    if saved_revision < 2:
+        saved_silence = _coerce_value(
+            settings.value("min_silence_window_s", 0.4), 0.4
+        )
+        if abs(saved_silence - 0.4) < 0.001:
+            values["min_silence_window_s"] = 0.55
     return values
 
 

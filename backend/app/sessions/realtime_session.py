@@ -110,22 +110,23 @@ class _TranscriptionWorker:
                 queue_wait_s = processing_started - job.queued_at
                 if job.begins_visual_speech and self._on_speech_start:
                     self._on_speech_start()
-                self._session._process_utterance(
+                transcription_processing_s = self._session._process_utterance(
                     utter=job.utter,
                     min_utt_samples=job.min_utt_samples,
                     forced_split=job.forced_split,
                     on_text=self._on_text,
                 )
-                processing_s = time.perf_counter() - processing_started
                 audio_duration_s = (
                     len(job.utter) / self._session.audio_source.target_sample_rate
                 )
                 timing = TranscriptionTiming(
                     audio_duration_s=audio_duration_s,
                     queue_wait_s=queue_wait_s,
-                    processing_s=processing_s,
+                    processing_s=transcription_processing_s,
                     real_time_factor=(
-                        processing_s / audio_duration_s if audio_duration_s else 0.0
+                        transcription_processing_s / audio_duration_s
+                        if audio_duration_s
+                        else 0.0
                     ),
                 )
                 self._session._record_transcription_timing(timing)
@@ -149,7 +150,7 @@ class _TranscriptionWorker:
         self._last_warning_at = now
         self._on_status(
             "Atraso detectado: STT levou "
-            f"{timing.processing_s:.1f}s para {timing.audio_duration_s:.1f}s de audio; "
+            f"{timing.processing_s:.1f}s para {timing.audio_duration_s:.1f}s de áudio; "
             f"espera na fila {timing.queue_wait_s:.1f}s."
         )
 
@@ -170,10 +171,10 @@ class RealtimeTranscriptionSession:
         capture_mode: str = "automatic",
         context_window: int = 0,
         speech_peak_threshold: float = 0.0018,
-        max_silence_inside_utterance_s: float = 0.4,
+        max_silence_inside_utterance_s: float = 0.55,
         min_speech_window_s: float = 0.2,
         min_silence_window_s: Optional[float] = None,
-        new_speech_silence_s: float = 1.2,
+        new_speech_silence_s: float = 2.0,
         max_utterance_s: float = 3.2,
         min_utterance_s: float = 0.7,
         boundary_overlap_s: float = 0.45,
@@ -301,7 +302,7 @@ class RealtimeTranscriptionSession:
                 on_voice_activity(normalized)
 
         if on_status:
-            on_status("Inicializando captura de audio...")
+            on_status("Inicializando captura de áudio...")
 
         started_at = time.time()
 
@@ -333,7 +334,7 @@ class RealtimeTranscriptionSession:
             overlap_samples = int(self.boundary_overlap_s * self.audio_source.target_sample_rate)
 
             if on_status:
-                source_name = getattr(self.audio_source, "display_name", "Fonte de audio")
+                source_name = getattr(self.audio_source, "display_name", "Fonte de áudio")
                 on_status(
                     f"Captura ativa: {source_name} em "
                     f"{self.audio_source.input_sample_rate} Hz "
@@ -537,19 +538,22 @@ class RealtimeTranscriptionSession:
         min_utt_samples: int,
         forced_split: bool,
         on_text: Callable[[str], None],
-    ) -> None:
+    ) -> float:
         """Transcreve um enunciado completo e aplica regras de commit."""
         if len(utter) < min_utt_samples:
-            return
+            return 0.0
 
         context_prompt = " ".join(self._context_words) if self._context_words else None
+        transcription_started = time.perf_counter()
         text = self.transcriber.transcribe(
             utter,
             language=self.language,
             context_prompt=context_prompt,
         )
+        transcription_processing_s = time.perf_counter() - transcription_started
         if text:
             self._commit_transcribed_text(text, forced_split=forced_split, on_text=on_text)
+        return transcription_processing_s
 
     def _flush_pending_tail(self, on_text: Callable[[str], None]) -> None:
         """Publica cauda pendente quando nao ha nova fala para reconciliação."""

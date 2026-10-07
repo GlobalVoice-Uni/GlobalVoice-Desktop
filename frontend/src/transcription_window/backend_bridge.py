@@ -6,7 +6,9 @@ from backend.app.audio.devices import AudioDeviceCatalog, enumerate_audio_device
 from backend.app.sessions.realtime_session import RealtimeTranscriptionSession
 from backend.app.detectors.speech_detectors import build_speech_detector
 from backend.app.runtime_status import RuntimeStatus
+from backend.app.transcript import TranscriptChunk
 from backend.app.transcribers.local_faster_whisper import LocalFasterWhisperTranscriber
+from backend.app.translators.argos_local import ArgosLocalTranslator
 
 
 @dataclass
@@ -19,6 +21,8 @@ class SessionRequest:
     model_size: str = "small"
     device: str = "gpu"
     language: str = "pt-br"
+    target_language: str = "pt-br"
+    display_mode: str = "translation_only"
     capture_mode: str = "automatic"
     audio_source: str = "microphone"
     audio_device_id: Optional[str] = None
@@ -34,8 +38,8 @@ class SessionRequest:
 
     # Janelas e limites de segmentacao.
     min_speech_window_s: float = 0.2
-    min_silence_window_s: float = 0.4
-    new_speech_silence_s: float = 1.2
+    min_silence_window_s: float = 0.55
+    new_speech_silence_s: float = 2.0
     max_utterance_s: float = 3.2
     min_utterance_s: float = 0.7
 
@@ -55,7 +59,7 @@ class TranscriptionBridge(Protocol):
     def run(
         self,
         request: SessionRequest,
-        on_text: Callable[[str], None],
+        on_text: Callable[[object], None],
         on_status: Optional[Callable[[str], None]] = None,
         on_runtime_status: Optional[Callable[[RuntimeStatus], None]] = None,
         on_speech_start: Optional[Callable[[], None]] = None,
@@ -76,15 +80,16 @@ class TranscriptionBridge(Protocol):
 class LocalBackendBridge:
     """Implementacao atual: roda captura+ASR no mesmo processo da aplicacao."""
 
-    def __init__(self):
+    def __init__(self, translator_factory=ArgosLocalTranslator):
         self._session: Optional[RealtimeTranscriptionSession] = None
         self._talk_active = False
         self._microphone_muted = False
+        self._translator_factory = translator_factory
 
     def run(
         self,
         request: SessionRequest,
-        on_text: Callable[[str], None],
+        on_text: Callable[[object], None],
         on_status: Optional[Callable[[str], None]] = None,
         on_runtime_status: Optional[Callable[[RuntimeStatus], None]] = None,
         on_speech_start: Optional[Callable[[], None]] = None,
@@ -121,6 +126,35 @@ class LocalBackendBridge:
             on_status=on_status,
         )
 
+        translator = None
+        should_translate = (
+            request.audio_source == "loopback"
+            and request.display_mode in {"translation_only", "both"}
+            and request.language != request.target_language
+        )
+        if should_translate:
+            if on_status:
+                on_status("Carregando tradução local...")
+            translator = self._translator_factory()
+            translator.ensure_available(request.language, request.target_language)
+
+        def publish_chunk(text: str) -> None:
+            translated_text = ""
+            if translator is not None:
+                translated_text = translator.translate(
+                    text,
+                    request.language,
+                    request.target_language,
+                )
+            on_text(
+                TranscriptChunk(
+                    channel=("meeting" if request.audio_source == "loopback" else "user"),
+                    original_text=text,
+                    translated_text=translated_text,
+                    display_mode=request.display_mode,
+                )
+            )
+
         self._session = RealtimeTranscriptionSession(
             audio_source=audio_source,
             transcriber=transcriber,
@@ -144,7 +178,7 @@ class LocalBackendBridge:
         self._session.set_microphone_muted(self._microphone_muted)
 
         return self._session.run(
-            on_text=on_text,
+            on_text=publish_chunk,
             on_status=on_status,
             on_speech_start=on_speech_start,
             on_voice_activity=on_voice_activity,

@@ -91,12 +91,12 @@ def enumerate_audio_devices(
                 )
             )
     except Exception as exc:
-        warnings.append(f"Nao foi possivel enumerar entradas de audio: {exc}")
+        warnings.append(f"Não foi possível listar as entradas de áudio: {exc}")
 
     sc = soundcard_module if soundcard_module is not None else _load_soundcard()
     if not sc:
         warnings.append(
-            "O suporte WASAPI loopback nao esta instalado; somente entradas estao disponiveis."
+            "A captura do áudio do sistema não está disponível; somente microfones podem ser usados."
         )
         return AudioDeviceCatalog(tuple(devices), tuple(warnings))
 
@@ -116,7 +116,7 @@ def enumerate_audio_devices(
             devices.append(AudioDeviceInfo(kind=AudioDeviceKind.OUTPUT, **common))
             devices.append(AudioDeviceInfo(kind=AudioDeviceKind.LOOPBACK, **common))
     except Exception as exc:
-        warnings.append(f"Nao foi possivel enumerar saidas WASAPI: {exc}")
+        warnings.append(f"Não foi possível listar as saídas de áudio: {exc}")
 
     return AudioDeviceCatalog(tuple(devices), tuple(warnings))
 

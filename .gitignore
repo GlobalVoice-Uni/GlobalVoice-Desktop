@@ -46,3 +46,4 @@ experiments/loopback_probe/results/*.wav
 # ========================
 .build/
 dist/
+.local-translation/

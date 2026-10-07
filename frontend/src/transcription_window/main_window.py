@@ -1,18 +1,19 @@
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
-    QHBoxLayout,
     QLabel,
     QMainWindow,
-    QMessageBox,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
 from .backend_bridge import SessionRequest
 from .controller import RealtimeController
+from .dialogs import ask_confirmation, show_error
 from .floating_windows import FloatingToolbar, FloatingTranscriptionWindow
 from .settings_store import load_settings, save_settings
 from .settings_window import SettingsWindow
@@ -24,7 +25,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Global Voice")
-        self.resize(560, 360)
+        self.resize(640, 460)
+        self.setMinimumSize(520, 380)
 
         self.controller = RealtimeController()
         self.settings_window = SettingsWindow(controller=self.controller)
@@ -43,14 +45,17 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(root)
 
         layout = QVBoxLayout(root)
-        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setContentsMargins(42, 42, 42, 42)
         layout.setAlignment(Qt.AlignCenter)
 
         card = QFrame()
         card.setObjectName("homeCard")
+        card.setMinimumSize(420, 280)
+        card.setMaximumSize(680, 520)
+        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(30, 30, 30, 30)
-        card_layout.setSpacing(16)
+        card_layout.setContentsMargins(46, 40, 46, 40)
+        card_layout.setSpacing(22)
         card_layout.setAlignment(Qt.AlignCenter)
 
         title = QLabel("Global Voice")
@@ -64,14 +69,20 @@ class MainWindow(QMainWindow):
         self.settings_button.setProperty("kind", "secondary")
         self.start_button.setCursor(Qt.PointingHandCursor)
         self.settings_button.setCursor(Qt.PointingHandCursor)
+        for button in (self.start_button, self.settings_button):
+            button.setFixedSize(300, 46)
 
-        button_row = QHBoxLayout()
-        button_row.setSpacing(12)
-        button_row.addWidget(self.start_button)
-        button_row.addWidget(self.settings_button)
+        button_column = QVBoxLayout()
+        button_column.setSpacing(12)
+        button_column.setAlignment(Qt.AlignCenter)
+        button_column.addWidget(self.start_button, alignment=Qt.AlignCenter)
+        button_column.addWidget(self.settings_button, alignment=Qt.AlignCenter)
 
+        card_layout.addStretch(1)
         card_layout.addWidget(title)
-        card_layout.addLayout(button_row)
+        card_layout.addSpacing(8)
+        card_layout.addLayout(button_column)
+        card_layout.addStretch(1)
         layout.addWidget(card)
 
         self.setStyleSheet(
@@ -82,19 +93,21 @@ class MainWindow(QMainWindow):
                 font-family: 'Bahnschrift', 'Segoe UI';
             }
             QFrame#homeCard {
-                background: rgba(15, 30, 45, 0.95);
+                background: rgba(30, 41, 59, 0.72);
                 border-radius: 18px;
                 border: 1px solid rgba(70, 73, 251, 0.3);
             }
             QLabel#homeTitle {
-                font-size: 32px;
+                background: transparent;
+                font-size: 40px;
                 font-weight: 700;
                 color: #FFFFFF;
             }
             QPushButton {
                 border-radius: 10px;
-                padding: 10px 18px;
+                padding: 0 20px;
                 font-weight: 600;
+                font-size: 14px;
             }
             QPushButton[kind="primary"] {
                 background: rgba(52, 56, 214, 0.95);
@@ -102,7 +115,7 @@ class MainWindow(QMainWindow):
                 border: none;
             }
             QPushButton[kind="secondary"] {
-                background: rgba(4, 0, 58, 0.55);
+                background: rgba(30, 41, 59, 0.95);
                 color: #FFFFFF;
                 border: 1px solid rgba(70, 73, 251, 0.5);
             }
@@ -114,8 +127,6 @@ class MainWindow(QMainWindow):
             }
             QPushButton:pressed {
                 background: rgba(70, 73, 251, 0.7);
-                padding-top: 11px;
-                padding-bottom: 9px;
             }
             """
         )
@@ -132,6 +143,10 @@ class MainWindow(QMainWindow):
             self.controller.set_microphone_muted
         )
         self.toolbar.source_language_changed.connect(self._on_source_language_changed)
+        self.toolbar.target_language_changed.connect(self._on_target_language_changed)
+        self.settings_window.language_pair_changed.connect(
+            self._on_settings_language_pair_changed
+        )
         self.toolbar.toggle_chat_requested.connect(self._on_toggle_chat)
         self.toolbar.clear_btn.clicked.connect(self._on_toolbar_clear_clicked)
         self.toolbar.settings_requested.connect(self._on_settings_clicked)
@@ -194,7 +209,10 @@ class MainWindow(QMainWindow):
         if values.get("audio_source") == "loopback":
             capture_mode = "automatic"
         self.toolbar.set_capture_mode(capture_mode)
-        self.toolbar.set_source_language(values.get("language", "pt-br"))
+        self.toolbar.set_language_pair(
+            values.get("user_language", values.get("language", "pt-br")),
+            values.get("meeting_language", "en"),
+        )
 
     def _restore_home(self) -> None:
         self.showNormal()
@@ -232,12 +250,24 @@ class MainWindow(QMainWindow):
         if audio_source == "loopback":
             capture_mode = "automatic"
 
+        user_language = str(
+            self.toolbar.source_combo.currentData()
+            or values.get("user_language", "pt-br")
+        )
+        meeting_language = str(
+            self.toolbar.target_combo.currentData()
+            or values.get("meeting_language", "en")
+        )
+        recognition_language = (
+            meeting_language if audio_source == "loopback" else user_language
+        )
+
         return SessionRequest(
             model_size=values["model_size"],
             device=values["device"],
-            language=str(
-                self.toolbar.source_combo.currentData() or values["language"]
-            ),
+            language=recognition_language,
+            target_language=user_language,
+            display_mode=values.get("display_mode", "translation_only"),
             capture_mode=capture_mode,
             audio_source=audio_source,
             audio_device_id=values.get("audio_device_id") or None,
@@ -263,7 +293,8 @@ class MainWindow(QMainWindow):
         self.showMinimized()
 
     def _on_settings_clicked(self) -> None:
-        self.settings_window.refresh_from_storage()
+        if not self.settings_window.has_unsaved_changes():
+            self.settings_window.refresh_from_storage()
         self.settings_window.show()
         self.settings_window.raise_()
         self.settings_window.activateWindow()
@@ -275,7 +306,10 @@ class MainWindow(QMainWindow):
         if values.get("audio_source") == "loopback":
             capture_mode = "automatic"
         self.toolbar.set_capture_mode(capture_mode)
-        self.toolbar.set_source_language(values.get("language", "pt-br"))
+        self.toolbar.set_language_pair(
+            values.get("user_language", values.get("language", "pt-br")),
+            values.get("meeting_language", "en"),
+        )
         source = (
             "áudio da reunião"
             if values.get("audio_source") == "loopback"
@@ -303,7 +337,33 @@ class MainWindow(QMainWindow):
         self.controller.set_talk_active(False)
 
     def _on_source_language_changed(self, language: str) -> None:
-        save_settings({"language": language})
+        meeting_language = str(self.toolbar.target_combo.currentData() or "en")
+        self.settings_window.set_language_pair(
+            language, meeting_language, mark_saved=True
+        )
+        save_settings(
+            {
+                "user_language": language,
+                "meeting_language": meeting_language,
+            }
+        )
+
+    def _on_target_language_changed(self, language: str) -> None:
+        user_language = str(self.toolbar.source_combo.currentData() or "pt-br")
+        self.settings_window.set_language_pair(
+            user_language, language, mark_saved=True
+        )
+        save_settings(
+            {
+                "user_language": user_language,
+                "meeting_language": language,
+            }
+        )
+
+    def _on_settings_language_pair_changed(
+        self, user_language: str, meeting_language: str
+    ) -> None:
+        self.toolbar.set_language_pair(user_language, meeting_language)
 
     def _on_toolbar_clear_clicked(self) -> None:
         self.transcription_window.clear()
@@ -315,8 +375,8 @@ class MainWindow(QMainWindow):
             self.toolbar.set_idle()
         self.toolbar.set_buttons_state(is_running, allow_stop=not self._loading_session)
 
-    def _on_transcript_chunk(self, chunk: str) -> None:
-        self.transcription_window.append_text(chunk)
+    def _on_transcript_chunk(self, chunk: object) -> None:
+        self.transcription_window.append_chunk(chunk)
 
     def _on_session_finished(self, final_text: str) -> None:
         if final_text and not self.transcription_window.transcription_area.toPlainText().strip():
@@ -326,7 +386,7 @@ class MainWindow(QMainWindow):
         self._loading_session = False
         self.toolbar.set_idle()
         self.toolbar.set_buttons_state(False)
-        QMessageBox.critical(self, "Erro na transcrição", message)
+        show_error(self, "Não foi possível iniciar", message)
 
     def _set_status(self, message: str) -> None:
         normalized = message.lower()
@@ -340,10 +400,45 @@ class MainWindow(QMainWindow):
                 self.toolbar.set_connecting(message)
                 self.toolbar.set_buttons_state(True, allow_stop=False)
             return
-        if any(token in normalized for token in ("sessao finalizada", "sessao interrompida", "encerrando")):
+        if any(
+            token in normalized
+            for token in ("sessão finalizada", "sessão interrompida", "encerrando")
+        ):
             self._loading_session = False
             self.toolbar.set_idle()
             self.toolbar.set_buttons_state(False)
             return
 
         self.toolbar.set_status_message(message)
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        reasons = []
+        if self.controller.is_running:
+            reasons.append("uma transcrição está em andamento")
+        if self.settings_window.has_unsaved_changes():
+            reasons.append("existem configurações não salvas")
+
+        if reasons:
+            details = " e ".join(reasons)
+            confirmed = ask_confirmation(
+                self,
+                "Encerrar o GlobalVoice?",
+                f"No momento, {details}.\n"
+                "Deseja encerrar o aplicativo mesmo assim?",
+                confirm_text="Encerrar",
+                cancel_text="Continuar usando",
+            )
+            if not confirmed:
+                event.ignore()
+                return
+
+        self.controller.set_talk_active(False)
+        self.controller.set_microphone_muted(False)
+        self.controller.stop_session()
+        self.settings_window.hide()
+        self.toolbar.hide()
+        self.transcription_window.hide()
+        event.accept()
+        application = QApplication.instance()
+        if application is not None:
+            application.quit()

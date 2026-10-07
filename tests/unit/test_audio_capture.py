@@ -94,7 +94,7 @@ class LoopbackAudioSourceTests(unittest.TestCase):
             soundcard_module=BrokenSoundCard,
         )
 
-        with self.assertRaisesRegex(AudioSourceError, "Nao foi possivel iniciar"):
+        with self.assertRaisesRegex(AudioSourceError, "Não foi possível iniciar"):
             source.open()
 
     def test_factory_keeps_microphone_as_default(self):

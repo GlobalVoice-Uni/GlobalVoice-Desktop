@@ -15,7 +15,7 @@ class RealtimeController(QObject):
     para a janela por sinais Qt.
     """
 
-    transcript_chunk = Signal(str)
+    transcript_chunk = Signal(object)
     speech_started = Signal()
     voice_activity_changed = Signal(bool)
     status_changed = Signal(str)
@@ -71,7 +71,7 @@ class RealtimeController(QObject):
         if not self._running:
             return
 
-        self.status_changed.emit("Encerrando sessao...")
+        self.status_changed.emit("Encerrando sessão...")
         if self._active_bridge is not None:
             self._active_bridge.stop()
 
@@ -100,17 +100,17 @@ class RealtimeController(QObject):
                 on_voice_activity=self.voice_activity_changed.emit,
             )
             self.session_finished.emit(final_text)
-            self.status_changed.emit("Sessao finalizada.")
+            self.status_changed.emit("Sessão finalizada.")
         except Exception as exc:
             self.error_raised.emit(str(exc))
-            self.status_changed.emit("Sessao interrompida por erro.")
+            self.status_changed.emit("Sessão interrompida por erro.")
         finally:
             self.voice_activity_changed.emit(False)
             self._active_bridge = None
             self._running = False
             self.running_changed.emit(False)
 
-    def _emit_chunk(self, chunk: str) -> None:
+    def _emit_chunk(self, chunk: object) -> None:
         """Repassa trecho transcrito para consumo da janela."""
         if chunk:
             self.transcript_chunk.emit(chunk)

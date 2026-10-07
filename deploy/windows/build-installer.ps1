@@ -38,6 +38,17 @@ foreach ($requiredFile in $requiredFiles) {
     }
 }
 
+foreach ($languageCode in @("en", "es")) {
+    $languagePackages = Join-Path $projectDir "dist\translation-packs\$languageCode\packages"
+    if (-not (Test-Path -LiteralPath $languagePackages -PathType Container)) {
+        Write-Error (
+            "Pacote de tradução não encontrado: $languagePackages. " +
+            "Execute deploy\windows\prepare-translation-models.ps1 antes do instalador."
+        )
+        exit 1
+    }
+}
+
 if (-not (Test-Path -LiteralPath $compiler -PathType Leaf)) {
     Write-Error "Compilador do Inno Setup nao encontrado em $compiler"
     exit 1

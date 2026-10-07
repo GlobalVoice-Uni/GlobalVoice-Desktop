@@ -41,7 +41,7 @@ class SileroOnnxStreamingModel:
 
         resolved_model = Path(model_path or _default_model_path()).resolve()
         if not resolved_model.is_file():
-            raise FileNotFoundError(f"Modelo Silero ONNX nao encontrado: {resolved_model}")
+            raise FileNotFoundError(f"Modelo Silero ONNX não encontrado: {resolved_model}")
 
         options = onnxruntime.SessionOptions()
         options.inter_op_num_threads = 1
@@ -61,7 +61,7 @@ class SileroOnnxStreamingModel:
             self._model_format = "combined_state"
         else:
             raise RuntimeError(
-                "Formato ONNX do Silero nao reconhecido: "
+                "Formato ONNX do Silero não reconhecido: "
                 + ", ".join(sorted(input_names))
             )
 
