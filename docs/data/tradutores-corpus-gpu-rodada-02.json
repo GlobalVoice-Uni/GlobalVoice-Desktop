@@ -1,0 +1,689 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-10-13T18:05:18.376238+00:00",
+  "method": {
+    "asr_once_per_audio": true,
+    "translator_device": "cuda",
+    "asr_resident_with_translator": false,
+    "gpu_fallback_allowed": false,
+    "engine_processes_isolated": true,
+    "engine_order": [
+      "m2m100_int8",
+      "argos"
+    ],
+    "beam_size": 4,
+    "text_repetitions": 2,
+    "quality_reference_available": false
+  },
+  "hardware": {
+    "platform": "Windows-10-10.0.19045-SP0",
+    "processor": "Intel64 Family 6 Model 158 Stepping 11, GenuineIntel",
+    "logical_cpu_count": 4,
+    "python": "3.12.3",
+    "packages": {
+      "ctranslate2": "4.7.1",
+      "faster-whisper": "1.2.1",
+      "sentencepiece": "0.2.2",
+      "numpy": "2.4.4"
+    },
+    "gpu": "NVIDIA GeForce GTX 1050, 582.66, 2048 MiB"
+  },
+  "corpus": [
+    {
+      "id": "10sBR",
+      "source_language": "pt-br",
+      "target_language": "en",
+      "audio_path": "experiments\\translation_comparison\\corpus\\audios\\10sBR.mp4",
+      "audio_sha256": "9f3a563107ef13dd95d02c6d59b6a30bdff60c8c8cab3ba1837cbb88ff932ce5",
+      "reference_path": "experiments\\translation_comparison\\corpus\\textos\\10sBR.txt",
+      "reference_sha256": "15593b4adbf55eeed8900a429db9807f37bee5539f72acdf8e229f9bab366fd6",
+      "reference_text": "O mestre, calmamente seguiu tomando o seu chá e quando terminou de beber, encheu sua xícara novamente, depois começou a encher a xícara do visitante."
+    },
+    {
+      "id": "10sEN",
+      "source_language": "en",
+      "target_language": "pt-br",
+      "audio_path": "experiments\\translation_comparison\\corpus\\audios\\10sEN.mp4",
+      "audio_sha256": "9e87a54056fa00d5727f386631966392ffe32072b5b8961ab7679b8990803e4d",
+      "reference_path": "experiments\\translation_comparison\\corpus\\textos\\10sEN.txt",
+      "reference_sha256": "78ce09d2222995cea31e5a6341212faf50b961c5617b41071aa2fc449e99f3cd",
+      "reference_text": "Music is a wonderful form of expression that people all around the world enjoy. \nIt comes in many different styles, like pop, rock, classical, and jazz."
+    },
+    {
+      "id": "30sBR",
+      "source_language": "pt-br",
+      "target_language": "en",
+      "audio_path": "experiments\\translation_comparison\\corpus\\audios\\30sBR.mp4",
+      "audio_sha256": "b38feffc5737f7f556aaeb546a441792976e6d7353949e2abdddd2fccf334d88",
+      "reference_path": "experiments\\translation_comparison\\corpus\\textos\\30sBR.txt",
+      "reference_sha256": "158aec813f3436ab244ea2d0d99770f2a8bd9f25d79f07bd038cc02ef4f453c6",
+      "reference_text": "Certa vez uma menina ganhou um brinquedo no dia do seu aniversário.\nNa manhã seguinte, uma amiguinha foi até sua casa para fazer-lhe companhia e brincar.\nMas a menina não podia ficar com a amiga, pois tinha que sair com a mãe.\nA amiga pediu que a menina a deixasse ficar brincando com seu brinquedo novo até que ela voltasse.\nEla não gostou muito da ideia, mas por insistência da mãe, acabou concordando.\nQuando retornou para casa, a amiguinha já não estava lá e tinha deixado o brinquedo fora da caixa."
+    },
+    {
+      "id": "30sEN",
+      "source_language": "en",
+      "target_language": "pt-br",
+      "audio_path": "experiments\\translation_comparison\\corpus\\audios\\30sEN.mp4",
+      "audio_sha256": "3bb675593fef2f14c4704b01bc77adfcc22a6d51a7481ea8f108745b6a9ebace",
+      "reference_path": "experiments\\translation_comparison\\corpus\\textos\\30sEN.txt",
+      "reference_sha256": "12528171d969fc1311ed0878de1a1851d33132fc36fcb91100c72d70f4f0af04",
+      "reference_text": "Every year, on the day after Thanksgiving, most of this stores have a big sale called Black Friday.\nOn this day, it is possible to buy products with big discounts and you also have the option to buy things online. \nIn 2016, more than 154 million people spent USD 3,3 billion dollars shopping only on the internet."
+    },
+    {
+      "id": "60sBR",
+      "source_language": "pt-br",
+      "target_language": "en",
+      "audio_path": "experiments\\translation_comparison\\corpus\\audios\\60sBR.mp4",
+      "audio_sha256": "31882eff05d5a001e1bd4a294cc2e3c5fae923ccf581efa514511035947e617b",
+      "reference_path": "experiments\\translation_comparison\\corpus\\textos\\60sBR.txt",
+      "reference_sha256": "6b2a67962364d6b3c46ac80f879c0e08d5d58572824988a1442f0339db0748d9",
+      "reference_text": "Em uma cidade do interior havia um homem que não se irritava e não discutia com ninguém.\nSempre encontrava saída cordial, não feria a ninguém, nem se aborrecia com as pessoas.\nMorava em uma modesta pensão, onde era admirado e querido.\nPara testá-lo, um dia seus companheiros combinaram de levá-lo à irritação e à discussão numa determinada noite em que o levariam a um jantar.\nCombinaram todos os detalhes com a garçonete que seria a responsável por atender a mesa reservada para a ocasião.\nAssim que iniciou o jantar, como entrada foi servida uma saborosa sopa, da qual o homem gostava muito.\nA garçonete chegou próximo a ele, pela esquerda, e ele, prontamente, levou seu prato para aquele lado, a fim de facilitar a tarefa de servir.\nMas ela serviu todos os demais, e quando chegou a vez dele, foi para outra mesa.\nEle esperou calmamente e em silêncio, que ela voltasse.\nQuando ela se aproximou outra vez, agora pela direita, para recolher o prato, ele levou outra vez seu prato na direção da jovem."
+    },
+    {
+      "id": "60sEN",
+      "source_language": "en",
+      "target_language": "pt-br",
+      "audio_path": "experiments\\translation_comparison\\corpus\\audios\\60sEN.mp4",
+      "audio_sha256": "b2aa5c8f9d622f688f276a6249f04644dab10f0f974773b5e2c18851e9399d15",
+      "reference_path": "experiments\\translation_comparison\\corpus\\textos\\60sEN.txt",
+      "reference_sha256": "148ca56363e4fcb7d9f6a372154143d3f875cf53346e660f2b72aa62283e59e4",
+      "reference_text": "The city is deemed to be a place full of wonders and opportunities. \nMany farmers and workers from the countryside even take the chance to live and work there. \nBethel does not like to stay at the countryside anymore. Everything seems the same every day. \nUnfortunately, trips to the city are only for emergencies. One night, Bethel learns that her cousin who got sick is sent to the hospital in the city. \nSeeing it as a chance to get out, she pretends to be sick too. Her parents are concerned and take her to the city hospital. \nPassing through the city, Bethel truly enjoys the sights of tall buildings and magnificent skyscrapers. She embraces everything she gets to see. \nBut when they arrived her throat seems itchy, and she feels dizzy. The city has given her the flu."
+    }
+  ],
+  "asr": {
+    "model_size": "small",
+    "requested_device": "gpu",
+    "active_device": "cuda",
+    "compute_type": "float32",
+    "load_seconds": 1.396,
+    "memory_before_load": {
+      "working_set_mib": 538.133,
+      "peak_working_set_mib": 542.652
+    },
+    "memory_after_load": {
+      "working_set_mib": 649.238,
+      "peak_working_set_mib": 1551.512
+    },
+    "memory_end": {
+      "working_set_mib": 725.383,
+      "peak_working_set_mib": 1551.512
+    },
+    "cases": [
+      {
+        "id": "10sBR",
+        "duration_seconds": 9.8333,
+        "decode_seconds": 0.077,
+        "transcribe_seconds": 1.3938,
+        "real_time_factor": 0.1417,
+        "word_error_rate": 0.08,
+        "transcript": "O mestre calmalmente seguiu tomando seu chá e quando terminou de beber, encheu sua xícara novamente. Depois começou a encher a xícara do visitante."
+      },
+      {
+        "id": "10sEN",
+        "duration_seconds": 10.8573,
+        "decode_seconds": 0.0727,
+        "transcribe_seconds": 1.046,
+        "real_time_factor": 0.0963,
+        "word_error_rate": 0.1154,
+        "transcript": "Music is a wonderful form of expression that people all around the world enjoy. It's come in many different styles, like pop, rock, classic and jazz."
+      },
+      {
+        "id": "30sBR",
+        "duration_seconds": 29.8867,
+        "decode_seconds": 0.091,
+        "transcribe_seconds": 3.6831,
+        "real_time_factor": 0.1232,
+        "word_error_rate": 0.0109,
+        "transcript": "Certa vez, uma menina ganhou um brinquedo no dia do seu aniversário. Na manhã seguinte, uma amiguinha foi até sua casa para fazer-lhe companhia e brincar. Mas a menina não podia ficar com a amiga, pois tinha que sair com a mãe. A amiga pediu que a menina deixasse ficar brincando com seu brinquedo novo até que ela voltasse. Ela não gostou muito da ideia, mas por insistência da mãe, acabou concordando. Quando retornou para casa, a amiguinha já não estava lá e tinha deixado o brinquedo fora da caixa."
+      },
+      {
+        "id": "30sEN",
+        "duration_seconds": 28.0093,
+        "decode_seconds": 0.0903,
+        "transcribe_seconds": 2.1808,
+        "real_time_factor": 0.0779,
+        "word_error_rate": 0.0862,
+        "transcript": "Every year, on the day after Thanksgiving, most of these stores have a big sale called Black Friday. On this day, it is possible to buy products with big discount and you also have the option to buy things online. In 2016, more than 155 million people spent 3.3 billion dollars shopping only on the the internet."
+      },
+      {
+        "id": "60sBR",
+        "duration_seconds": 60.6067,
+        "decode_seconds": 0.1219,
+        "transcribe_seconds": 6.5263,
+        "real_time_factor": 0.1077,
+        "word_error_rate": 0.0226,
+        "transcript": "Em uma cidade do interior, havia um homem que não se irritava e não discutia com ninguém. Sempre encontrava saída cordial, não feria a ninguém, nem se aborrecia com as pessoas. Morava em uma modesta pensão onde era admirado e querido. Para testá-lo, um dia seus companheiros combinaram de levá-lo à irritação e à discussão numa determinada noite em que o levariam a um jantar. Combinaram todos os detalhes com a garçonete que seria responsável por atender a mesa reservada para a ocasião. Assim que iniciou o jantar, com uma entrada, foi servida uma saborosa sopa, da qual o homem gostava muito. A garçonete chegou próximo a ele pela esquerda, e ele, prontamente, levou seu prato para aquele lado, a fim de facilitar a tarefa de servir. Mas ela serviu todos os demais, e quando chegou à vez dele, foi para outra mesa. Ele esperou calmamente e em silêncio que ela voltasse. Quando ela se aproximou outra vez, agora pela direita, para recolher o prato, Ele levou outra vez seu prato na direção da jovem."
+      },
+      {
+        "id": "60sEN",
+        "duration_seconds": 55.9354,
+        "decode_seconds": 0.1181,
+        "transcribe_seconds": 4.5579,
+        "real_time_factor": 0.0815,
+        "word_error_rate": 0.0145,
+        "transcript": "The city is deemed to be a place full of wonders and opportunities. Many farmers and workers from the countryside even take the chance to live and work there. Bethel does not like to stay at the countryside anymore. Everything seems the same every day. Unfortunately, trips to the city are only for emergencies. One night, Bethel learns that a cousin who got sick is sent to the hospital in the city. it as a chance to get out. She pretends to be sick too. Her parents are concerned and take her to the city hospital. Passing through the city, Bethel truly enjoys the sights of tall buildings and magnificent skyscrapers. She embraces everything she gets to see. But when they arrived her throat seems itchy and she feels dizzy. The city has given her the flu."
+      }
+    ]
+  },
+  "engines": {
+    "m2m100_int8": {
+      "engine": "m2m100_int8",
+      "device": "cuda",
+      "load_seconds": 4.6646,
+      "memory_before_load": {
+        "working_set_mib": 25.238,
+        "peak_working_set_mib": 26.918
+      },
+      "memory_after_load": {
+        "working_set_mib": 660.629,
+        "peak_working_set_mib": 1110.363
+      },
+      "memory_end": {
+        "working_set_mib": 677.309,
+        "peak_working_set_mib": 1110.363
+      },
+      "gpu_memory_before_load": {
+        "total_mib": 2048,
+        "free_mib": 1595,
+        "used_mib": 453
+      },
+      "gpu_memory_after_load": {
+        "total_mib": 2048,
+        "free_mib": 977,
+        "used_mib": 1071
+      },
+      "gpu_memory_end": {
+        "total_mib": 2048,
+        "free_mib": 1541,
+        "used_mib": 507
+      },
+      "models": [
+        {
+          "path": "model.bin",
+          "model_bytes": 490667752,
+          "model_sha256": "590e9c7e229e84de8affe7b15487660a286d3d76e44a4ca10e33099b198d9a76"
+        }
+      ],
+      "cases": [
+        {
+          "id": "10sBR",
+          "source_kind": "reference",
+          "source_language": "pt-br",
+          "target_language": "en",
+          "input_text": "O mestre, calmamente seguiu tomando o seu chá e quando terminou de beber, encheu sua xícara novamente, depois começou a encher a xícara do visitante.",
+          "chunk_count": 1,
+          "output_text": "The master calmly continued taking his tea and when he finished drinking, he filled his cup again, then he began to fill the visitor’s cup.",
+          "elapsed_seconds": [
+            0.4873,
+            0.4345
+          ],
+          "cpu_seconds": [
+            0.4688,
+            0.4062
+          ],
+          "elapsed_median_seconds": 0.4609
+        },
+        {
+          "id": "10sEN",
+          "source_kind": "reference",
+          "source_language": "en",
+          "target_language": "pt-br",
+          "input_text": "Music is a wonderful form of expression that people all around the world enjoy. \nIt comes in many different styles, like pop, rock, classical, and jazz.",
+          "chunk_count": 2,
+          "output_text": "A música é uma forma maravilhosa de expressão que as pessoas em todo o mundo gostam. Ele vem em muitos estilos diferentes, como pop, rock, clássico e jazz.",
+          "elapsed_seconds": [
+            0.5196,
+            0.5327
+          ],
+          "cpu_seconds": [
+            0.5,
+            0.4844
+          ],
+          "elapsed_median_seconds": 0.5261
+        },
+        {
+          "id": "30sBR",
+          "source_kind": "reference",
+          "source_language": "pt-br",
+          "target_language": "en",
+          "input_text": "Certa vez uma menina ganhou um brinquedo no dia do seu aniversário.\nNa manhã seguinte, uma amiguinha foi até sua casa para fazer-lhe companhia e brincar.\nMas a menina não podia ficar com a amiga, pois tinha que sair com a mãe.\nA amiga pediu que a menina a deixasse ficar brincando com seu brinquedo novo até que ela voltasse.\nEla não gostou muito da ideia, mas por insistência da mãe, acabou concordando.\nQuando retornou para casa, a amiguinha já não estava lá e tinha deixado o brinquedo fora da caixa.",
+          "chunk_count": 6,
+          "output_text": "Once a girl got a toy on her birthday. The next morning, a girlfriend went to her home to make her company and play. But the girl couldn’t stay with her friend, because she had to go out with her mother. The girlfriend asked her to let her play with her new toy until she came back. She didn’t like the idea much, but by the mother’s insistence, she ended up agreeing. When he returned home, the girlfriend was no longer there and had left the toy out of the box.",
+          "elapsed_seconds": [
+            1.5449,
+            1.5405
+          ],
+          "cpu_seconds": [
+            1.4844,
+            1.4844
+          ],
+          "elapsed_median_seconds": 1.5427
+        },
+        {
+          "id": "30sEN",
+          "source_kind": "reference",
+          "source_language": "en",
+          "target_language": "pt-br",
+          "input_text": "Every year, on the day after Thanksgiving, most of this stores have a big sale called Black Friday.\nOn this day, it is possible to buy products with big discounts and you also have the option to buy things online. \nIn 2016, more than 154 million people spent USD 3,3 billion dollars shopping only on the internet.",
+          "chunk_count": 3,
+          "output_text": "Todos os anos, no dia após Thanksgiving, a maioria dessas lojas tem uma grande venda chamada Black Friday. Neste dia, é possível comprar produtos com grandes descontos e você também tem a opção de comprar coisas on-line. Em 2016, mais de 154 milhões de pessoas gastaram US$ 3,3 bilhões em compras apenas na internet.",
+          "elapsed_seconds": [
+            0.946,
+            0.9449
+          ],
+          "cpu_seconds": [
+            0.9375,
+            0.9062
+          ],
+          "elapsed_median_seconds": 0.9454
+        },
+        {
+          "id": "60sBR",
+          "source_kind": "reference",
+          "source_language": "pt-br",
+          "target_language": "en",
+          "input_text": "Em uma cidade do interior havia um homem que não se irritava e não discutia com ninguém.\nSempre encontrava saída cordial, não feria a ninguém, nem se aborrecia com as pessoas.\nMorava em uma modesta pensão, onde era admirado e querido.\nPara testá-lo, um dia seus companheiros combinaram de levá-lo à irritação e à discussão numa determinada noite em que o levariam a um jantar.\nCombinaram todos os detalhes com a garçonete que seria a responsável por atender a mesa reservada para a ocasião.\nAssim que iniciou o jantar, como entrada foi servida uma saborosa sopa, da qual o homem gostava muito.\nA garçonete chegou próximo a ele, pela esquerda, e ele, prontamente, levou seu prato para aquele lado, a fim de facilitar a tarefa de servir.\nMas ela serviu todos os demais, e quando chegou a vez dele, foi para outra mesa.\nEle esperou calmamente e em silêncio, que ela voltasse.\nQuando ela se aproximou outra vez, agora pela direita, para recolher o prato, ele levou outra vez seu prato na direção da jovem.",
+          "chunk_count": 10,
+          "output_text": "In a city inside there was a man who didn’t get angry and didn’t talk to anyone. He always found a cordial way out, he didn’t hurt anyone, nor hated people. He lived in a modest pension, where he was admired and loved. To test him, one day his companions combined to take him to irritation and discussion on a certain night they would take him to a dinner. They combined all the details with the boyfriend who would be responsible for meeting the table reserved for the occasion. As soon as the dinner began, a delicious soup was served as entrance, which the man liked very much. The boy came close to him, on the left, and he immediately took his dish to that side, in order to facilitate the task of serving. But she served all the others, and when his turn came, she went to another table. He was quietly and quietly waiting for her to come back. When she approached again, now to the right, to collect the dish, he brought again his dish to the young woman.",
+          "elapsed_seconds": [
+            3.1596,
+            3.3828
+          ],
+          "cpu_seconds": [
+            3.0781,
+            3.0156
+          ],
+          "elapsed_median_seconds": 3.2712
+        },
+        {
+          "id": "60sEN",
+          "source_kind": "reference",
+          "source_language": "en",
+          "target_language": "pt-br",
+          "input_text": "The city is deemed to be a place full of wonders and opportunities. \nMany farmers and workers from the countryside even take the chance to live and work there. \nBethel does not like to stay at the countryside anymore. Everything seems the same every day. \nUnfortunately, trips to the city are only for emergencies. One night, Bethel learns that her cousin who got sick is sent to the hospital in the city. \nSeeing it as a chance to get out, she pretends to be sick too. Her parents are concerned and take her to the city hospital. \nPassing through the city, Bethel truly enjoys the sights of tall buildings and magnificent skyscrapers. She embraces everything she gets to see. \nBut when they arrived her throat seems itchy, and she feels dizzy. The city has given her the flu.",
+          "chunk_count": 12,
+          "output_text": "A cidade é considerada um lugar cheio de maravilhas e oportunidades. Muitos agricultores e trabalhadores da aldeia ainda usam a oportunidade de viver e trabalhar lá. Bethel não gosta mais de ficar no campo. Tudo parece o mesmo todos os dias. As viagens para a cidade são apenas de emergência. Uma noite, Bethel descobre que seu cônjuge que ficou doente é enviado para o hospital na cidade. Vendo isso como uma chance de sair, ela pretende ser doente também. Seus pais estão preocupados e levam-na para o hospital da cidade. Ao atravessar a cidade, Bethel realmente desfrutará das vistas de edifícios altos e magníficos esquiadores. Ela abraça tudo o que vê. Mas, quando eles chegaram, sua garganta parece chateada, e ela se sente chateada. A cidade lhe deu a gripe.",
+          "elapsed_seconds": [
+            2.6812,
+            2.6977
+          ],
+          "cpu_seconds": [
+            2.5938,
+            2.5938
+          ],
+          "elapsed_median_seconds": 2.6894
+        },
+        {
+          "id": "10sBR",
+          "source_kind": "asr",
+          "source_language": "pt-br",
+          "target_language": "en",
+          "input_text": "O mestre calmalmente seguiu tomando seu chá e quando terminou de beber, encheu sua xícara novamente. Depois começou a encher a xícara do visitante.",
+          "chunk_count": 2,
+          "output_text": "The master calmly continued taking his tea and when he finished drinking, he filled his cup again. Then he filled the visitor’s cup.",
+          "elapsed_seconds": [
+            0.4737,
+            0.4867
+          ],
+          "cpu_seconds": [
+            0.4688,
+            0.4531
+          ],
+          "elapsed_median_seconds": 0.4802
+        },
+        {
+          "id": "10sEN",
+          "source_kind": "asr",
+          "source_language": "en",
+          "target_language": "pt-br",
+          "input_text": "Music is a wonderful form of expression that people all around the world enjoy. It's come in many different styles, like pop, rock, classic and jazz.",
+          "chunk_count": 2,
+          "output_text": "A música é uma forma maravilhosa de expressão que as pessoas em todo o mundo gostam. Ele vem em muitos estilos diferentes, como pop, rock, clássico e jazz.",
+          "elapsed_seconds": [
+            0.5249,
+            0.5082
+          ],
+          "cpu_seconds": [
+            0.5156,
+            0.4844
+          ],
+          "elapsed_median_seconds": 0.5166
+        },
+        {
+          "id": "30sBR",
+          "source_kind": "asr",
+          "source_language": "pt-br",
+          "target_language": "en",
+          "input_text": "Certa vez, uma menina ganhou um brinquedo no dia do seu aniversário. Na manhã seguinte, uma amiguinha foi até sua casa para fazer-lhe companhia e brincar. Mas a menina não podia ficar com a amiga, pois tinha que sair com a mãe. A amiga pediu que a menina deixasse ficar brincando com seu brinquedo novo até que ela voltasse. Ela não gostou muito da ideia, mas por insistência da mãe, acabou concordando. Quando retornou para casa, a amiguinha já não estava lá e tinha deixado o brinquedo fora da caixa.",
+          "chunk_count": 6,
+          "output_text": "One day, a girl got a toy on her birthday. The next morning, a girlfriend went to her home to make her company and play. But the girl couldn’t stay with her friend, because she had to go out with her mother. The girlfriend asked her to let her play with her new toy until she came back. She didn’t like the idea much, but by the mother’s insistence, she ended up agreeing. When he returned home, the girlfriend was no longer there and had left the toy out of the box.",
+          "elapsed_seconds": [
+            1.5435,
+            1.5528
+          ],
+          "cpu_seconds": [
+            1.5312,
+            1.5
+          ],
+          "elapsed_median_seconds": 1.5482
+        },
+        {
+          "id": "30sEN",
+          "source_kind": "asr",
+          "source_language": "en",
+          "target_language": "pt-br",
+          "input_text": "Every year, on the day after Thanksgiving, most of these stores have a big sale called Black Friday. On this day, it is possible to buy products with big discount and you also have the option to buy things online. In 2016, more than 155 million people spent 3.3 billion dollars shopping only on the the internet.",
+          "chunk_count": 3,
+          "output_text": "Todos os anos, no dia após Thanksgiving, a maioria dessas lojas tem uma grande venda chamada Black Friday. Neste dia, é possível comprar produtos com grande desconto e você também tem a opção de comprar coisas on-line. Em 2016, mais de 155 milhões de pessoas gastaram 3,3 bilhões de dólares em compras apenas na internet.",
+          "elapsed_seconds": [
+            0.968,
+            0.9543
+          ],
+          "cpu_seconds": [
+            0.9375,
+            0.9219
+          ],
+          "elapsed_median_seconds": 0.9611
+        },
+        {
+          "id": "60sBR",
+          "source_kind": "asr",
+          "source_language": "pt-br",
+          "target_language": "en",
+          "input_text": "Em uma cidade do interior, havia um homem que não se irritava e não discutia com ninguém. Sempre encontrava saída cordial, não feria a ninguém, nem se aborrecia com as pessoas. Morava em uma modesta pensão onde era admirado e querido. Para testá-lo, um dia seus companheiros combinaram de levá-lo à irritação e à discussão numa determinada noite em que o levariam a um jantar. Combinaram todos os detalhes com a garçonete que seria responsável por atender a mesa reservada para a ocasião. Assim que iniciou o jantar, com uma entrada, foi servida uma saborosa sopa, da qual o homem gostava muito. A garçonete chegou próximo a ele pela esquerda, e ele, prontamente, levou seu prato para aquele lado, a fim de facilitar a tarefa de servir. Mas ela serviu todos os demais, e quando chegou à vez dele, foi para outra mesa. Ele esperou calmamente e em silêncio que ela voltasse. Quando ela se aproximou outra vez, agora pela direita, para recolher o prato, Ele levou outra vez seu prato na direção da jovem.",
+          "chunk_count": 10,
+          "output_text": "In a city inside there was a man who didn’t get angry and didn’t talk to anyone. He always found a cordial way out, he didn’t hurt anyone, nor hated people. He lived in a modest pension where he was admired and loved. To test him, one day his companions combined to take him to irritation and discussion on a certain night they would take him to a dinner. They combined all the details with the boyfriend who would be responsible for meeting the table reserved for the occasion. As soon as the dinner began, with an entrance, a delicious soup was served, which the man liked very much. The boy came near him by the left, and he immediately took his dish to that side, in order to facilitate the task of serving. But she served all the others, and when she came to his place, she went to another table. He was quietly waiting for her to come back. When she approached again, now to the right, to collect the dish, He brought again her dish to the young woman.",
+          "elapsed_seconds": [
+            3.2153,
+            3.1858
+          ],
+          "cpu_seconds": [
+            3.1094,
+            3.0938
+          ],
+          "elapsed_median_seconds": 3.2005
+        },
+        {
+          "id": "60sEN",
+          "source_kind": "asr",
+          "source_language": "en",
+          "target_language": "pt-br",
+          "input_text": "The city is deemed to be a place full of wonders and opportunities. Many farmers and workers from the countryside even take the chance to live and work there. Bethel does not like to stay at the countryside anymore. Everything seems the same every day. Unfortunately, trips to the city are only for emergencies. One night, Bethel learns that a cousin who got sick is sent to the hospital in the city. it as a chance to get out. She pretends to be sick too. Her parents are concerned and take her to the city hospital. Passing through the city, Bethel truly enjoys the sights of tall buildings and magnificent skyscrapers. She embraces everything she gets to see. But when they arrived her throat seems itchy and she feels dizzy. The city has given her the flu.",
+          "chunk_count": 13,
+          "output_text": "A cidade é considerada um lugar cheio de maravilhas e oportunidades. Muitos agricultores e trabalhadores da aldeia ainda usam a oportunidade de viver e trabalhar lá. Bethel não gosta mais de ficar no campo. Tudo parece o mesmo todos os dias. As viagens para a cidade são apenas de emergência. Uma noite, Bethel descobre que um primo que ficou doente é enviado para o hospital na cidade. É como uma chance de sair. Ela também pretende estar doente. Seus pais estão preocupados e levam-na para o hospital da cidade. Ao atravessar a cidade, Bethel realmente desfrutará das vistas de edifícios altos e magníficos esquiadores. Ela abraça tudo o que vê. Mas quando eles chegaram, sua garganta parece inchada e ela se sente inchada. A cidade lhe deu a gripe.",
+          "elapsed_seconds": [
+            2.6595,
+            2.7074
+          ],
+          "cpu_seconds": [
+            2.5781,
+            2.6094
+          ],
+          "elapsed_median_seconds": 2.6834
+        }
+      ]
+    },
+    "argos": {
+      "engine": "argos",
+      "device": "cuda",
+      "load_seconds": 4.3206,
+      "memory_before_load": {
+        "working_set_mib": 24.945,
+        "peak_working_set_mib": 26.613
+      },
+      "memory_after_load": {
+        "working_set_mib": 644.77,
+        "peak_working_set_mib": 707.492
+      },
+      "memory_end": {
+        "working_set_mib": 698.699,
+        "peak_working_set_mib": 707.492
+      },
+      "gpu_memory_before_load": {
+        "total_mib": 2048,
+        "free_mib": 1595,
+        "used_mib": 453
+      },
+      "gpu_memory_after_load": {
+        "total_mib": 2048,
+        "free_mib": 1361,
+        "used_mib": 687
+      },
+      "gpu_memory_end": {
+        "total_mib": 2048,
+        "free_mib": 1327,
+        "used_mib": 721
+      },
+      "models": [
+        {
+          "path": "packages\\translate-en_pb-1_9\\model\\model.bin",
+          "model_bytes": 80298997,
+          "model_sha256": "a68dd89c9d226e09cef948a01ded22bede8858326af89644f1b715efe39e7018"
+        },
+        {
+          "path": "packages\\translate-pb_en-1_9\\model\\model.bin",
+          "model_bytes": 80130517,
+          "model_sha256": "d0baa028926f7eceb6e8bcc8d75bd9ed4184665ff1702b93d580e3e2046ddc18"
+        }
+      ],
+      "cases": [
+        {
+          "id": "10sBR",
+          "source_kind": "reference",
+          "source_language": "pt-br",
+          "target_language": "en",
+          "input_text": "O mestre, calmamente seguiu tomando o seu chá e quando terminou de beber, encheu sua xícara novamente, depois começou a encher a xícara do visitante.",
+          "chunk_count": 1,
+          "output_text": "The master calmly continued taking his tea and when he finished drinking, filled his cup again, then began to fill the visitor's cup.",
+          "elapsed_seconds": [
+            0.2135,
+            0.1573
+          ],
+          "cpu_seconds": [
+            0.5312,
+            0.5781
+          ],
+          "elapsed_median_seconds": 0.1854
+        },
+        {
+          "id": "10sEN",
+          "source_kind": "reference",
+          "source_language": "en",
+          "target_language": "pt-br",
+          "input_text": "Music is a wonderful form of expression that people all around the world enjoy. \nIt comes in many different styles, like pop, rock, classical, and jazz.",
+          "chunk_count": 2,
+          "output_text": "Música é uma forma maravilhosa de expressão que as pessoas de todo o mundo gostam. Vem em muitos estilos diferentes, como pop, rock, clássico e jazz.",
+          "elapsed_seconds": [
+            0.1811,
+            0.1875
+          ],
+          "cpu_seconds": [
+            0.5469,
+            0.5625
+          ],
+          "elapsed_median_seconds": 0.1843
+        },
+        {
+          "id": "30sBR",
+          "source_kind": "reference",
+          "source_language": "pt-br",
+          "target_language": "en",
+          "input_text": "Certa vez uma menina ganhou um brinquedo no dia do seu aniversário.\nNa manhã seguinte, uma amiguinha foi até sua casa para fazer-lhe companhia e brincar.\nMas a menina não podia ficar com a amiga, pois tinha que sair com a mãe.\nA amiga pediu que a menina a deixasse ficar brincando com seu brinquedo novo até que ela voltasse.\nEla não gostou muito da ideia, mas por insistência da mãe, acabou concordando.\nQuando retornou para casa, a amiguinha já não estava lá e tinha deixado o brinquedo fora da caixa.",
+          "chunk_count": 6,
+          "output_text": "Once a girl got a toy on her birthday. The next morning, a little friend came to her house to keep her company and play. But the girl couldn't stay with her friend because she had to go out with her mother. Her friend asked her to let her play with her new toy until she came back. She didn't like the idea very much, but at her mother's insistence, she agreed. When she returned home, the little friend was no longer there and had left the toy out of the box.",
+          "elapsed_seconds": [
+            0.6276,
+            0.6111
+          ],
+          "cpu_seconds": [
+            1.9844,
+            1.8438
+          ],
+          "elapsed_median_seconds": 0.6194
+        },
+        {
+          "id": "30sEN",
+          "source_kind": "reference",
+          "source_language": "en",
+          "target_language": "pt-br",
+          "input_text": "Every year, on the day after Thanksgiving, most of this stores have a big sale called Black Friday.\nOn this day, it is possible to buy products with big discounts and you also have the option to buy things online. \nIn 2016, more than 154 million people spent USD 3,3 billion dollars shopping only on the internet.",
+          "chunk_count": 3,
+          "output_text": "Todo ano, no dia depois do Dia de Ação de Graças, a maioria das lojas tem uma grande venda chamada Black Friday. Neste dia, é possível comprar produtos com grandes descontos e você também tem a opção de comprar coisas online. Em 2016, mais de 154 milhões de pessoas gastaram US$ 3,3 bilhões de dólares comprando apenas na internet.",
+          "elapsed_seconds": [
+            0.385,
+            0.394
+          ],
+          "cpu_seconds": [
+            1.1406,
+            1.1719
+          ],
+          "elapsed_median_seconds": 0.3895
+        },
+        {
+          "id": "60sBR",
+          "source_kind": "reference",
+          "source_language": "pt-br",
+          "target_language": "en",
+          "input_text": "Em uma cidade do interior havia um homem que não se irritava e não discutia com ninguém.\nSempre encontrava saída cordial, não feria a ninguém, nem se aborrecia com as pessoas.\nMorava em uma modesta pensão, onde era admirado e querido.\nPara testá-lo, um dia seus companheiros combinaram de levá-lo à irritação e à discussão numa determinada noite em que o levariam a um jantar.\nCombinaram todos os detalhes com a garçonete que seria a responsável por atender a mesa reservada para a ocasião.\nAssim que iniciou o jantar, como entrada foi servida uma saborosa sopa, da qual o homem gostava muito.\nA garçonete chegou próximo a ele, pela esquerda, e ele, prontamente, levou seu prato para aquele lado, a fim de facilitar a tarefa de servir.\nMas ela serviu todos os demais, e quando chegou a vez dele, foi para outra mesa.\nEle esperou calmamente e em silêncio, que ela voltasse.\nQuando ela se aproximou outra vez, agora pela direita, para recolher o prato, ele levou outra vez seu prato na direção da jovem.",
+          "chunk_count": 10,
+          "output_text": "In a country town there was a man who didn't get angry and argue with anyone. He always found a cordial way out, did not hurt anyone, nor did he bother with people. He lived in a modest boarding house, where he was admired and loved. To test it, one day his companions combined to lead him to irritation and discussion on a certain night when they would take him to dinner. They combined all the details with the waitress who would be responsible for attending the table reserved for the occasion. As soon as dinner began, a tasty soup was served as the entrance, which the man loved very much. The waitress came near him on the left, and he promptly took his dish to that side in order to facilitate the task of serving. But she served everyone else, and when his turn came, she went to another table. He waited quietly and quietly for her to return. When she approached again, now to the right, to collect the dish, he took again his dish towards the young woman.",
+          "elapsed_seconds": [
+            1.1363,
+            1.1245
+          ],
+          "cpu_seconds": [
+            3.4062,
+            3.1562
+          ],
+          "elapsed_median_seconds": 1.1304
+        },
+        {
+          "id": "60sEN",
+          "source_kind": "reference",
+          "source_language": "en",
+          "target_language": "pt-br",
+          "input_text": "The city is deemed to be a place full of wonders and opportunities. \nMany farmers and workers from the countryside even take the chance to live and work there. \nBethel does not like to stay at the countryside anymore. Everything seems the same every day. \nUnfortunately, trips to the city are only for emergencies. One night, Bethel learns that her cousin who got sick is sent to the hospital in the city. \nSeeing it as a chance to get out, she pretends to be sick too. Her parents are concerned and take her to the city hospital. \nPassing through the city, Bethel truly enjoys the sights of tall buildings and magnificent skyscrapers. She embraces everything she gets to see. \nBut when they arrived her throat seems itchy, and she feels dizzy. The city has given her the flu.",
+          "chunk_count": 12,
+          "output_text": "A cidade é considerada um lugar cheio de maravilhas e oportunidades. Muitos fazendeiros e trabalhadores do campo até se arriscam a viver e trabalhar lá. Bethel não gosta mais de ficar no campo. Tudo parece igual todos os dias. Infelizmente, viagens à cidade são só para emergências. Uma noite, Bethel soube que seu primo que adoeceu foi mandado para o hospital da cidade. Vendo isso como uma chance de sair, ela finge estar doente também. Os pais dela estão preocupados e a levam para o hospital da cidade. Passando pela cidade, Bethel realmente aprecia as vistas de edifícios altos e magníficos arranha-céus. Ela abraça tudo o que consegue ver. Mas quando chegaram sua garganta parece coçar, e ela está tonta. A cidade lhe deu gripe.",
+          "elapsed_seconds": [
+            0.9035,
+            0.8998
+          ],
+          "cpu_seconds": [
+            2.25,
+            2.8438
+          ],
+          "elapsed_median_seconds": 0.9017
+        },
+        {
+          "id": "10sBR",
+          "source_kind": "asr",
+          "source_language": "pt-br",
+          "target_language": "en",
+          "input_text": "O mestre calmalmente seguiu tomando seu chá e quando terminou de beber, encheu sua xícara novamente. Depois começou a encher a xícara do visitante.",
+          "chunk_count": 2,
+          "output_text": "The master calmly continued taking his tea and when he finished drinking, filled his cup again. Then he started filling the visitor's cup.",
+          "elapsed_seconds": [
+            0.1648,
+            0.1595
+          ],
+          "cpu_seconds": [
+            0.4531,
+            0.5156
+          ],
+          "elapsed_median_seconds": 0.1622
+        },
+        {
+          "id": "10sEN",
+          "source_kind": "asr",
+          "source_language": "en",
+          "target_language": "pt-br",
+          "input_text": "Music is a wonderful form of expression that people all around the world enjoy. It's come in many different styles, like pop, rock, classic and jazz.",
+          "chunk_count": 2,
+          "output_text": "Música é uma forma maravilhosa de expressão que as pessoas de todo o mundo gostam. Vem em muitos estilos diferentes, como pop, rock, clássico e jazz.",
+          "elapsed_seconds": [
+            0.1809,
+            0.1766
+          ],
+          "cpu_seconds": [
+            0.4844,
+            0.5
+          ],
+          "elapsed_median_seconds": 0.1788
+        },
+        {
+          "id": "30sBR",
+          "source_kind": "asr",
+          "source_language": "pt-br",
+          "target_language": "en",
+          "input_text": "Certa vez, uma menina ganhou um brinquedo no dia do seu aniversário. Na manhã seguinte, uma amiguinha foi até sua casa para fazer-lhe companhia e brincar. Mas a menina não podia ficar com a amiga, pois tinha que sair com a mãe. A amiga pediu que a menina deixasse ficar brincando com seu brinquedo novo até que ela voltasse. Ela não gostou muito da ideia, mas por insistência da mãe, acabou concordando. Quando retornou para casa, a amiguinha já não estava lá e tinha deixado o brinquedo fora da caixa.",
+          "chunk_count": 6,
+          "output_text": "Once a girl got a toy on her birthday. The next morning, a little friend came to her house to keep her company and play. But the girl couldn't stay with her friend because she had to go out with her mother. Her friend asked the girl to let her play with her new toy until she came back. She didn't like the idea very much, but at her mother's insistence, she agreed. When she returned home, the little friend was no longer there and had left the toy out of the box.",
+          "elapsed_seconds": [
+            0.6432,
+            0.6563
+          ],
+          "cpu_seconds": [
+            1.7656,
+            2.0
+          ],
+          "elapsed_median_seconds": 0.6498
+        },
+        {
+          "id": "30sEN",
+          "source_kind": "asr",
+          "source_language": "en",
+          "target_language": "pt-br",
+          "input_text": "Every year, on the day after Thanksgiving, most of these stores have a big sale called Black Friday. On this day, it is possible to buy products with big discount and you also have the option to buy things online. In 2016, more than 155 million people spent 3.3 billion dollars shopping only on the the internet.",
+          "chunk_count": 3,
+          "output_text": "Todo ano, no dia depois do Dia de Ação de Graças, a maioria dessas lojas tem uma grande venda chamada Black Friday. Neste dia, é possível comprar produtos com grande desconto e você também tem a opção de comprar coisas on-line. Em 2016, mais de 155 milhões de pessoas gastaram 3,3 bilhões de dólares comprando apenas na internet.",
+          "elapsed_seconds": [
+            0.3838,
+            0.3824
+          ],
+          "cpu_seconds": [
+            1.0781,
+            1.1562
+          ],
+          "elapsed_median_seconds": 0.3831
+        },
+        {
+          "id": "60sBR",
+          "source_kind": "asr",
+          "source_language": "pt-br",
+          "target_language": "en",
+          "input_text": "Em uma cidade do interior, havia um homem que não se irritava e não discutia com ninguém. Sempre encontrava saída cordial, não feria a ninguém, nem se aborrecia com as pessoas. Morava em uma modesta pensão onde era admirado e querido. Para testá-lo, um dia seus companheiros combinaram de levá-lo à irritação e à discussão numa determinada noite em que o levariam a um jantar. Combinaram todos os detalhes com a garçonete que seria responsável por atender a mesa reservada para a ocasião. Assim que iniciou o jantar, com uma entrada, foi servida uma saborosa sopa, da qual o homem gostava muito. A garçonete chegou próximo a ele pela esquerda, e ele, prontamente, levou seu prato para aquele lado, a fim de facilitar a tarefa de servir. Mas ela serviu todos os demais, e quando chegou à vez dele, foi para outra mesa. Ele esperou calmamente e em silêncio que ela voltasse. Quando ela se aproximou outra vez, agora pela direita, para recolher o prato, Ele levou outra vez seu prato na direção da jovem.",
+          "chunk_count": 10,
+          "output_text": "In a country town, there was a man who didn't get angry and argue with anyone. He always found a cordial way out, did not hurt anyone, nor did he bother with people. He lived in a modest boarding house where he was admired and loved. To test it, one day his companions combined to lead him to irritation and discussion on a certain night when they would take him to dinner. They combined all the details with the waitress who would be responsible for attending the table reserved for the occasion. As soon as dinner began, with an entrance, a tasty soup was served, which the man loved very much. The waitress came near him on the left, and he promptly took his dish to that side in order to facilitate the task of serving. But she served everyone else, and when it came to his turn, she went to another table. He waited quietly and quietly for her to return. When she approached again, now to the right, to collect the dish, He took again his dish towards the young woman.",
+          "elapsed_seconds": [
+            1.212,
+            1.2702
+          ],
+          "cpu_seconds": [
+            3.3281,
+            2.9375
+          ],
+          "elapsed_median_seconds": 1.2411
+        },
+        {
+          "id": "60sEN",
+          "source_kind": "asr",
+          "source_language": "en",
+          "target_language": "pt-br",
+          "input_text": "The city is deemed to be a place full of wonders and opportunities. Many farmers and workers from the countryside even take the chance to live and work there. Bethel does not like to stay at the countryside anymore. Everything seems the same every day. Unfortunately, trips to the city are only for emergencies. One night, Bethel learns that a cousin who got sick is sent to the hospital in the city. it as a chance to get out. She pretends to be sick too. Her parents are concerned and take her to the city hospital. Passing through the city, Bethel truly enjoys the sights of tall buildings and magnificent skyscrapers. She embraces everything she gets to see. But when they arrived her throat seems itchy and she feels dizzy. The city has given her the flu.",
+          "chunk_count": 13,
+          "output_text": "A cidade é considerada um lugar cheio de maravilhas e oportunidades. Muitos fazendeiros e trabalhadores do campo até se arriscam a viver e trabalhar lá. Bethel não gosta mais de ficar no campo. Tudo parece igual todos os dias. Infelizmente, viagens à cidade são só para emergências. Uma noite, Bethel descobre que um primo que adoeceu é enviado para o hospital da cidade. É uma chance de sair. Ela finge estar doente também. Os pais dela estão preocupados e a levam para o hospital da cidade. Passando pela cidade, Bethel realmente aprecia as vistas de edifícios altos e magníficos arranha-céus. Ela abraça tudo o que consegue ver. Mas quando chegaram sua garganta parece coçar e ela se sente tonta. A cidade lhe deu gripe.",
+          "elapsed_seconds": [
+            0.9694,
+            1.0044
+          ],
+          "cpu_seconds": [
+            2.5781,
+            2.4531
+          ],
+          "elapsed_median_seconds": 0.9869
+        }
+      ]
+    }
+  }
+}

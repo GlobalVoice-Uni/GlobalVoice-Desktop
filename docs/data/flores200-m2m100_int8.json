@@ -1,0 +1,1032 @@
+{
+  "engine": "m2m100_int8",
+  "device": "cpu",
+  "corpus_sha256": "dcb0b856e4e5ac68d87386da6b35364a923ee7f257446dba0dd36cdb8baa64fc",
+  "corpus_source_sha256": "b8b0b76783024b85797e5cc75064eb83fc5288b41e9654dabc7be6ae944011f6",
+  "sacrebleu_version": "2.5.1",
+  "metric": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+  "load_seconds": 5.1187,
+  "models": [
+    {
+      "path": "D:\\CODE\\PROJETO - GLOBALVOICE\\Desktop\\.local-translation\\translation\\m2m100\\int8\\model.bin",
+      "bytes": 490667752,
+      "sha256": "590e9c7e229e84de8affe7b15487660a286d3d76e44a4ca10e33099b198d9a76"
+    }
+  ],
+  "directions": {
+    "en->pt": {
+      "chrf_plus_plus": 63.3064,
+      "elapsed_sum_seconds": 129.448,
+      "elapsed_median_seconds": 1.3032,
+      "rows": [
+        {
+          "id": 1,
+          "output": "\"Agora temos ratos de 4 meses que não são diabéticos que costumavam ser diabéticos\", acrescentou.",
+          "elapsed_seconds": 0.9449
+        },
+        {
+          "id": 11,
+          "output": "Enquanto uma vacina experimental parece ser capaz de reduzir a mortalidade do Ebola, até agora, nenhum medicamento tem sido claramente demonstrado adequado para o tratamento da infecção existente.",
+          "elapsed_seconds": 1.5408
+        },
+        {
+          "id": 21,
+          "output": "O filme, com Ryan Gosling e Emma Stone, recebeu nomeações em todas as principais categorias.",
+          "elapsed_seconds": 0.6739
+        },
+        {
+          "id": 32,
+          "output": "A estrutura dos feathers sugere que eles não foram usados no voo, mas sim para regulação de temperatura ou exibição.Os pesquisadores sugeriam que, embora este seja o pescoço de um jovem dinossauro, a amostra mostra plumaça adulta e não um coelho para baixo.",
+          "elapsed_seconds": 2.4319
+        },
+        {
+          "id": 42,
+          "output": "O padrão 802.11n opera nas frequências 2.4Ghz e 5.0Ghz.",
+          "elapsed_seconds": 0.7217
+        },
+        {
+          "id": 52,
+          "output": "Ninguém pode garantir que qualquer curso de ação no Iraque neste momento vai parar a guerra sectária, a violência crescente, ou um caminho para o caos.",
+          "elapsed_seconds": 1.2972
+        },
+        {
+          "id": 62,
+          "output": "Vários grandes ecrãs de televisão foram instalados em vários lugares em Roma para permitir que as pessoas assistiram à cerimônia.",
+          "elapsed_seconds": 0.9461
+        },
+        {
+          "id": 72,
+          "output": "O primeiro-ministro Stephen Harper concordou em enviar o 'Clean Air Act' do governo para uma comissão de todos os partidos para revisão, antes de sua segunda leitura, após a reunião de 25 minutos de terça-feira com o líder do NDP Jack Layton na PMO.",
+          "elapsed_seconds": 2.3098
+        },
+        {
+          "id": 83,
+          "output": "O Corpo de Engenheiros dos EUA estimou que 6 polegadas de chuva poderia quebrar as luvas previamente danificadas.",
+          "elapsed_seconds": 1.0906
+        },
+        {
+          "id": 93,
+          "output": "Esta teoria diz que a maior parte da matéria escura em torno de uma galáxia está localizada em torno de uma galáxia em um tipo de halo, e é feita de muitas pequenas partículas.",
+          "elapsed_seconds": 1.4658
+        },
+        {
+          "id": 103,
+          "output": "Os satélites, dos quais ambos pesavam em excesso de 1.000 libras, e viajando a aproximadamente 17.500 quilômetros por hora, colidiram 491 quilômetros acima da Terra.",
+          "elapsed_seconds": 1.4244
+        },
+        {
+          "id": 113,
+          "output": "Os primeiros casos da doença esta temporada foram relatados no final de julho.",
+          "elapsed_seconds": 0.519
+        },
+        {
+          "id": 124,
+          "output": "O motorista, que tem 64 anos, não foi ferido no acidente.",
+          "elapsed_seconds": 0.5626
+        },
+        {
+          "id": 134,
+          "output": "Os negociadores tentaram corrigir a situação, mas as exigências dos prisioneiros não são claras.",
+          "elapsed_seconds": 0.8156
+        },
+        {
+          "id": 144,
+          "output": "Embora Winfrey estava lágrima em seu adeus, ela fez claro para seus fãs que ela vai voltar.",
+          "elapsed_seconds": 0.9999
+        },
+        {
+          "id": 154,
+          "output": "As primeiras sementes do torneio da África do Sul começaram na nota correta quando tiveram uma vitória confortável 26 - 00 contra a 5a semente Zâmbia.",
+          "elapsed_seconds": 1.3575
+        },
+        {
+          "id": 164,
+          "output": "Depois que os funcionários verificam a identidade do eleitor, o eleitor lança o envelope na caixa de votação e assina o rol de votação.",
+          "elapsed_seconds": 1.1812
+        },
+        {
+          "id": 175,
+          "output": "Bishkek foi descrito como caindo em um estado de \"anarquia\" por um observador, como gangues de pessoas percorreram as ruas e esconderam lojas de bens de consumo.",
+          "elapsed_seconds": 1.6123
+        },
+        {
+          "id": 185,
+          "output": "A espécie de gripe aviária letal para os humanos, H5N1, foi confirmada por ter infectado um animal selvagem morto, encontrado nesta segunda-feira, em Marseland, perto de Lyon, no leste da França.",
+          "elapsed_seconds": 2.0784
+        },
+        {
+          "id": 195,
+          "output": "Bachmann, que ganhou o Ames Straw Poll em agosto, decidiu terminar sua campanha.",
+          "elapsed_seconds": 0.7801
+        },
+        {
+          "id": 205,
+          "output": "Os guardas de paz das Nações Unidas, que chegaram ao Haiti após o terremoto de 2010, estão sendo culpados pela propagação da doença que começou perto do acampamento das tropas.",
+          "elapsed_seconds": 1.6424
+        },
+        {
+          "id": 215,
+          "output": "Em 1989, ele ajudou a criar The Simpsons com Brooks e Groening, e foi responsável por contratar a primeira equipe de escrita do show.",
+          "elapsed_seconds": 1.0489
+        },
+        {
+          "id": 226,
+          "output": "A banda de rock teve que visitar os Estados Unidos e o Canadá até 16 de setembro.",
+          "elapsed_seconds": 0.5865
+        },
+        {
+          "id": 236,
+          "output": "Lakkha Singh apresentou o chhappan bhog bhajan também. cantor, Raju Khandelwal estava acompanhando-o.",
+          "elapsed_seconds": 1.0583
+        },
+        {
+          "id": 246,
+          "output": "No entanto, eles não acreditam ter causado nenhum dano ao navio.",
+          "elapsed_seconds": 0.6695
+        },
+        {
+          "id": 256,
+          "output": "Alguns relatórios colocam a taxa oficial de mortes em oito, e relatórios oficiais confirmam que até 30 foram feridos; mas os números finais ainda não são conhecidos.",
+          "elapsed_seconds": 1.3989
+        },
+        {
+          "id": 267,
+          "output": "O Diretor de Processo Público, Kier Starmer QC, deu uma declaração esta manhã anunciando a acusação de ambos Huhne e Pryce.",
+          "elapsed_seconds": 1.3752
+        },
+        {
+          "id": 277,
+          "output": "Quatro esquiadores no grupo assentado das mulheres não conseguiram terminar suas corridas, e 45 dos 117 esquiadores no Giant Slalom não conseguiram classificar-se na corrida.",
+          "elapsed_seconds": 1.3592
+        },
+        {
+          "id": 287,
+          "output": "Adekoya é acusada de assassinato de seu filho em Edimburgo.",
+          "elapsed_seconds": 0.64
+        },
+        {
+          "id": 297,
+          "output": "De acordo com Mick O'Flynn, diretor ating Park Conservation and Heritage com a NPWS, os quatro tiradores selecionados para a primeira operação de tiro receberam instruções de segurança e treinamento abrangentes.",
+          "elapsed_seconds": 1.745
+        },
+        {
+          "id": 307,
+          "output": "A tempestade atingiu a Mariana às 07:19h hora local (09:19h GMT sexta-feira).",
+          "elapsed_seconds": 0.8216
+        },
+        {
+          "id": 318,
+          "output": "Sua pesquisa mostrou que se um hormônio foi administrado, ele aceleraria a maturidade pulmonar fetal do bebê.",
+          "elapsed_seconds": 0.9434
+        },
+        {
+          "id": 328,
+          "output": "Ele não conseguiu tomar as drogas necessárias para superar a sua dor, pois são proibidas dos Jogos.",
+          "elapsed_seconds": 0.889
+        },
+        {
+          "id": 338,
+          "output": "Nenhum transporte adicional está sendo colocado e os trem de terra não pararão em Wembley, e estacionamento de automóveis e instalações de estacionamento e de condução não estão disponíveis no chão.",
+          "elapsed_seconds": 2.6679
+        },
+        {
+          "id": 348,
+          "output": "Os íons de hidrogênio são protões que tinham seus elétrons separados deles (porque os átomos de hidrogênio consistem em um proton e um elétron).",
+          "elapsed_seconds": 1.9375
+        },
+        {
+          "id": 358,
+          "output": "A roda mudou o mundo de maneiras incríveis.A maior coisa que a roda fez para nós é dada-nos muito mais fácil e mais rápido transporte.",
+          "elapsed_seconds": 1.3163
+        },
+        {
+          "id": 369,
+          "output": "O cordeiro do tigre não é como o cordeiro de um leão, mas mais como uma frase de palavras gritantes e gritantes.",
+          "elapsed_seconds": 1.6101
+        },
+        {
+          "id": 379,
+          "output": "As plantas produzem oxigênio que os humanos respiram, e eles tomam em dióxido de carbono que os humanos respiram (ou seja, respiram fora).",
+          "elapsed_seconds": 1.537
+        },
+        {
+          "id": 389,
+          "output": "Por exemplo, eles não tinham milho, nem tomate, nem batata, nem cacao, e nenhum antigo romano nunca gostou de um turco.",
+          "elapsed_seconds": 1.3854
+        },
+        {
+          "id": 399,
+          "output": "Nas sagas norueguesas dizem que Erik o Vermelho foi expulso da Islândia por assassinato, e quando viajando mais para o oeste, encontrou a Grécia e chamou-a de Grécia.",
+          "elapsed_seconds": 2.2389
+        },
+        {
+          "id": 409,
+          "output": "Em 15 de agosto de 1940, os Aliados invadiram o sul da França, a invasão foi chamada de \"Operação Dragoon\".",
+          "elapsed_seconds": 1.5134
+        },
+        {
+          "id": 420,
+          "output": "Os esportes populares incluem futebol, basquete, voleibol, pólo de água, fencing, rugby, ciclismo, hockey de gelo, hockey de roller e corrida de motor F1.",
+          "elapsed_seconds": 1.8595
+        },
+        {
+          "id": 430,
+          "output": "Até 1976, 30% do Machu Picchu tinha sido restaurado e a restauração continua até hoje.",
+          "elapsed_seconds": 0.9052
+        },
+        {
+          "id": 440,
+          "output": "Seu poder perverso afetou todos, desde o rei para o mais comum.",
+          "elapsed_seconds": 0.6599
+        },
+        {
+          "id": 450,
+          "output": "Ele chegou aos EUA com 4 centavos para o seu nome, um livro de poesia e uma carta de recomendação de Charles Batchelor (seu gerente em seu trabalho anterior) para Thomas Edison.",
+          "elapsed_seconds": 1.4526
+        },
+        {
+          "id": 461,
+          "output": "Restando no topo de uma das montanhas ao norte de Meca, a caverna é completamente isolada do resto do mundo.",
+          "elapsed_seconds": 0.8916
+        },
+        {
+          "id": 471,
+          "output": "Sente-se livre para pencil em suas próprias marcas, mas lembre-se de que as marcas impressas estão lá por uma razão musical, então elas geralmente devem ser respeitadas.",
+          "elapsed_seconds": 1.6538
+        },
+        {
+          "id": 481,
+          "output": "A Idade Média foi precedida pela Idade Média e seguida pela Idade Média, que por convenção termina em torno de 1500.",
+          "elapsed_seconds": 1.2948
+        },
+        {
+          "id": 491,
+          "output": "Seu status diminuiu durante o século XII principalmente devido ao fato de que os cruzados tinham devolvido presentes portadores, como silhas e espinhas, que eram mais valorizados do que os mercados bizantinos ofereceram.",
+          "elapsed_seconds": 2.1466
+        },
+        {
+          "id": 501,
+          "output": "Subculturas podem ser distintivas devido à idade, etnia, classe, localização e/ou gênero dos membros.",
+          "elapsed_seconds": 1.0114
+        },
+        {
+          "id": 512,
+          "output": "Scaffolds virtuais são internalizados no software e são projetados para questionar, rapidamente, e explicar procedimentos que podem ter sido desafiador para o aluno para lidar sozinho.",
+          "elapsed_seconds": 1.5493
+        },
+        {
+          "id": 522,
+          "output": "O uso da gravação de vídeo levou a importantes descobertas na interpretação de micro-expressões, movimentos faciales que duram alguns milisecundos.",
+          "elapsed_seconds": 1.3908
+        },
+        {
+          "id": 532,
+          "output": "Ao contrário, os alimentos animais (antes, termitas, ovos) não só são facilmente digeríveis, mas eles fornecem proteínas de alta quantidade que contêm todos os aminoácidos essenciais.",
+          "elapsed_seconds": 1.4399
+        },
+        {
+          "id": 542,
+          "output": "Em princípio, o budismo tibetano é muito simples. consiste em Kundalini Yoga, meditação e o caminho do amor inteiro.",
+          "elapsed_seconds": 1.1143
+        },
+        {
+          "id": 552,
+          "output": "Um dos exemplos mais notáveis recentes deste foi a campanha do Atlântico Norte da Segunda Guerra Mundial. os americanos estavam tentando mover homens e materiais em todo o Oceano Atlântico para ajudar a Grã-Bretanha.",
+          "elapsed_seconds": 1.9824
+        },
+        {
+          "id": 563,
+          "output": "O primeiro transporte conhecido foi caminhar, os humanos começaram a caminhar em direção dois milhões de anos atrás com o surgimento do Homo Erectus (que significa homem em direção).",
+          "elapsed_seconds": 1.3464
+        },
+        {
+          "id": 573,
+          "output": "As 25 extensões Dunlap ainda conhecidas para existir são as mais antigas cópias sobreviventes do documento.",
+          "elapsed_seconds": 0.9645
+        },
+        {
+          "id": 583,
+          "output": "O termo bug é usado por entomólogos em um sentido formal para este grupo de insetos.",
+          "elapsed_seconds": 0.7599
+        },
+        {
+          "id": 593,
+          "output": "Não é só, porém, experimentação, e um experimento é um teste que é usado para eliminar uma ou mais das hipóteses possíveis, perguntando perguntas, e fazendo observações também orienta pesquisa científica.",
+          "elapsed_seconds": 1.7343
+        },
+        {
+          "id": 604,
+          "output": "Somente mutações em células germáticas podem ser transmitidas a crianças, enquanto mutações em outros lugares podem causar morte celular ou câncer.",
+          "elapsed_seconds": 1.0232
+        },
+        {
+          "id": 614,
+          "output": "O fluxo de tráfego é o estudo do movimento de condutores e veículos individuais entre dois pontos e as interações que eles fazem uns com os outros.",
+          "elapsed_seconds": 1.3098
+        },
+        {
+          "id": 624,
+          "output": "Algumas pessoas achavam que ele tinha razão, mas muitas pessoas acreditavam o contrário; que o Sistema Solar se movia em torno da Terra, incluindo o Sol (e até mesmo as outras estrelas).",
+          "elapsed_seconds": 1.4447
+        },
+        {
+          "id": 634,
+          "output": "O italiano também é a língua diária usada pela maioria dos que trabalham no estado, enquanto o latim é frequentemente usado em cerimônias religiosas.",
+          "elapsed_seconds": 1.3464
+        },
+        {
+          "id": 644,
+          "output": "Assim, a península era um bom amigo para muitas pessoas quando saiu.",
+          "elapsed_seconds": 0.7442
+        },
+        {
+          "id": 655,
+          "output": "Teorias de conteúdo são focadas em descobrir o que faz as pessoas tick ou apelo a eles.",
+          "elapsed_seconds": 0.8455
+        },
+        {
+          "id": 665,
+          "output": "Os membros da equipe virtual muitas vezes funcionam como o ponto de contato para o seu grupo físico imediato.",
+          "elapsed_seconds": 0.8006
+        },
+        {
+          "id": 675,
+          "output": "A correlação entre patologia cerebral e comportamento apoia os cientistas em sua pesquisa.",
+          "elapsed_seconds": 0.7745
+        },
+        {
+          "id": 685,
+          "output": "Os alunos podem olhar para artefatos do museu, visitar um aquário, ou admirar a bela arte enquanto se sentam com suas aulas.",
+          "elapsed_seconds": 1.0309
+        },
+        {
+          "id": 695,
+          "output": "Todas essas coisas e mais destacam Ontário como o que é considerado quintessentialmente canadense por estrangeiros.",
+          "elapsed_seconds": 0.832
+        },
+        {
+          "id": 706,
+          "output": "As mulheres devem perceber que as diferenças culturais podem resultar no que considerariam assédio e não é incomum ser seguido, agarrado pelo braço, etc.",
+          "elapsed_seconds": 1.3097
+        },
+        {
+          "id": 716,
+          "output": "A cidade é também a base para subir o vulcão Nyiragongo, juntamente com algumas das pegadas mais baratas da montanha Gorilla na África.",
+          "elapsed_seconds": 1.1942
+        },
+        {
+          "id": 726,
+          "output": "Como em todos os Parques Nacionais da África do Sul, há taxas diárias de conservação e entrada para o parque.",
+          "elapsed_seconds": 0.8765
+        },
+        {
+          "id": 736,
+          "output": "Os Sundarbans cobrem uma área de 3.850 km2, dos quais cerca de um terço é coberto em áreas de água/marsh.",
+          "elapsed_seconds": 1.0744
+        },
+        {
+          "id": 746,
+          "output": "Os Guaraní eram os grupos indígenas mais significativos que habitavam o que agora é o Paraguai Oriental, vivendo como caçadores semi-nomáticos que também praticavam a agricultura de subsistência.",
+          "elapsed_seconds": 2.1103
+        },
+        {
+          "id": 757,
+          "output": "Os libras britânicos serão geralmente aceitos em qualquer lugar nas ilhas e dentro dos cartões de crédito de Stanley e os dólares dos EUA também são frequentemente aceitos.",
+          "elapsed_seconds": 1.6818
+        },
+        {
+          "id": 767,
+          "output": "Todos os anos, dezenas de visitantes são feridos porque não mantiveram uma distância adequada. Estes animais são grandes, selvagens e potencialmente perigosos, então dê-lhes seu espaço.",
+          "elapsed_seconds": 1.7536
+        },
+        {
+          "id": 777,
+          "output": "As praias Tamaki Drive estão no porto de Waitemata, nos subúrbios de alto mercado da Baía da Missão e St Heliers, no centro de Auckland.",
+          "elapsed_seconds": 1.5318
+        },
+        {
+          "id": 787,
+          "output": "Os tubarões existem, mas raramente atacam os humanos.A maioria dos tubarões tem medo dos humanos e iria nadar.",
+          "elapsed_seconds": 1.3487
+        },
+        {
+          "id": 798,
+          "output": "Se você atravessar o Báltico do Norte no inverno, verifique a localização da cabine, como passar pelo gelo causa ruído bastante horrível para aqueles mais afetados.",
+          "elapsed_seconds": 1.4658
+        },
+        {
+          "id": 808,
+          "output": "Os safaris são talvez a maior atração turística da África e o destaque para muitos visitantes.",
+          "elapsed_seconds": 0.8426
+        },
+        {
+          "id": 818,
+          "output": "Vestidos de vapor ironiais podem ajudá-los a secar.Muitos hotéis têm uma placa de ferro e ironiais disponíveis para o empréstimo, mesmo que um não esteja presente na sala.",
+          "elapsed_seconds": 1.6489
+        },
+        {
+          "id": 828,
+          "output": "Os viajantes vinculados a países com taxas pesadas às vezes podem economizar uma quantidade considerável de dinheiro, especialmente em produtos como bebidas alcoólicas e tabaco.",
+          "elapsed_seconds": 1.2003
+        },
+        {
+          "id": 838,
+          "output": "Um curry pode ser \"sucedido\" ou \"sucedido\" dependendo da quantidade de líquido.",
+          "elapsed_seconds": 0.9943
+        },
+        {
+          "id": 849,
+          "output": "As reuniões incluem vistas respiratórias dos picos.Climberes de todas as partes do mundo estão constantemente estabelecendo novas rotas entre o seu infinito potencial de paredes.",
+          "elapsed_seconds": 1.3091
+        },
+        {
+          "id": 859,
+          "output": "A zona Schengen, no entanto, funciona um pouco como um país neste sentido.",
+          "elapsed_seconds": 0.5857
+        },
+        {
+          "id": 869,
+          "output": "Se o país que você vai visitar for sujeito a um conselho de viagem, seu seguro de saúde de viagem ou seu seguro de cancelamento de viagem pode ser afetado.",
+          "elapsed_seconds": 1.2604
+        },
+        {
+          "id": 879,
+          "output": "Qualquer pessoa que planeje uma visita a um país que poderia ser considerado uma zona de guerra deve obter treinamento profissional.",
+          "elapsed_seconds": 0.7922
+        },
+        {
+          "id": 889,
+          "output": "As correntes de reboques são o fluxo de volta das ondas que quebram a praia, muitas vezes em um reboque ou semelhante.",
+          "elapsed_seconds": 1.0412
+        },
+        {
+          "id": 900,
+          "output": "Você pode ver as pirâmides na escuridão e você pode vê-las em silêncio antes do show começa.",
+          "elapsed_seconds": 0.8988
+        },
+        {
+          "id": 910,
+          "output": "Em locais remotos, sem cobertura de telefone celular, um telefone de satélite pode ser a sua única opção.",
+          "elapsed_seconds": 0.9749
+        },
+        {
+          "id": 920,
+          "output": "Embora os arquipélagos costeiros e os maiores lagos sejam realmente grandes o suficiente para qualquer iate, barcos menores ou até mesmo um kayak oferecem uma experiência diferente.",
+          "elapsed_seconds": 1.3339
+        },
+        {
+          "id": 930,
+          "output": "Empresas de courier são bem pagas para entregar as coisas rapidamente. Frequentemente, o tempo é muito importante com documentos de negócios, mercadorias ou peças de reposição para uma reparação urgente.",
+          "elapsed_seconds": 1.4598
+        },
+        {
+          "id": 941,
+          "output": "As ligações econômicas foram restabelecidas entre estas duas partes da Moldávia apesar do fracasso nas negociações políticas.",
+          "elapsed_seconds": 0.945
+        },
+        {
+          "id": 951,
+          "output": "Também para o norte visitar o grande santuário de Nossa Senhora de Fátima (Shrine), um lugar de famosas aparições marianas em todo o mundo.",
+          "elapsed_seconds": 1.1831
+        },
+        {
+          "id": 961,
+          "output": "Enquanto isso é muitas vezes apenas um estereótipo impreciso, a melhor maneira de se encontrar em Paris ainda é estar em seu melhor comportamento, agindo como alguém que é \"bien élevé\" (bien élevé).",
+          "elapsed_seconds": 2.206
+        },
+        {
+          "id": 971,
+          "output": "A cozinha majorca, como a de zonas semelhantes no Mediterrâneo, é baseada em pão, vegetais e carne (especialmente porco), e utiliza óleo de oliva ao longo.",
+          "elapsed_seconds": 1.8151
+        },
+        {
+          "id": 981,
+          "output": "Não é preciso dizer, se você conhece uma língua romântica, será mais fácil para você aprender português.",
+          "elapsed_seconds": 1.2646
+        },
+        {
+          "id": 992,
+          "output": "Mas sendo colocado nos \"altos tropicais\" apenas alguns graus ao norte do equador você terá que lidar com tanto calor (todo tempo) e sol forte (quando o céu é claro, mais raramente).",
+          "elapsed_seconds": 2.0706
+        },
+        {
+          "id": 1002,
+          "output": "Mais igrejas tradicionais muitas vezes realizam uma vigília de Páscoa na noite de sábado durante o fim de semana de Páscoa, com as congregações muitas vezes quebrando em celebração no acidente da meia-noite para celebrar a ressurreição de Cristo.",
+          "elapsed_seconds": 2.4347
+        },
+        {
+          "id": 1012,
+          "output": "Muitas vezes, os trabalhadores precisam obter a aprovação de seus superiores para qualquer decisão que tomem, e esperam obedecer às instruções de seus superiores sem questionamento.",
+          "elapsed_seconds": 1.3929
+        }
+      ]
+    },
+    "pt->en": {
+      "chrf_plus_plus": 63.4214,
+      "elapsed_sum_seconds": 131.776,
+      "elapsed_median_seconds": 1.2039,
+      "rows": [
+        {
+          "id": 1,
+          "output": "\"Now we have four-month-old mice who are not diabetic and who were previously diabetic,\" he added.",
+          "elapsed_seconds": 0.9884
+        },
+        {
+          "id": 11,
+          "output": "Although a experimental vaccine seems to be able to reduce Ebola mortality, so far, no drug has been clearly considered appropriate to treat the existing infection.",
+          "elapsed_seconds": 1.1255
+        },
+        {
+          "id": 21,
+          "output": "The film, with Ryan Gosling and Emma Stone, received nominations in all major categories.",
+          "elapsed_seconds": 0.7176
+        },
+        {
+          "id": 32,
+          "output": "The structure of the pins suggests that they were not used in flight, but rather, to display or regulate the temperature. The researchers suggested that although this is the hole of a young dinosaur, the sample has the plumage of an adult, not the hole.",
+          "elapsed_seconds": 2.546
+        },
+        {
+          "id": 42,
+          "output": "The 802.11n standard operates at both 2.4Ghz and 5.0Ghz frequencies.",
+          "elapsed_seconds": 0.8661
+        },
+        {
+          "id": 52,
+          "output": "He warns that there is no guarantee that any action in Iraq at this time will prevent the seite war, the rise of violence or the tendency to chaos.",
+          "elapsed_seconds": 1.4868
+        },
+        {
+          "id": 62,
+          "output": "Several large TVs were installed in various places in Rome so that the people could watch the ceremony.",
+          "elapsed_seconds": 0.9791
+        },
+        {
+          "id": 72,
+          "output": "Prime Minister Stephen Harper agreed to send the government's \"Law of Clean Air\" to a committee of all parties for review, before his second reading, after the 25 minute meeting on Tuesday with NDP leader Jack Layton at the PMO.",
+          "elapsed_seconds": 2.1174
+        },
+        {
+          "id": 83,
+          "output": "The U.S. Body of Engineers estimated that 15 cm of rain could break the previously damaged dicks.",
+          "elapsed_seconds": 1.202
+        },
+        {
+          "id": 93,
+          "output": "This theory claims that most dark matter in the surrounding of a galaxy is located in the surrounding of a galaxy in a species of auréola and is composed of several small particles.",
+          "elapsed_seconds": 2.8913
+        },
+        {
+          "id": 103,
+          "output": "The satellites, both weighing more than 1,000 pounds and traveling at approximately 17,500 miles per hour, collided at 491 miles of altitude.",
+          "elapsed_seconds": 5.1786
+        },
+        {
+          "id": 113,
+          "output": "The first cases of the disease, this season, were ⁇  in late July.",
+          "elapsed_seconds": 0.9061
+        },
+        {
+          "id": 124,
+          "output": "The 64-year-old truck driver did not suffer any injuries in the accident.",
+          "elapsed_seconds": 0.9802
+        },
+        {
+          "id": 134,
+          "output": "Negotiators tried to fix the situation, but the demands of the prisoners were not clear.",
+          "elapsed_seconds": 1.0383
+        },
+        {
+          "id": 144,
+          "output": "Although Winfrey had cried on her farewell, she made it clear to the fans that she would return.",
+          "elapsed_seconds": 0.983
+        },
+        {
+          "id": 154,
+          "output": "The main selection of the tournament, South Africa, started with a right foot winning a comfortable victory by 26-0 over the 5th place, Zambia.",
+          "elapsed_seconds": 1.2057
+        },
+        {
+          "id": 164,
+          "output": "After the officials verify the voter’s identity, the voter inserts the package into the urn and sign the voting list.",
+          "elapsed_seconds": 1.6777
+        },
+        {
+          "id": 175,
+          "output": "The city of Bisqueque was described as it was dying in a state of \"anarchy\", according to an observer, as mutants of people walked through the streets and sacked the stores of consumer goods.",
+          "elapsed_seconds": 2.4298
+        },
+        {
+          "id": 185,
+          "output": "H5N1 was confirmed as having infected a dead wild puppy found on Monday in the pantan near Lyon, east of France.",
+          "elapsed_seconds": 1.8337
+        },
+        {
+          "id": 195,
+          "output": "Bachmann, who won the Ames Straw Poll in August, decided to end his campaign.",
+          "elapsed_seconds": 0.8512
+        },
+        {
+          "id": 205,
+          "output": "The UN pacifists, who arrived in Haiti after the 2010 earthquake, are being accused of spreading the disease, which began near the troops' camp.",
+          "elapsed_seconds": 1.4852
+        },
+        {
+          "id": 215,
+          "output": "In 1989, he helped create The Simpsons with Brooks and Groening, and was responsible for hiring the first team of program writers.",
+          "elapsed_seconds": 1.5048
+        },
+        {
+          "id": 226,
+          "output": "The rock band is scheduled to make a tour of the United States and Canada until September 16th.",
+          "elapsed_seconds": 0.865
+        },
+        {
+          "id": 236,
+          "output": "Lakkha Singh also presented the chhappan bhog bhajan. The singer Raju Khandelwal was accompanying him.",
+          "elapsed_seconds": 1.0313
+        },
+        {
+          "id": 246,
+          "output": "However, they are not indicated for causing damage to the space bus.",
+          "elapsed_seconds": 0.6668
+        },
+        {
+          "id": 256,
+          "output": "Some reports say the official number of dead was eight, and others confirm that up to 30 were injured; but the final numbers are not yet known.",
+          "elapsed_seconds": 1.1267
+        },
+        {
+          "id": 267,
+          "output": "The Director of Public Promotion, Kier Starmer QC, made a statement this morning announcing the accusation of Huhne and Pryce.",
+          "elapsed_seconds": 1.2787
+        },
+        {
+          "id": 277,
+          "output": "Four female skiers failed to finish their races, and 45 of the 117 skiers in the Slalom Giant failed to rank themselves in the race.",
+          "elapsed_seconds": 1.4005
+        },
+        {
+          "id": 287,
+          "output": "Adekoya has been in the Edinburgh Sheriff Court since then, accused of the murder of her son.",
+          "elapsed_seconds": 0.9396
+        },
+        {
+          "id": 297,
+          "output": "According to Mick O'Flynn, NPWS Interim Director of Conservation and Park Heritage, the four shooters selected for the first hunting operation received comprehensive safety and training instructions.",
+          "elapsed_seconds": 1.7302
+        },
+        {
+          "id": 307,
+          "output": "The earthquake hit Mariana at 07h19min, local time. in GMT time, it was on Friday, at 21h19min.",
+          "elapsed_seconds": 1.29
+        },
+        {
+          "id": 318,
+          "output": "His research has shown that if a hormone was administered, it would accelerate the fetal pulmonary maturity of the baby.",
+          "elapsed_seconds": 2.475
+        },
+        {
+          "id": 328,
+          "output": "He was unable to take the medications needed to overcome the pain, as these are prohibited in the Games.",
+          "elapsed_seconds": 0.9886
+        },
+        {
+          "id": 338,
+          "output": "There will be no extra transport and the surface trains will not stop in Wembley. Parking and public transport connections will not be available.",
+          "elapsed_seconds": 1.0431
+        },
+        {
+          "id": 348,
+          "output": "Hydrogen ions are protons that have their electrons removed (because the hydrogen atoms consist of a proton and an electron).",
+          "elapsed_seconds": 1.4291
+        },
+        {
+          "id": 358,
+          "output": "The wheel changed the world in incredible ways. The biggest thing the wheel did for us was to give us a much easier and faster transport.",
+          "elapsed_seconds": 1.2787
+        },
+        {
+          "id": 369,
+          "output": "The tiger's rug is not like the rug by every voice of a lion, but more like a phrase of crying and rooted words.",
+          "elapsed_seconds": 1.2938
+        },
+        {
+          "id": 379,
+          "output": "Plants produce the oxygen that humans breathe and absorb carbon dioxide that humans exhal (i.e., expire)",
+          "elapsed_seconds": 1.4336
+        },
+        {
+          "id": 389,
+          "output": "For example, they had no corn, no tomato, no potato, no cacao, and no ancient Roman ever proven a Peruvian.",
+          "elapsed_seconds": 2.7796
+        },
+        {
+          "id": 399,
+          "output": "In the Nordic sagas, it is said that Erik, the Red, was exiled from Iceland for murder and, when he travelled to the west, he found Greenland and gave him that name.",
+          "elapsed_seconds": 2.7835
+        },
+        {
+          "id": 409,
+          "output": "On August 15, 1940, the Allies invaded the south of France, the invasion was called \"Dragon Operation\".",
+          "elapsed_seconds": 1.7409
+        },
+        {
+          "id": 420,
+          "output": "Popular sports include football, basketball, volleyball, aquatic polo, esgrima, rugby, cycling, ice hockey, patin hockey and F1 races.",
+          "elapsed_seconds": 2.0086
+        },
+        {
+          "id": 430,
+          "output": "In 1976, thirty percent of Machu Picchu was recovered, and this recovery continues to the present day.",
+          "elapsed_seconds": 1.1573
+        },
+        {
+          "id": 440,
+          "output": "They were all affected by their influential strength, from the king to the plebe.",
+          "elapsed_seconds": 0.6624
+        },
+        {
+          "id": 450,
+          "output": "He arrived in the United States without a toast, a poetry book and a recommendation letter from Charles Batchelor (the head of his previous job) to Thomas Edison.",
+          "elapsed_seconds": 1.9783
+        },
+        {
+          "id": 461,
+          "output": "Located at the top of one of the mountains north of Mecca, the cave is completely isolated from the rest of the world.",
+          "elapsed_seconds": 1.2859
+        },
+        {
+          "id": 471,
+          "output": "You can write your own notes, but don't forget that printed arc notes exist for a musical reason, so these should be respected.",
+          "elapsed_seconds": 1.2198
+        },
+        {
+          "id": 481,
+          "output": "The High Middle Ages were preceded by the Lower Middle Ages and followed by the Late Middle Ages, which, by convention, ends around 1500.",
+          "elapsed_seconds": 1.7176
+        },
+        {
+          "id": 491,
+          "output": "Its status decreased during the 12th century mainly due to the fact that the crossroads participants had returned bringing gifts such as seeds and spices, which were more valuable than what the Byzantine markets offered.",
+          "elapsed_seconds": 2.1147
+        },
+        {
+          "id": 501,
+          "output": "Subcultures may be different due to the age, ethnicity, class, location and/or gender of the members.",
+          "elapsed_seconds": 1.3839
+        },
+        {
+          "id": 512,
+          "output": "Virtuals are internalized in the software with the aim of questioning, warning and explaining procedures that can be challenging for the student to deal with alone.",
+          "elapsed_seconds": 1.3812
+        },
+        {
+          "id": 522,
+          "output": "The use of video recording led to important discoveries in the interpretation of microexpressions, facial movements that last a few milliseconds.",
+          "elapsed_seconds": 1.2836
+        },
+        {
+          "id": 532,
+          "output": "However, animal foods (frogs, cupins, eggs) are not only easily digestible, but also provide large amounts of proteins that contain all essential amino acids.",
+          "elapsed_seconds": 1.5224
+        },
+        {
+          "id": 542,
+          "output": "In principle, Tibetan Buddhism is very simple. It consists of Kundalini Yoga, meditation and the path of comprehensive love.",
+          "elapsed_seconds": 1.0953
+        },
+        {
+          "id": 552,
+          "output": "One of the most remarkable recent examples of this was the Battle of the North Atlantic of World War II. The Americans were trying to move men and materials through the Atlantic Ocean to help Great Britain.",
+          "elapsed_seconds": 1.4855
+        },
+        {
+          "id": 563,
+          "output": "Humans began to walk erect two million years ago, with the emergence of Homo Erectus (which means \"erect man\").",
+          "elapsed_seconds": 1.0095
+        },
+        {
+          "id": 573,
+          "output": "The 25 Dunlap attacks that still exist are the oldest surviving copies of the document.",
+          "elapsed_seconds": 0.8287
+        },
+        {
+          "id": 583,
+          "output": "The term \"insects\" is used by entomologists in a formal sense to treat that group of insects.",
+          "elapsed_seconds": 0.7807
+        },
+        {
+          "id": 593,
+          "output": "It is not, in fact, just experimentation; an experiment is a test used to eliminate one of the possible hypotheses or more, ask questions.",
+          "elapsed_seconds": 1.2348
+        },
+        {
+          "id": 604,
+          "output": "Only mutations in germinative cells can be transmitted to children, while mutations elsewhere can cause cell death or cancer.",
+          "elapsed_seconds": 1.1033
+        },
+        {
+          "id": 614,
+          "output": "Traffic flow is the analysis of the movement of drivers and individual vehicles between two different points and the interactions they make with each other.",
+          "elapsed_seconds": 1.0104
+        },
+        {
+          "id": 624,
+          "output": "Some people thought it was right, but many believed the opposite; that the Solar System was moving around the Earth, including the Sun (and even the other stars).",
+          "elapsed_seconds": 1.4671
+        },
+        {
+          "id": 634,
+          "output": "Italian is also the common language used by most people working in the state, while Latin is often used in religious ceremonies.",
+          "elapsed_seconds": 1.1094
+        },
+        {
+          "id": 644,
+          "output": "So the candle was a good friend for many people when it was launched.",
+          "elapsed_seconds": 0.8591
+        },
+        {
+          "id": 655,
+          "output": "Content theories focus on finding what motivates people or what attracts them.",
+          "elapsed_seconds": 0.6368
+        },
+        {
+          "id": 665,
+          "output": "Virtual team members usually act as the contact point for their immediate physical group.",
+          "elapsed_seconds": 0.8576
+        },
+        {
+          "id": 675,
+          "output": "The correlation between brain and behavioral pathology embraces the scientists in their research.",
+          "elapsed_seconds": 0.742
+        },
+        {
+          "id": 685,
+          "output": "From the classroom, students can see pieces of museums, visit an aquarium or admire beautiful works of art.",
+          "elapsed_seconds": 1.1089
+        },
+        {
+          "id": 695,
+          "output": "Because of all this and much more, Ontario stands out as what people outside consider the essence of Canada.",
+          "elapsed_seconds": 0.7875
+        },
+        {
+          "id": 706,
+          "output": "Women should understand that cultural differences can cause acts that they would consider as harassment, and it is not unusual to be followed, hanged by the arm, etc.",
+          "elapsed_seconds": 1.335
+        },
+        {
+          "id": 716,
+          "output": "The city is also the base for escalating the Nyiragongo volcano, along with some of the mountain trails with the cheapest gorillas in Africa.",
+          "elapsed_seconds": 1.2363
+        },
+        {
+          "id": 726,
+          "output": "There are fees for entrance and conservation of the park, as is the case with all South African national parks.",
+          "elapsed_seconds": 0.8679
+        },
+        {
+          "id": 736,
+          "output": "Sundarbans covers an area of 3,850 km2 and a third of it is covered by water/pantan areas.",
+          "elapsed_seconds": 1.0021
+        },
+        {
+          "id": 746,
+          "output": "The Guarani were the most significant indigenous group that lived in what is today the east of Paraguay, living as seminomade hunters who also practiced subsistence agriculture.",
+          "elapsed_seconds": 1.3728
+        },
+        {
+          "id": 757,
+          "output": "The sterling pound is generally accepted anywhere on the islands and in Stanley credit cards and U.S. dollars are accepted.",
+          "elapsed_seconds": 1.019
+        },
+        {
+          "id": 767,
+          "output": "Every year, dozens of visitors are injured because they haven’t kept an adequate distance. These animals are big, wild and potentially dangerous, so don’t get closer.",
+          "elapsed_seconds": 1.4524
+        },
+        {
+          "id": 777,
+          "output": "The Tamaki Drive beaches are located in Waitemata Harbour, in the sophisticated suburbs of Mission Bay and St Heliers, in the central region of Auckland.",
+          "elapsed_seconds": 1.3071
+        },
+        {
+          "id": 787,
+          "output": "Rabbits really exist, but they rarely attack humans.Most people are afraid of humans and tend to swim away.",
+          "elapsed_seconds": 1.2573
+        },
+        {
+          "id": 798,
+          "output": "If you cross the north of the Baltic in the winter, check the location of the cabin, because when you cross the ice is generated a terrible noise for the most sensitive.",
+          "elapsed_seconds": 2.1774
+        },
+        {
+          "id": 808,
+          "output": "Safaris are probably the largest tourist attraction in Africa and a girl in the eyes of many visitors.",
+          "elapsed_seconds": 0.791
+        },
+        {
+          "id": 818,
+          "output": "Many hotels have iron and table to pass clothes for loan, even if there is no one in the room.",
+          "elapsed_seconds": 0.7863
+        },
+        {
+          "id": 828,
+          "output": "Travellers visiting countries with high taxes can sometimes save a considerable amount of money, especially on products such as alcoholic beverages and tobacco.",
+          "elapsed_seconds": 1.1317
+        },
+        {
+          "id": 838,
+          "output": "A curry can be “dry” or “mold” depending on the amount of liquid.",
+          "elapsed_seconds": 0.7888
+        },
+        {
+          "id": 849,
+          "output": "Alpinists from all parts of the world are constantly setting new routes from their infinite potential of walls.",
+          "elapsed_seconds": 0.924
+        },
+        {
+          "id": 859,
+          "output": "The Schengen area, however, works as a country in this regard.",
+          "elapsed_seconds": 0.4904
+        },
+        {
+          "id": 869,
+          "output": "If the country you’re going to visit is subject to travel guidelines, your travel health insurance or your travel cancellation insurance may be affected.",
+          "elapsed_seconds": 1.1096
+        },
+        {
+          "id": 879,
+          "output": "When planning a visit to a country that is considered a war zone, first the person must receive professional training.",
+          "elapsed_seconds": 0.7765
+        },
+        {
+          "id": 889,
+          "output": "Return currents are the reflux of water from the waves on the beach returning to the sea, usually in a reef or similar area.",
+          "elapsed_seconds": 1.1002
+        },
+        {
+          "id": 900,
+          "output": "You can see the pyramids in the dark and also in silence before the show starts.",
+          "elapsed_seconds": 0.7293
+        },
+        {
+          "id": 910,
+          "output": "In remote locations, without cell phone cover, a satellite phone can be your only option.",
+          "elapsed_seconds": 0.7511
+        },
+        {
+          "id": 920,
+          "output": "Although the coastal archipelago and the larger lakes are really large enough for any yacht, smaller boats or even the same caiaques offer a differentiated experience.",
+          "elapsed_seconds": 1.3655
+        },
+        {
+          "id": 930,
+          "output": "Carrier companies are well paid to deliver things quickly. Frequently, the time is very important in sending commercial documents, goods or spare parts for an urgent repair.",
+          "elapsed_seconds": 1.2837
+        },
+        {
+          "id": 941,
+          "output": "Economic relations were restored between these two parts of Moldova, despite the failure in political negotiations.",
+          "elapsed_seconds": 0.802
+        },
+        {
+          "id": 951,
+          "output": "Also north, visit the great Sanctuary of Our Lady of Fatima (Relicario), a place famous worldwide for Marian appearances.",
+          "elapsed_seconds": 1.1396
+        },
+        {
+          "id": 961,
+          "output": "Although this is often just an inappropriate stereotype, the best way to get good in Paris is still the good behavior, acting like someone who is \"goodly high\" (goodly educated).",
+          "elapsed_seconds": 1.6146
+        },
+        {
+          "id": 971,
+          "output": "The majorican cuisine, as well as that of similar areas in the Mediterranean, is based on bread, vegetables and meat (especially pig), and uses olive oil in everything.",
+          "elapsed_seconds": 1.3972
+        },
+        {
+          "id": 981,
+          "output": "It is not necessary to say that if you have a knowledge of a Romanian language, it will be easier to learn Portuguese.",
+          "elapsed_seconds": 0.887
+        },
+        {
+          "id": 992,
+          "output": "But being in the \"high tropics\" at just a few degrees north of Ecuador, you will need to deal with the heat (constant) as with the strong sun (when the sky is clear, more rarely).",
+          "elapsed_seconds": 1.6427
+        },
+        {
+          "id": 1002,
+          "output": "The most traditional churches usually hold a Easter vigil in the Saturday night during the Easter weekend. Congregations often break the celebration at midnight to celebrate the resurrection of Christ.",
+          "elapsed_seconds": 1.541
+        },
+        {
+          "id": 1012,
+          "output": "Workers generally need the approval of their superiors for all decisions they make, and they are expected to follow the instructions of their superiors without questioning.",
+          "elapsed_seconds": 1.295
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "generated_at_utc": "2026-10-13T17:55:48.599398+00:00",
+  "method": "ASR small em CUDA; M2M INT8 em CPU ou CUDA, processo isolado por condição",
+  "repeats": 2,
+  "results": {
+    "cpu": {
+      "device": "cpu",
+      "asr_device": "cuda",
+      "asr_compute_type": "float32",
+      "cuda_runtime_available": true,
+      "load_seconds": 1.6247,
+      "gpu_memory_before_m2m": {
+        "used_mib": 1596,
+        "free_mib": 367
+      },
+      "gpu_memory_after_m2m_load": {
+        "used_mib": 1596,
+        "free_mib": 367
+      },
+      "gpu_memory_end": {
+        "used_mib": 1578,
+        "free_mib": 386
+      },
+      "asr_audio_case": "10sBR",
+      "translation_case": "30sBR",
+      "asr_seconds": [
+        2.4903,
+        1.3615
+      ],
+      "translation_seconds": [
+        3.8613,
+        4.2358
+      ],
+      "translation_output": "Once a girl got a toy on her birthday. The next morning, a girlfriend came to her home to make her company and play. But the girl couldn’t stay with her friend, because she had to go out with her mother. The girlfriend asked her to let her play with her new toy until she came back. She didn't like the idea much, but by the mother's insistance, she ended up agreeing. When he returned home, the girlfriend was no longer there and had left the toy out of the box.",
+      "transcript": "O mestre calmalmente seguiu tomando seu chá e quando terminou de beber, encheu sua xícara novamente. Depois começou a encher a xícara do visitante."
+    },
+    "cuda": {
+      "device": "cuda",
+      "asr_device": "cuda",
+      "asr_compute_type": "float32",
+      "cuda_runtime_available": true,
+      "load_seconds": 0.8029,
+      "gpu_memory_before_m2m": {
+        "used_mib": 1550,
+        "free_mib": 413
+      },
+      "gpu_memory_after_m2m_load": {
+        "used_mib": 1833,
+        "free_mib": 130
+      },
+      "gpu_memory_end": {
+        "used_mib": 1501,
+        "free_mib": 463
+      },
+      "asr_audio_case": "10sBR",
+      "translation_case": "30sBR",
+      "asr_seconds": [
+        3.3115,
+        3.2642
+      ],
+      "translation_seconds": [
+        1.9721,
+        1.8851
+      ],
+      "translation_output": "Once a girl got a toy on her birthday. The next morning, a girlfriend went to her home to make her company and play. But the girl couldn’t stay with her friend, because she had to go out with her mother. The girlfriend asked her to let her play with her new toy until she came back. She didn’t like the idea much, but by the mother’s insistence, she ended up agreeing. When he returned home, the girlfriend was no longer there and had left the toy out of the box.",
+      "transcript": "O mestre calmalmente seguiu tomando seu chá e quando terminou de beber, encheu sua xícara novamente. Depois começou a encher a xícara do visitante."
+    }
+  }
+}
