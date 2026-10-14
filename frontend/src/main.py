@@ -1,37 +1,5 @@
-<<<<<<< Updated upstream
 import sys
-from pathlib import Path
-
-from PySide6.QtWidgets import QApplication
-
-
-def _ensure_root_on_path() -> None:
-    """Garante imports absolutos de frontend/back dentro do workspace."""
-    repo_root = Path(__file__).resolve().parents[2]
-    root_str = str(repo_root)
-    if root_str not in sys.path:
-        sys.path.insert(0, root_str)
-
-
-def main() -> int:
-    """Ponto de entrada da aplicacao desktop."""
-    _ensure_root_on_path()
-
-    from frontend.src.transcription_window.main_window import MainWindow
-
-    app = QApplication(sys.argv)
-    app.setApplicationName("GlobalVoice")
-    window = MainWindow()
-    window.show()
-    return app.exec()
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
-=======
 import ctypes
-import os
-import sys
 from pathlib import Path
 
 from PySide6.QtGui import QIcon
@@ -77,18 +45,13 @@ def main() -> int:
     _configure_windows_identity()
     app = QApplication(sys.argv)
     app.setApplicationName("GlobalVoice")
-    app.setQuitOnLastWindowClosed(True)
     icon_path = _application_icon_path()
     if icon_path.is_file():
         app.setWindowIcon(QIcon(str(icon_path)))
     window = MainWindow()
     window.show()
-
-    exit_code = app.exec()
-    # Força o encerramento imediato do processo Python no sistema operacional
-    os._exit(exit_code)
+    return app.exec()
 
 
 if __name__ == "__main__":
-    main()
->>>>>>> Stashed changes
+    raise SystemExit(main())
