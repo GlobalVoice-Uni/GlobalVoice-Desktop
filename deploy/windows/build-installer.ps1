@@ -1,6 +1,7 @@
 param(
-    [string]$AppVersion = "0.1.0",
+    [string]$AppVersion = "0.4.1",
     [string]$InnoCompilerPath,
+    [string]$OutputSuffix,
     [switch]$Fast
 )
 
@@ -19,9 +20,21 @@ else {
     Join-Path $projectDir $InnoCompilerPath
 }
 
-if ($AppVersion -notmatch '^\d+\.\d+\.\d+(\.\d+)?$') {
-    Write-Error "Versao invalida: $AppVersion. Use o formato 1.2.3 ou 1.2.3.4."
+if ($AppVersion -notmatch '^\d+\.\d+(\.\d+){0,2}$') {
+    Write-Error "Versao invalida: $AppVersion. Use o formato 1.2, 1.2.3 ou 1.2.3.4."
     exit 1
+}
+if ($OutputSuffix -and $OutputSuffix -notmatch '^[a-z0-9][a-z0-9-]{0,20}$') {
+    Write-Error "Sufixo de instalador invalido: $OutputSuffix."
+    exit 1
+}
+
+$outputStem = "GlobalVoice-Setup-$AppVersion"
+if ($OutputSuffix) {
+    $outputStem += "-$OutputSuffix"
+}
+elseif ($Fast) {
+    $outputStem += "-dev"
 }
 
 $requiredFiles = @(
@@ -38,30 +51,26 @@ foreach ($requiredFile in $requiredFiles) {
     }
 }
 
-foreach ($languageCode in @("en", "es")) {
-    $languagePackages = Join-Path $projectDir "dist\translation-packs\$languageCode\packages"
-    if (-not (Test-Path -LiteralPath $languagePackages -PathType Container)) {
-        Write-Error (
-            "Pacote de tradução não encontrado: $languagePackages. " +
-            "Execute deploy\windows\prepare-translation-models.ps1 antes do instalador."
-        )
-        exit 1
-    }
-}
-
 if (-not (Test-Path -LiteralPath $compiler -PathType Leaf)) {
     Write-Error "Compilador do Inno Setup nao encontrado em $compiler"
     exit 1
 }
 
+& (Join-Path $scriptDir "prepare-vb-cable.ps1")
+
 Push-Location $projectDir
 try {
+    $versionParts = @($AppVersion.Split('.')) + @('0', '0', '0', '0')
+    $fileVersion = $versionParts[0..3] -join '.'
     $compilerArguments = @(
-        "--define=AppVersion=$AppVersion"
+        "--define=AppVersion=$AppVersion",
+        "--define=AppFileVersion=$fileVersion"
     )
     if ($Fast) {
         $compilerArguments += "--no-compression"
-        $compilerArguments += "--output-filename=GlobalVoice-Setup-$AppVersion-dev"
+    }
+    if ($OutputSuffix -or $Fast) {
+        $compilerArguments += "--output-filename=$outputStem"
     }
     $compilerArguments += $installerScript
 
@@ -74,12 +83,7 @@ finally {
     Pop-Location
 }
 
-$installerFileName = if ($Fast) {
-    "GlobalVoice-Setup-$AppVersion-dev.exe"
-}
-else {
-    "GlobalVoice-Setup-$AppVersion.exe"
-}
+$installerFileName = "$outputStem.exe"
 $installerPath = Join-Path $projectDir "dist\installer\$installerFileName"
 if (-not (Test-Path -LiteralPath $installerPath -PathType Leaf)) {
     Write-Error "Compilacao concluida sem encontrar $installerPath"

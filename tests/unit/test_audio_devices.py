@@ -9,8 +9,9 @@ from backend.app.audio.devices import (
 
 class FakeSoundDevice:
     devices = [
-        {"index": 0, "name": "Entrada sem canais", "max_input_channels": 0},
-        {"index": 4, "name": "Microfone USB", "max_input_channels": 2},
+        {"index": 0, "name": "Entrada sem canais", "max_input_channels": 0, "max_output_channels": 0},
+        {"index": 4, "name": "Microfone USB", "max_input_channels": 2, "max_output_channels": 0},
+        {"index": 8, "name": "Saída virtual", "max_input_channels": 0, "max_output_channels": 2},
     ]
 
     @classmethod
@@ -18,6 +19,8 @@ class FakeSoundDevice:
         del device
         if kind == "input":
             return {**cls.devices[1], "default_samplerate": 48000}
+        if kind == "output":
+            return {**cls.devices[2], "default_samplerate": 48000}
         return cls.devices
 
 
@@ -48,7 +51,7 @@ class AudioDeviceCatalogTests(unittest.TestCase):
         catalog = enumerate_audio_devices(FakeSoundDevice, FakeSoundCard)
 
         self.assertEqual(len(catalog.of_kind(AudioDeviceKind.INPUT)), 1)
-        self.assertEqual(len(catalog.of_kind(AudioDeviceKind.OUTPUT)), 2)
+        self.assertEqual(len(catalog.of_kind(AudioDeviceKind.OUTPUT)), 1)
         self.assertEqual(len(catalog.of_kind(AudioDeviceKind.LOOPBACK)), 2)
         self.assertEqual(catalog.warnings, ())
 
@@ -64,6 +67,7 @@ class AudioDeviceCatalogTests(unittest.TestCase):
         catalog = enumerate_audio_devices(FakeSoundDevice, soundcard_module=False)
 
         self.assertEqual(len(catalog.of_kind(AudioDeviceKind.INPUT)), 1)
+        self.assertEqual(len(catalog.of_kind(AudioDeviceKind.OUTPUT)), 1)
         self.assertFalse(catalog.of_kind(AudioDeviceKind.LOOPBACK))
         self.assertTrue(catalog.warnings)
 

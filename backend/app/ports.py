@@ -43,6 +43,20 @@ class TranscriberPort(Protocol):
         """
 
 
+class SpeechSynthesizerPort(Protocol):
+    """Converte uma fala traduzida em áudio mono normalizado."""
+
+    def synthesize(self, text: str, language: str) -> Tuple[np.ndarray, int]:
+        """Retorna amostras float32 e frequência em Hz."""
+
+
+class AudioSinkPort(Protocol):
+    """Reproduz áudio em uma saída selecionada pelo usuário."""
+
+    def play(self, audio: np.ndarray, sample_rate: int, stop_event) -> None:
+        """Reproduz em blocos para permitir cancelamento entre blocos."""
+
+
 class TranslatorPort(Protocol):
     """Contrato para tradução local ou remota de um trecho confirmado."""
 

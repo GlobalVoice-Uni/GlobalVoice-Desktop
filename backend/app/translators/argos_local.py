@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import stat
 import tempfile
@@ -14,6 +15,9 @@ from typing import Callable, Optional
 PACKAGE_INDEX_URL = (
     "https://raw.githubusercontent.com/argosopentech/argospm-index/main/index.json"
 )
+ARGOS_INDEX_DOWNLOAD_PREFIX = "https://argos-net.com/v1/"
+ARGOS_OFFICIAL_MIRROR_PREFIX = "https://data.argosopentech.com/argospm/v1/"
+_MAX_TRANSLATION_SOURCE_TOKENS = 64
 
 
 class TranslationError(RuntimeError):
@@ -39,6 +43,7 @@ class TranslationModel:
 class TranslationLanguagePack:
     code: str
     label: str
+    languages: tuple[str, str]
     models: tuple[TranslationModel, ...]
     selected_by_default: bool = False
 
@@ -46,11 +51,20 @@ class TranslationLanguagePack:
     def download_size_mb(self) -> float:
         return round(sum(model.download_size_mb for model in self.models), 2)
 
+    def label_for_base(self, base_language: str) -> str:
+        base = "pt-br" if base_language in {"pt", "pb"} else base_language
+        if base not in self.languages:
+            raise ValueError(f"Idioma principal não pertence ao par: {base_language}")
+        names = {"pt-br": "Português", "en": "Inglês", "es": "Espanhol"}
+        other = next(language for language in self.languages if language != base)
+        return f"{names[other]} ↔ {names[base]}"
+
 
 LANGUAGE_PACKS = (
     TranslationLanguagePack(
         code="en",
-        label="Inglês",
+        label="Inglês ↔ Português",
+        languages=("pt-br", "en"),
         selected_by_default=True,
         models=(
             TranslationModel("en", "pb", 63.11),
@@ -59,10 +73,20 @@ LANGUAGE_PACKS = (
     ),
     TranslationLanguagePack(
         code="es",
-        label="Espanhol",
+        label="Espanhol ↔ Português",
+        languages=("pt-br", "es"),
         models=(
             TranslationModel("es", "pt", 64.38),
             TranslationModel("pt", "es", 64.38),
+        ),
+    ),
+    TranslationLanguagePack(
+        code="en-es",
+        label="Inglês ↔ Espanhol",
+        languages=("en", "es"),
+        models=(
+            TranslationModel("en", "es", 83.45),
+            TranslationModel("es", "en", 272.00),
         ),
     ),
 )
@@ -77,6 +101,12 @@ def translation_data_root() -> Path:
     if local_app_data:
         return Path(local_app_data) / "GlobalVoice" / "translation"
     return Path.home() / ".globalvoice" / "translation"
+
+
+def system_translation_data_root() -> Optional[Path]:
+    """Pacotes instalados para todos os usuários pelo instalador Windows."""
+    program_data = os.getenv("PROGRAMDATA")
+    return Path(program_data) / "GlobalVoice" / "translation" if program_data else None
 
 
 def _language_candidates(language: str) -> tuple[str, ...]:
@@ -147,20 +177,46 @@ class _CTranslatePackage:
         self._target_prefix = str(metadata.get("target_prefix") or "")
 
     def translate(self, text: str) -> str:
-        tokens = self._processor.encode(text, out_type=str)
-        target_prefix = [[self._target_prefix]] if self._target_prefix else None
-        result = self._translator.translate_batch(
-            [tokens],
+        segments = self._segments(text)
+        tokenized = [self._processor.encode(segment, out_type=str) for segment in segments]
+        target_prefix = (
+            [[self._target_prefix] for _ in segments] if self._target_prefix else None
+        )
+        results = self._translator.translate_batch(
+            tokenized,
             target_prefix=target_prefix,
             replace_unknowns=True,
             beam_size=4,
             num_hypotheses=1,
             length_penalty=0.2,
-        )[0]
-        translated = self._processor.decode(result.hypotheses[0])
-        if self._target_prefix and translated.startswith(self._target_prefix):
-            translated = translated[len(self._target_prefix) :]
-        return translated.replace("▁", " ").replace("_", " ").strip()
+        )
+        if len(results) != len(segments):
+            raise TranslationError("A tradução local retornou um trecho incompleto.")
+        translated_segments = []
+        for result in results:
+            if not result.hypotheses or not result.hypotheses[0]:
+                raise TranslationError("A tradução local retornou um trecho vazio.")
+            translated = self._processor.decode(result.hypotheses[0])
+            if self._target_prefix and translated.startswith(self._target_prefix):
+                translated = translated[len(self._target_prefix) :]
+            translated_segments.append(translated.replace("▁", " ").replace("_", " ").strip())
+        return " ".join(translated_segments)
+
+    def _segments(self, text: str) -> list[str]:
+        """Mantém frases curtas para o modelo não encerrar uma fala longa cedo."""
+        segments = []
+        for sentence in re.split(r"(?<=[.!?;:])\s+", text.strip()):
+            current = []
+            for word in sentence.split():
+                candidate = " ".join([*current, word])
+                if current and len(self._processor.encode(candidate, out_type=str)) > _MAX_TRANSLATION_SOURCE_TOKENS:
+                    segments.append(" ".join(current))
+                    current = [word]
+                else:
+                    current.append(word)
+            if current:
+                segments.append(" ".join(current))
+        return segments
 
 
 class ArgosLocalTranslator:
@@ -173,6 +229,7 @@ class ArgosLocalTranslator:
         processor_factory=None,
     ):
         self.root = (root or translation_data_root()).expanduser().resolve()
+        self.system_root = None if root is not None else system_translation_data_root()
         if translator_factory is None or processor_factory is None:
             default_translator, default_processor = _load_translation_runtime()
             translator_factory = translator_factory or default_translator
@@ -187,6 +244,8 @@ class ArgosLocalTranslator:
             return self._translations[key]
 
         packages = list(_installed_packages(self.root) or ())
+        if self.system_root is not None and self.system_root != self.root:
+            packages.extend(_installed_packages(self.system_root) or ())
         for source_code in _language_candidates(source_language):
             for target_code in _language_candidates(target_language):
                 for package_path, metadata in packages:
@@ -248,21 +307,42 @@ class ArgosModelManager:
         downloader: Optional[Callable[[str, Path], None]] = None,
     ):
         self.root = (root or translation_data_root()).expanduser().resolve()
+        self.system_root = None if root is not None else system_translation_data_root()
         self.packages_root = self.root / "packages"
         self.downloads_root = self.root / "downloads"
         self._index_loader = index_loader or self._load_official_index
         self._downloader = downloader or self._download_file
+        self._supports_progress = downloader is None
         self._lock = threading.Lock()
 
     @staticmethod
-    def language_packs() -> tuple[TranslationLanguagePack, ...]:
-        return LANGUAGE_PACKS
+    def language_packs(base_language: str | None = None) -> tuple[TranslationLanguagePack, ...]:
+        if base_language is None:
+            return LANGUAGE_PACKS
+        base = "pt-br" if base_language in {"pt", "pb", "pt-br"} else base_language
+        return tuple(pack for pack in LANGUAGE_PACKS if base in pack.languages)
 
     def _installed_pairs(self) -> dict[tuple[str, str], Path]:
-        return {
+        installed = {
             (str(metadata.get("from_code")), str(metadata.get("to_code"))): path
             for path, metadata in (_installed_packages(self.root) or ())
         }
+        if self.system_root is not None and self.system_root != self.root:
+            for path, metadata in (_installed_packages(self.system_root) or ()):
+                installed.setdefault(
+                    (str(metadata.get("from_code")), str(metadata.get("to_code"))), path
+                )
+        return installed
+
+    def is_system_installed(self, pack_code: str) -> bool:
+        if self.system_root is None:
+            return False
+        pack = self._get_pack(pack_code)
+        pairs = {
+            (metadata.get("from_code"), metadata.get("to_code"))
+            for _, metadata in (_installed_packages(self.system_root) or ())
+        }
+        return all((model.source, model.target) in pairs for model in pack.models)
 
     def is_installed(self, pack_code: str) -> bool:
         pack = self._get_pack(pack_code)
@@ -278,7 +358,11 @@ class ArgosModelManager:
             if (model.source, model.target) in installed
         )
 
-    def install(self, pack_code: str) -> None:
+    def install(
+        self,
+        pack_code: str,
+        progress_callback: Optional[Callable[[int, int, int, Optional[int]], None]] = None,
+    ) -> None:
         pack = self._get_pack(pack_code)
         with self._lock:
             installed = self._installed_pairs()
@@ -292,7 +376,7 @@ class ArgosModelManager:
 
             available = self._index_loader()
             self.downloads_root.mkdir(parents=True, exist_ok=True)
-            for model in missing:
+            for file_index, model in enumerate(missing, 1):
                 candidate = next(
                     (
                         package
@@ -328,7 +412,16 @@ class ArgosModelManager:
                 os.close(handle)
                 archive = Path(archive_name)
                 try:
-                    self._downloader(str(link), archive)
+                    if self._supports_progress and progress_callback is not None:
+                        self._downloader(
+                            str(link),
+                            archive,
+                            lambda received, total, current=file_index: progress_callback(
+                                current, len(missing), received, total
+                            ),
+                        )
+                    else:
+                        self._downloader(str(link), archive)
                     self._validate_archive(archive)
                     self._install_archive(archive, model)
                 finally:
@@ -342,6 +435,23 @@ class ArgosModelManager:
                 pair = (metadata.get("from_code"), metadata.get("to_code"))
                 if pair in pairs:
                     shutil.rmtree(package_path)
+
+    def install_archives(self, archives: dict[tuple[str, str], Path], pack_codes: list[str]) -> None:
+        """Instala arquivos já baixados pelo assistente, sem acesso à rede."""
+        expected = {
+            (model.source, model.target): model
+            for code in pack_codes
+            for model in self._get_pack(code).models
+        }
+        if set(archives) != set(expected):
+            raise TranslationError("Os arquivos baixados não correspondem aos pares escolhidos.")
+        with self._lock:
+            for pair, archive in archives.items():
+                if not archive.is_file():
+                    raise TranslationError(f"Arquivo de idioma ausente: {archive.name}")
+                self._validate_archive(archive)
+            for pair, archive in archives.items():
+                self._install_archive(archive, expected[pair])
 
     def _install_archive(self, archive_path: Path, model: TranslationModel) -> None:
         self.packages_root.mkdir(parents=True, exist_ok=True)
@@ -402,19 +512,39 @@ class ArgosModelManager:
         return payload
 
     @staticmethod
-    def _download_file(url: str, destination: Path) -> None:
-        request = urllib.request.Request(
-            url,
-            headers={"User-Agent": "GlobalVoice/translation-model-manager"},
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=120) as response:
-                with destination.open("wb") as output:
-                    shutil.copyfileobj(response, output)
-        except Exception as exc:
-            raise TranslationError(
-                "O download do idioma falhou. Verifique sua conexão e tente novamente."
-            ) from exc
+    def _download_file(
+        url: str,
+        destination: Path,
+        progress_callback: Optional[Callable[[int, Optional[int]], None]] = None,
+    ) -> None:
+        sources = [url]
+        if url.startswith(ARGOS_INDEX_DOWNLOAD_PREFIX):
+            sources.insert(0, url.replace(
+                ARGOS_INDEX_DOWNLOAD_PREFIX, ARGOS_OFFICIAL_MIRROR_PREFIX, 1
+            ))
+        for source in sources:
+            request = urllib.request.Request(
+                source,
+                headers={"User-Agent": "GlobalVoice/translation-model-manager"},
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=120) as response:
+                    header = response.headers.get("Content-Length")
+                    total = int(header) if header and header.isdigit() else None
+                    received = 0
+                    with destination.open("wb") as output:
+                        while chunk := response.read(1024 * 1024):
+                            output.write(chunk)
+                            received += len(chunk)
+                            if progress_callback is not None:
+                                progress_callback(received, total)
+                return
+            except Exception as exc:
+                destination.unlink(missing_ok=True)
+                last_error = exc
+        raise TranslationError(
+            "O download do idioma falhou nos servidores oficiais. Tente novamente mais tarde."
+        ) from last_error
 
     @staticmethod
     def _validate_archive(path: Path) -> None:

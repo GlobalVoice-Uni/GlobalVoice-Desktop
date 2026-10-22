@@ -122,6 +122,18 @@ class CaptureAwareAudioSource(SequencedAudioSource):
         return super().read_step()
 
 
+class WaitForTextAudioSource(SequencedAudioSource):
+    def __init__(self, speech_states, text_ready):
+        super().__init__(speech_states)
+        self.text_ready = text_ready
+        self.text_arrived_during_silence = False
+
+    def read_step(self):
+        if self.index == len(self.speech_states):
+            self.text_arrived_during_silence = self.text_ready.wait(timeout=0.5)
+        return super().read_step()
+
+
 class RealtimeTranscriptionSessionTests(unittest.TestCase):
     def build_session(self, transcriber=None, **overrides):
         values = {
@@ -261,6 +273,128 @@ class RealtimeTranscriptionSessionTests(unittest.TestCase):
         self.assertEqual(len(speech_starts), 2)
         self.assertEqual(voice_activity[0], True)
         self.assertEqual(voice_activity[-1], False)
+
+    def test_continuous_speech_ramps_up_without_slow_third_chunk(self):
+        source = SequencedAudioSource([True] * 60)
+        transcriber = SpyTranscriber()
+        session = self.build_session(
+            audio_source=source,
+            transcriber=transcriber,
+            speech_detector=PeakSpeechDetector(),
+            min_speech_window_s=0.2,
+            min_utterance_s=0.2,
+            boundary_overlap_s=0.2,
+        )
+        source.session = session
+
+        session.run(on_text=lambda _text: None)
+
+        durations = [len(call["audio"]) / 16000 for call in transcriber.calls]
+        self.assertEqual(durations[:5], [1.8, 2.0, 2.2, 2.4, 2.4])
+
+    def test_short_initial_chunks_restart_after_a_long_pause(self):
+        source = SequencedAudioSource([True] * 10 + [False] * 6 + [True] * 10)
+        transcriber = SpyTranscriber()
+        session = self.build_session(
+            audio_source=source,
+            transcriber=transcriber,
+            speech_detector=PeakSpeechDetector(),
+            min_speech_window_s=0.2,
+            min_silence_window_s=0.4,
+            new_speech_silence_s=0.8,
+            min_utterance_s=0.2,
+            boundary_overlap_s=0.2,
+        )
+        source.session = session
+
+        session.run(on_text=lambda _text: None)
+
+        durations = [len(call["audio"]) / 16000 for call in transcriber.calls]
+        self.assertEqual(durations[0], 1.8)
+        self.assertEqual(durations[2], 1.8)
+
+    def test_first_forced_chunk_publishes_text_before_capture_stops(self):
+        text_ready = threading.Event()
+        source = WaitForTextAudioSource([True] * 9, text_ready)
+        transcriber = SpyTranscriber(result="um dois três")
+        session = self.build_session(
+            audio_source=source,
+            transcriber=transcriber,
+            speech_detector=PeakSpeechDetector(),
+            min_speech_window_s=0.2,
+            min_utterance_s=0.2,
+            boundary_overlap_s=0.2,
+        )
+        source.session = session
+
+        session.run(on_text=lambda _text: text_ready.set())
+
+        self.assertTrue(source.text_arrived_during_silence)
+
+    def test_initial_chunk_limit_also_applies_to_push_to_talk(self):
+        source = ControlledAudioSource([True] * 60 + [False])
+        transcriber = SpyTranscriber()
+        session = self.build_session(
+            audio_source=source,
+            transcriber=transcriber,
+            speech_detector=RejectingSpeechDetector(),
+            capture_mode="push_to_talk",
+            min_speech_window_s=0.2,
+            min_utterance_s=0.2,
+            boundary_overlap_s=0.2,
+        )
+        source.session = session
+
+        session.run(on_text=lambda _text: None)
+
+        durations = [len(call["audio"]) / 16000 for call in transcriber.calls]
+        self.assertEqual(durations[:5], [1.8, 2.0, 2.2, 2.4, 2.4])
+
+    def test_forced_split_tail_is_processed_after_silence_without_new_speech(self):
+        source = SequencedAudioSource([True, True, True, True, False, False, False, False])
+
+        class TailTranscriber(SpyTranscriber):
+            def transcribe(self, audio_16k, language, context_prompt=None):
+                result = "um dois três quatro cinco" if not self.calls else "cinco seis"
+                self.result = result
+                return super().transcribe(audio_16k, language, context_prompt)
+
+        transcriber = TailTranscriber()
+        session = self.build_session(
+            audio_source=source,
+            transcriber=transcriber,
+            speech_detector=PeakSpeechDetector(),
+            min_speech_window_s=0.2,
+            min_silence_window_s=0.4,
+            min_utterance_s=0.2,
+            max_utterance_s=0.8,
+            boundary_overlap_s=0.4,
+            tail_guard_words=2,
+            forced_split_extra_tail_words=0,
+        )
+        source.session = session
+        emitted = []
+
+        session.run(on_text=emitted.append)
+
+        self.assertEqual(len(transcriber.calls), 2)
+        self.assertEqual(" ".join(emitted), "um dois três quatro cinco seis")
+
+    def test_natural_pause_publishes_pending_text_before_session_stops(self):
+        text_ready = threading.Event()
+        source = WaitForTextAudioSource([True, True, False, False], text_ready)
+        session = self.build_session(
+            audio_source=source,
+            speech_detector=PeakSpeechDetector(),
+            min_speech_window_s=0.2,
+            min_silence_window_s=0.4,
+            min_utterance_s=0.2,
+        )
+        source.session = session
+
+        session.run(on_text=lambda _text: text_ready.set())
+
+        self.assertTrue(source.text_arrived_during_silence)
 
     def test_muted_automatic_capture_discards_audio(self):
         source = SequencedAudioSource([True, True, True])

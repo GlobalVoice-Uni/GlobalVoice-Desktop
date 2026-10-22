@@ -2,11 +2,13 @@ import math
 import queue
 import sys
 import time
-from typing import Optional, Tuple, Union
+from typing import Callable, Optional, Tuple, Union
 
 import numpy as np
 import sounddevice as sd
 from scipy.signal import resample_poly
+
+from .windows_com import windows_com_initialized
 
 
 class AudioSourceError(RuntimeError):
@@ -58,6 +60,24 @@ def _resample_fixed(
     return result.astype(np.float32, copy=False)
 
 
+def _wasapi_alias_for_default_microphone(sounddevice_module=None) -> int | None:
+    """Usa o mesmo microfone padrão do Windows pelo backend de menor latência."""
+
+    sounddevice_module = sounddevice_module or sd
+    default = sounddevice_module.query_devices(kind="input")
+    name = str(default.get("name", "")).casefold()
+    hostapis = sounddevice_module.query_hostapis()
+    for index, device in enumerate(sounddevice_module.query_devices()):
+        if int(device.get("max_input_channels", 0)) <= 0:
+            continue
+        if str(device.get("name", "")).casefold() != name:
+            continue
+        hostapi = hostapis[int(device["hostapi"])]
+        if "wasapi" in str(hostapi["name"]).casefold():
+            return index
+    return None
+
+
 class MicrophoneAudioSource:
     """Fonte de audio do microfone em blocos fixos.
 
@@ -70,12 +90,14 @@ class MicrophoneAudioSource:
         step_duration_s: float = 0.2,
         target_sample_rate: int = 16000,
         input_device: Optional[Union[int, str]] = None,
+        passthrough=None,
     ):
         # step_duration_s define a cadencia de leitura usada pela sessao realtime.
         self.step_duration_s = step_duration_s
         self.target_sample_rate = target_sample_rate
         self.target_step_samples = int(target_sample_rate * step_duration_s)
         self.input_device = input_device
+        self.passthrough = passthrough
 
         self.input_sample_rate = target_sample_rate
         self.step_samples = self.target_step_samples
@@ -98,6 +120,8 @@ class MicrophoneAudioSource:
             selected_device = (
                 int(self.input_device) if self.input_device not in (None, "") else None
             )
+            if selected_device is None and self.passthrough is not None:
+                selected_device = _wasapi_alias_for_default_microphone()
             device_info = sd.query_devices(selected_device, kind="input")
             self.input_sample_rate = int(
                 device_info.get("default_samplerate", self.target_sample_rate)
@@ -113,11 +137,13 @@ class MicrophoneAudioSource:
         self._audio_remainder = np.zeros(0, dtype=np.float32)
 
         try:
+            if self.passthrough is not None:
+                self.passthrough.start(self.input_sample_rate)
             self._stream = sd.InputStream(
                 samplerate=self.input_sample_rate,
                 channels=1,
                 dtype="float32",
-                latency="high",
+                latency="low" if self.passthrough is not None else "high",
                 blocksize=0,
                 callback=self._audio_callback,
                 device=selected_device,
@@ -125,8 +151,10 @@ class MicrophoneAudioSource:
             self._stream.start()
         except Exception as exc:
             self._stream = None
+            if self.passthrough is not None:
+                self.passthrough.stop()
             raise AudioSourceError(
-                "Não foi possível iniciar o microfone selecionado."
+                "Não foi possível iniciar o microfone ou a rota para o cabo virtual."
             ) from exc
 
     def close(self) -> None:
@@ -135,10 +163,14 @@ class MicrophoneAudioSource:
             self._stream.stop()
             self._stream.close()
             self._stream = None
+        if self.passthrough is not None:
+            self.passthrough.stop()
 
     def _audio_callback(self, indata, frames, time_info, status):
         """Callback do sounddevice: coloca o bloco bruto na fila."""
         del frames, time_info, status
+        if self.passthrough is not None:
+            self.passthrough.push(indata[:, 0])
         self._audio_queue.put(indata[:, 0].copy())
 
     def _resample_to_target(self, audio_data: np.ndarray) -> np.ndarray:
@@ -211,6 +243,7 @@ class WasapiLoopbackAudioSource:
         output_device: Optional[str] = None,
         capture_sample_rate: int = 48000,
         soundcard_module=None,
+        suppress_capture: Optional[Callable[[], bool]] = None,
     ):
         self.step_duration_s = step_duration_s
         self.target_sample_rate = target_sample_rate
@@ -220,8 +253,10 @@ class WasapiLoopbackAudioSource:
         self.step_samples = int(capture_sample_rate * step_duration_s)
         self.display_name = "Áudio do sistema"
         self._soundcard_module = soundcard_module
+        self._suppress_capture = suppress_capture
         self._recorder_context = None
         self._recorder = None
+        self._com_context = None
 
     def __enter__(self):
         self.open()
@@ -236,8 +271,11 @@ class WasapiLoopbackAudioSource:
                 "A captura do áudio do sistema está disponível somente no Windows."
             )
 
-        sc = self._soundcard_module or _load_soundcard()
         try:
+            com_context = windows_com_initialized()
+            com_context.__enter__()
+            self._com_context = com_context
+            sc = self._soundcard_module or _load_soundcard()
             device_id = self.output_device
             if device_id in (None, ""):
                 default_speaker = sc.default_speaker()
@@ -278,10 +316,16 @@ class WasapiLoopbackAudioSource:
 
     def close(self) -> None:
         recorder_context = self._recorder_context
+        com_context = self._com_context
         self._recorder = None
         self._recorder_context = None
-        if recorder_context is not None:
-            recorder_context.__exit__(None, None, None)
+        self._com_context = None
+        try:
+            if recorder_context is not None:
+                recorder_context.__exit__(None, None, None)
+        finally:
+            if com_context is not None:
+                com_context.__exit__(None, None, None)
 
     def read_step(self, timeout_s: float = 2.0) -> Tuple[np.ndarray, float]:
         del timeout_s
@@ -294,6 +338,9 @@ class WasapiLoopbackAudioSource:
             raise AudioSourceError(
                 "A saída de áudio foi desconectada ou ficou indisponível."
             ) from exc
+
+        if self._suppress_capture and self._suppress_capture():
+            return np.zeros(self.target_step_samples, dtype=np.float32), 0.0
 
         mono = _to_mono(captured)
         peak = float(np.max(np.abs(mono))) if len(mono) else 0.0
@@ -311,6 +358,7 @@ def create_audio_source(
     device_id: Optional[str] = None,
     step_duration_s: float = 0.2,
     target_sample_rate: int = 16000,
+    suppress_capture: Optional[Callable[[], bool]] = None,
 ):
     """Constroi a fonte solicitada sem expor detalhes de backend para a UI."""
 
@@ -319,6 +367,7 @@ def create_audio_source(
             step_duration_s=step_duration_s,
             target_sample_rate=target_sample_rate,
             output_device=device_id,
+            suppress_capture=suppress_capture,
         )
     return MicrophoneAudioSource(
         step_duration_s=step_duration_s,

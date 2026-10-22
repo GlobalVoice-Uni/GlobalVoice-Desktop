@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QApplication,
@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from .backend_bridge import SessionRequest
+from .home_view import build_home
 from .controller import RealtimeController
 from .dialogs import ask_confirmation, show_error
 from .floating_windows import FloatingToolbar, FloatingTranscriptionWindow
@@ -25,16 +26,17 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Global Voice")
-        self.resize(640, 460)
-        self.setMinimumSize(520, 380)
+        self.resize(720, 520)
+        self.setMinimumSize(700, 500)
 
         self.controller = RealtimeController()
         self.settings_window = SettingsWindow(
             controller=self.controller,
             show_controller_errors=False,
         )
-        self.transcription_window = FloatingTranscriptionWindow()
         self.toolbar = FloatingToolbar()
+        self.transcription_window = FloatingTranscriptionWindow(parent=self.toolbar)
+        self.toolbar.before_close = self._can_close_toolbar
         self._loading_session = False
 
         self._build_ui()
@@ -44,95 +46,7 @@ class MainWindow(QMainWindow):
         self._apply_ui_settings()
 
     def _build_ui(self) -> None:
-        root = QWidget()
-        self.setCentralWidget(root)
-
-        layout = QVBoxLayout(root)
-        layout.setContentsMargins(42, 42, 42, 42)
-        layout.setAlignment(Qt.AlignCenter)
-
-        card = QFrame()
-        card.setObjectName("homeCard")
-        card.setMinimumSize(420, 280)
-        card.setMaximumSize(680, 520)
-        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(46, 40, 46, 40)
-        card_layout.setSpacing(22)
-        card_layout.setAlignment(Qt.AlignCenter)
-
-        title = QLabel("Global Voice")
-        title.setObjectName("homeTitle")
-        title.setAlignment(Qt.AlignCenter)
-
-        self.start_button = QPushButton("Iniciar")
-        self.settings_button = QPushButton("Configurações")
-
-        self.start_button.setProperty("kind", "primary")
-        self.settings_button.setProperty("kind", "secondary")
-        self.start_button.setCursor(Qt.PointingHandCursor)
-        self.settings_button.setCursor(Qt.PointingHandCursor)
-        for button in (self.start_button, self.settings_button):
-            button.setFixedSize(300, 46)
-
-        button_column = QVBoxLayout()
-        button_column.setSpacing(12)
-        button_column.setAlignment(Qt.AlignCenter)
-        button_column.addWidget(self.start_button, alignment=Qt.AlignCenter)
-        button_column.addWidget(self.settings_button, alignment=Qt.AlignCenter)
-
-        card_layout.addStretch(1)
-        card_layout.addWidget(title)
-        card_layout.addSpacing(8)
-        card_layout.addLayout(button_column)
-        card_layout.addStretch(1)
-        layout.addWidget(card)
-
-        self.setStyleSheet(
-            """
-            QWidget {
-                background: #0F1E2D;
-                color: #FFFFFF;
-                font-family: 'Bahnschrift', 'Segoe UI';
-            }
-            QFrame#homeCard {
-                background: rgba(30, 41, 59, 0.72);
-                border-radius: 18px;
-                border: 1px solid rgba(70, 73, 251, 0.3);
-            }
-            QLabel#homeTitle {
-                background: transparent;
-                font-size: 40px;
-                font-weight: 700;
-                color: #FFFFFF;
-            }
-            QPushButton {
-                border-radius: 10px;
-                padding: 0 20px;
-                font-weight: 600;
-                font-size: 14px;
-            }
-            QPushButton[kind="primary"] {
-                background: rgba(52, 56, 214, 0.95);
-                color: #FFFFFF;
-                border: none;
-            }
-            QPushButton[kind="secondary"] {
-                background: rgba(30, 41, 59, 0.95);
-                color: #FFFFFF;
-                border: 1px solid rgba(70, 73, 251, 0.5);
-            }
-            QPushButton[kind="primary"]:hover {
-                background: rgba(70, 73, 251, 1);
-            }
-            QPushButton[kind="secondary"]:hover {
-                background: rgba(70, 73, 251, 0.55);
-            }
-            QPushButton:pressed {
-                background: rgba(70, 73, 251, 0.7);
-            }
-            """
-        )
+        build_home(self)
 
     def _connect_signals(self) -> None:
         self.start_button.clicked.connect(self._on_start_clicked)
@@ -144,6 +58,9 @@ class MainWindow(QMainWindow):
         self.toolbar.ptt_released.connect(self._on_ptt_released)
         self.toolbar.microphone_mute_changed.connect(
             self.controller.set_microphone_muted
+        )
+        self.toolbar.audio_mute_changed.connect(
+            self.controller.set_meeting_audio_muted
         )
         self.toolbar.source_language_changed.connect(self._on_source_language_changed)
         self.toolbar.target_language_changed.connect(self._on_target_language_changed)
@@ -166,6 +83,7 @@ class MainWindow(QMainWindow):
 
         self.transcription_window.closed.connect(self._on_transcription_closed)
         self.toolbar.closed.connect(self._on_toolbar_closed)
+        self.settings_window.closed.connect(self._on_settings_closed)
 
     def _position_floating_windows(self) -> None:
         screen = QApplication.primaryScreen()
@@ -212,6 +130,10 @@ class MainWindow(QMainWindow):
         if values.get("audio_source") == "loopback":
             capture_mode = "automatic"
         self.toolbar.set_capture_mode(capture_mode)
+        self.toolbar.set_audio_available(
+            bool(values.get("meeting_voice_enabled", False))
+            and values.get("audio_source") != "microphone"
+        )
         self.toolbar.set_language_pair(
             values.get("user_language", values.get("language", "pt-br")),
             values.get("meeting_language", "en"),
@@ -225,6 +147,19 @@ class MainWindow(QMainWindow):
     def _on_transcription_closed(self) -> None:
         self.transcription_window.hide()
 
+    def _on_settings_closed(self) -> None:
+        if not self.toolbar.isVisible():
+            self._restore_home()
+
+    def _can_close_toolbar(self) -> bool:
+        if self.settings_window.isVisible():
+            if self.settings_window.has_unsaved_changes() and self.settings_window.isMinimized():
+                self.settings_window.showNormal()
+                self.settings_window.raise_()
+                self.settings_window.activateWindow()
+            return self.settings_window.resolve_unsaved_changes()
+        return True
+
     def _on_toolbar_closed(self) -> None:
         self.controller.set_talk_active(False)
         self.controller.set_microphone_muted(False)
@@ -234,7 +169,8 @@ class MainWindow(QMainWindow):
         self.toolbar.set_idle()
         self.toolbar.set_buttons_state(False)
         self._hide_floating_windows()
-        self._restore_home()
+        if not self.settings_window.isVisible():
+            self._restore_home()
 
     def _on_toggle_chat(self) -> None:
         if self.transcription_window.isVisible():
@@ -269,11 +205,19 @@ class MainWindow(QMainWindow):
             model_size=values["model_size"],
             device=values["device"],
             language=recognition_language,
-            target_language=user_language,
+            target_language=(user_language if audio_source == "loopback" else meeting_language),
+            user_language=user_language,
+            meeting_language=meeting_language,
             display_mode=values.get("display_mode", "translation_only"),
             capture_mode=capture_mode,
             audio_source=audio_source,
-            audio_device_id=values.get("audio_device_id") or None,
+            audio_device_id=None,
+            meeting_device_id=None,
+            voice_output_enabled=bool(values.get("voice_output_enabled", False)) and audio_source != "loopback",
+            voice_output_device_id=None,
+            meeting_voice_enabled=bool(values.get("meeting_voice_enabled", False)) and audio_source != "microphone",
+            meeting_voice_device_id=values.get("meeting_voice_device_id") or None,
+            english_voice=values.get("english_voice", "en-ljspeech"),
             context_window=int(values["context_window"]),
             max_duration_s=max_duration,
             vad_type=values["vad_type"],
@@ -293,14 +237,21 @@ class MainWindow(QMainWindow):
 
     def _on_start_clicked(self) -> None:
         self._show_floating_windows()
-        self.showMinimized()
+        self.hide()
 
     def _on_settings_clicked(self) -> None:
-        if not self.settings_window.has_unsaved_changes():
-            self.settings_window.refresh_from_storage()
-        self.settings_window.show()
+        needs_refresh = not self.settings_window.has_unsaved_changes()
+        if self.settings_window.isMinimized():
+            self.settings_window.showNormal()
+        else:
+            self.settings_window.show()
         self.settings_window.raise_()
         self.settings_window.activateWindow()
+        self.hide()
+        if needs_refresh:
+            # Exiba a janela antes de consultar dispositivos de áudio, cuja
+            # enumeração pode demorar quando um driver está inicializando.
+            QTimer.singleShot(0, self.settings_window.refresh_from_storage)
 
     def _on_toolbar_start_clicked(self) -> None:
         self._show_floating_windows()
@@ -309,6 +260,10 @@ class MainWindow(QMainWindow):
         if values.get("audio_source") == "loopback":
             capture_mode = "automatic"
         self.toolbar.set_capture_mode(capture_mode)
+        self.toolbar.set_audio_available(
+            bool(values.get("meeting_voice_enabled", False))
+            and values.get("audio_source") != "microphone"
+        )
         self.toolbar.set_language_pair(
             values.get("user_language", values.get("language", "pt-br")),
             values.get("meeting_language", "en"),
@@ -367,6 +322,11 @@ class MainWindow(QMainWindow):
         self, user_language: str, meeting_language: str
     ) -> None:
         self.toolbar.set_language_pair(user_language, meeting_language)
+        values = load_settings()
+        self.toolbar.set_audio_available(
+            bool(values.get("meeting_voice_enabled", False))
+            and values.get("audio_source") != "microphone"
+        )
 
     def _on_toolbar_clear_clicked(self) -> None:
         self.transcription_window.clear()
@@ -389,7 +349,10 @@ class MainWindow(QMainWindow):
         self._loading_session = False
         self.toolbar.set_idle()
         self.toolbar.set_buttons_state(False)
-        dialog_parent = self.settings_window if self.settings_window.isVisible() else self
+        dialog_parent = (
+            self.settings_window if self.settings_window.isVisible()
+            else self.toolbar if self.toolbar.isVisible() else self
+        )
         show_error(dialog_parent, "Não foi possível iniciar", message)
 
     def _set_status(self, message: str) -> None:

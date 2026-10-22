@@ -4,6 +4,8 @@ from typing import Optional, Tuple
 
 import sounddevice as sd
 
+from .windows_com import windows_com_initialized
+
 
 class AudioDeviceKind(str, Enum):
     INPUT = "input"
@@ -55,9 +57,9 @@ def enumerate_audio_devices(
 ) -> AudioDeviceCatalog:
     """Enumera entradas, saidas e endpoints de loopback disponiveis.
 
-    O microfone continua usando PortAudio/sounddevice. Saidas e loopbacks usam
-    SoundCard porque ele abre endpoints de renderizacao em modo WASAPI loopback.
-    Falha em um backend gera aviso e preserva os dispositivos do outro.
+    Entradas e saídas para reprodução usam PortAudio/sounddevice. O loopback
+    usa SoundCard porque ele abre endpoints de renderização WASAPI. Falha em
+    um backend gera aviso e preserva os dispositivos do outro.
     """
 
     devices = []
@@ -65,7 +67,19 @@ def enumerate_audio_devices(
 
     try:
         raw_inputs = sounddevice_module.query_devices()
+        try:
+            hostapis = sounddevice_module.query_hostapis()
+        except (AttributeError, RuntimeError):
+            hostapis = ()
+
+        def backend_name(raw_device) -> str:
+            try:
+                return str(hostapis[int(raw_device["hostapi"])]["name"])
+            except (KeyError, IndexError, TypeError, ValueError):
+                return "PortAudio"
+
         default_input = sounddevice_module.query_devices(kind="input")
+        default_output = sounddevice_module.query_devices(kind="output")
         configured_default = getattr(
             getattr(sounddevice_module, "default", None),
             "device",
@@ -73,6 +87,9 @@ def enumerate_audio_devices(
         )
         default_input_index = int(
             default_input.get("index", configured_default[0])
+        )
+        default_output_index = int(
+            default_output.get("index", configured_default[1])
         )
 
         for fallback_index, raw_device in enumerate(raw_inputs):
@@ -87,36 +104,51 @@ def enumerate_audio_devices(
                     kind=AudioDeviceKind.INPUT,
                     channels=channels,
                     is_default=index == default_input_index,
-                    backend="PortAudio",
+                    backend=backend_name(raw_device),
+                )
+            )
+        for fallback_index, raw_device in enumerate(raw_inputs):
+            channels = int(raw_device.get("max_output_channels", 0))
+            if channels <= 0:
+                continue
+            index = int(raw_device.get("index", fallback_index))
+            devices.append(
+                AudioDeviceInfo(
+                    id=str(index),
+                    name=str(raw_device.get("name", f"Saída {index}")),
+                    kind=AudioDeviceKind.OUTPUT,
+                    channels=channels,
+                    is_default=index == default_output_index,
+                    backend=backend_name(raw_device),
                 )
             )
     except Exception as exc:
-        warnings.append(f"Não foi possível listar as entradas de áudio: {exc}")
+        warnings.append(f"Não foi possível listar os dispositivos PortAudio: {exc}")
 
-    sc = soundcard_module if soundcard_module is not None else _load_soundcard()
-    if not sc:
-        warnings.append(
-            "A captura do áudio do sistema não está disponível; somente microfones podem ser usados."
-        )
-        return AudioDeviceCatalog(tuple(devices), tuple(warnings))
+    with windows_com_initialized():
+        sc = soundcard_module if soundcard_module is not None else _load_soundcard()
+        if not sc:
+            warnings.append(
+                "A captura do áudio do sistema não está disponível; somente microfones podem ser usados."
+            )
+            return AudioDeviceCatalog(tuple(devices), tuple(warnings))
 
-    try:
-        default_speaker = sc.default_speaker()
-        default_speaker_id = str(default_speaker.id) if default_speaker else ""
-        speakers = sc.all_speakers()
-        for speaker in speakers:
-            speaker_id = str(speaker.id)
-            common = {
-                "id": speaker_id,
-                "name": str(speaker.name),
-                "channels": _safe_channels(speaker),
-                "is_default": speaker_id == default_speaker_id,
-                "backend": "WASAPI",
-            }
-            devices.append(AudioDeviceInfo(kind=AudioDeviceKind.OUTPUT, **common))
-            devices.append(AudioDeviceInfo(kind=AudioDeviceKind.LOOPBACK, **common))
-    except Exception as exc:
-        warnings.append(f"Não foi possível listar as saídas de áudio: {exc}")
+        try:
+            default_speaker = sc.default_speaker()
+            default_speaker_id = str(default_speaker.id) if default_speaker else ""
+            speakers = sc.all_speakers()
+            for speaker in speakers:
+                speaker_id = str(speaker.id)
+                common = {
+                    "id": speaker_id,
+                    "name": str(speaker.name),
+                    "channels": _safe_channels(speaker),
+                    "is_default": speaker_id == default_speaker_id,
+                    "backend": "WASAPI",
+                }
+                devices.append(AudioDeviceInfo(kind=AudioDeviceKind.LOOPBACK, **common))
+        except Exception as exc:
+            warnings.append(f"Não foi possível listar as saídas de áudio: {exc}")
 
     return AudioDeviceCatalog(tuple(devices), tuple(warnings))
 

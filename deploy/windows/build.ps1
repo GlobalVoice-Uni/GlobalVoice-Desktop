@@ -65,13 +65,16 @@ try {
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     }
 
-    & $pythonPath -c "import ctranslate2, sentencepiece"
+    & $pythonPath -c "import ctranslate2, sentencepiece, piper"
     if ($LASTEXITCODE -ne 0) {
         Write-Error (
-            "Dependencias de traducao ausentes. Instale requirements\runtime-windows.lock."
+            "Dependencias de traducao ou voz ausentes. Instale requirements\runtime-windows.lock."
         )
         exit 1
     }
+
+    & $pythonPath "deploy\windows\prepare-tts-voices.py" --verify-only
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     if (-not (Test-Path $buildPythonPath)) {
         & $pythonPath -m venv $buildVenvPath

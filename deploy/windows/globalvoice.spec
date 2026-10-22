@@ -9,7 +9,7 @@ from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, co
 project_root = os.path.abspath(os.path.join(SPECPATH, "..", ".."))
 entry_point = os.path.join(project_root, "frontend", "src", "main.py")
 application_icon = os.path.join(
-    project_root, "frontend", "assets", "globalvoice.ico"
+    project_root, "frontend", "assets", "newicon.ico"
 )
 diagnostic_console = os.environ.get("GLOBALVOICE_DIAGNOSTIC_CONSOLE") == "1"
 runtime_packages_path = os.environ.get(
@@ -24,6 +24,7 @@ hiddenimports = [
     "sentencepiece",
     "soundcard",
     "soundcard.mediafoundation",
+    "piper.voice",
 ]
 
 # Os hooks padrao tratam PySide6, PyAV, NumPy, SciPy e sounddevice. Coletar todos
@@ -31,6 +32,18 @@ hiddenimports = [
 # (Torch, TensorFlow etc.) que nao participam do fluxo de transcricao.
 datas.extend(collect_data_files("faster_whisper"))
 datas.extend(collect_data_files("soundcard"))
+datas.extend(collect_data_files("piper"))
+for voice_name in (
+    "pt_BR-cadu-medium",
+    "en_US-ljspeech-medium",
+    "en_US-joe-medium",
+    "es_ES-davefx-medium",
+):
+    for suffix in (".onnx", ".onnx.json", ".MODEL_CARD"):
+        voice_file = os.path.join(project_root, ".build", "tts-voices", voice_name + suffix)
+        if not os.path.isfile(voice_file):
+            raise RuntimeError("Voz Piper ausente: " + voice_file)
+        datas.append((voice_file, os.path.join("backend", "assets", "tts")))
 datas.extend(
     [
         (
@@ -46,13 +59,22 @@ datas.extend(
             os.path.join("frontend", "assets"),
         ),
         (
+            os.path.join(project_root, "frontend", "assets", "newicon.png"),
+            os.path.join("frontend", "assets"),
+        ),
+        (
             os.path.join(project_root, "frontend", "assets", "chevron-down.svg"),
+            os.path.join("frontend", "assets"),
+        ),
+        (
+            os.path.join(project_root, "frontend", "assets", "checkmark.svg"),
             os.path.join("frontend", "assets"),
         ),
     ]
 )
 binaries.extend(collect_dynamic_libs("ctranslate2"))
 binaries.extend(collect_dynamic_libs("sentencepiece"))
+binaries.extend(collect_dynamic_libs("piper"))
 
 # Inclui o runtime C++ usado pelo Qt mesmo quando ele ja esta instalado na
 # maquina de desenvolvimento. A build nao deve depender desse pre-requisito na
@@ -70,6 +92,8 @@ for distribution in (
     "onnxruntime",
     "SoundCard",
     "sentencepiece",
+    "piper-tts",
+    "pathvalidate",
 ):
     try:
         datas.extend(copy_metadata(distribution))

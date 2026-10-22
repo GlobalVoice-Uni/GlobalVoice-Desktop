@@ -56,7 +56,7 @@ class ConfirmationDialog(QDialog):
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle(title)
-        self.setWindowModality(Qt.ApplicationModal)
+        self.setWindowModality(Qt.WindowModal)
         self.setModal(True)
         self.setFixedWidth(380)
         self.setStyleSheet(
@@ -110,6 +110,54 @@ class ConfirmationDialog(QDialog):
         self.adjustSize()
 
 
+class UnsavedSettingsDialog(QDialog):
+    """Escolhe como fechar configurações alteradas; o X mantém a edição."""
+
+    DISCARD = 2
+    SAVE = 3
+
+    def __init__(self, parent: QWidget | None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Alterações não salvas")
+        self.setWindowModality(Qt.WindowModal)
+        self.setModal(True)
+        self.setFixedWidth(380)
+        self.setStyleSheet(_BASE_DIALOG_STYLE)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 20, 24, 18)
+        layout.setSpacing(18)
+        self.message_label = QLabel(
+            "Há alterações não salvas nas configurações.\nDeseja descartá-las?"
+        )
+        self.message_label.setWordWrap(True)
+        self.message_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.message_label)
+
+        buttons = QHBoxLayout()
+        buttons.setSpacing(10)
+        self.discard_button = QPushButton("Descartar")
+        self.discard_button.clicked.connect(lambda: self.done(self.DISCARD))
+        self.save_button = QPushButton("Salvar e fechar")
+        self.save_button.clicked.connect(lambda: self.done(self.SAVE))
+        self.save_button.setDefault(True)
+        buttons.addWidget(self.discard_button)
+        buttons.addWidget(self.save_button)
+        layout.addLayout(buttons)
+        self.adjustSize()
+
+
+def ask_unsaved_settings(parent: QWidget | None) -> str:
+    """Retorna save, discard ou cancel (incluindo o X do diálogo)."""
+
+    result = UnsavedSettingsDialog(parent).exec()
+    if result == UnsavedSettingsDialog.SAVE:
+        return "save"
+    if result == UnsavedSettingsDialog.DISCARD:
+        return "discard"
+    return "cancel"
+
+
 class ErrorDialog(QDialog):
     """Aviso de erro compacto, sem ícone e com conteúdo centralizado."""
 
@@ -123,8 +171,8 @@ class ErrorDialog(QDialog):
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle(title)
-        self.setWindowModality(Qt.ApplicationModal)
-        self.setModal(True)
+        self.setWindowModality(Qt.NonModal)
+        self.setModal(False)
         self.setFixedWidth(380)
         self.setStyleSheet(_BASE_DIALOG_STYLE)
         self.details = details.strip() if details else ""
@@ -190,4 +238,7 @@ def show_error(
     """Mostra uma falha em linguagem direta com o padrão visual da aplicação."""
 
     dialog = ErrorDialog(parent, title, message, details=details)
-    dialog.exec()
+    dialog.setAttribute(Qt.WA_DeleteOnClose)
+    dialog.show()
+    dialog.raise_()
+    dialog.activateWindow()

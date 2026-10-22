@@ -13,3 +13,4 @@ SoundCard==0.4.6
 
 # VAD principal executado pelo modelo ONNX versionado no projeto.
 onnxruntime==1.29.0
+piper-tts==1.8.0

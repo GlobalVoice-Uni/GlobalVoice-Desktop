@@ -19,6 +19,8 @@ idna==3.19
 numpy==2.4.4
 onnxruntime==1.29.0
 packaging==26.3
+pathvalidate==3.3.1
+piper-tts==1.8.0
 protobuf==7.36.1
 pycparser==3.0
 PySide6==6.11.0

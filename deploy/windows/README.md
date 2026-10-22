@@ -102,36 +102,62 @@ Para baixar, validar e instalar essa versão do compilador somente dentro de
 Com a build e o perfil NVIDIA preparados:
 
 ```powershell
-.\deploy\windows\prepare-translation-models.ps1
-.\deploy\windows\build-installer.ps1 -AppVersion "0.1.0"
+.\deploy\windows\build-installer.ps1
 ```
 
-A preparação baixa os modelos oficiais do Argos Translate, valida os arquivos e
-separa os pares bidirecionais em componentes do Inno Setup. Eles não entram no
-executável: são copiados para os dados locais do usuário somente quando o idioma
-é selecionado.
+A build de voz da versão `0.3.7` requer `piper-tts==1.8.0` na venv e as três
+vozes locais verificadas por SHA-256. Prepare-as uma vez com:
+
+```powershell
+.\.venv\Scripts\python.exe .\deploy\windows\prepare-tts-voices.py
+```
+
+Essas vozes entram na aplicação para permitir a síntese offline. O instalador
+inclui o componente opcional VB-CABLE da VB-Audio e executa seu setup
+silenciosamente durante a instalação do GlobalVoice. O usuário não precisa
+baixá-lo separadamente. A
+instalação do driver exige administrador e pode exigir reinicialização. Quando
+o cabo já está instalado e funcional, o instalador evita reinstalá-lo. A aba **Voz** detecta o cabo
+e usa automaticamente CABLE Input para enviar áudio à chamada. A rota e o
+teste de latência estão em
+[`docs/entrega-3-cabo-virtual.md`](../../docs/entrega-3-cabo-virtual.md).
+
+Na versão `0.3.7`, o desinstalador mostra a opção de remover o driver
+VB-CABLE, desmarcada por padrão. O pacote oficial permanece na pasta do aplicativo
+até a desinstalação para permitir a remoção silenciosa do driver. A remoção pode
+exigir reinicialização; desinstalações silenciosas deixam o driver instalado.
+Se o componente estiver ausente, Configurações > Voz permite instalá-lo ou
+repará-lo. A instalação pede reinício na tela final do assistente.
+
+Os pacotes Argos não entram no arquivo do instalador. Após a escolha do idioma
+base, na mesma página o assistente oferece os dois pares correspondentes e
+baixa somente os selecionados antes da cópia do aplicativo, em uma tela que mantém os
+pares escolhidos visíveis. Os arquivos são transferidos em sequência. É necessária conexão
+nesse momento; depois disso, a tradução é local. Os modelos ficam em
+`%PROGRAMDATA%\GlobalVoice\translation` na instalação administrativa ou em
+`%LOCALAPPDATA%\GlobalVoice\translation` com `/CURRENTUSER`.
 
 O resultado compactado fica em
-`dist\installer\GlobalVoice-Setup-0.1.0.exe`, acompanhado por um arquivo
+`dist\installer\GlobalVoice-Setup-0.4.1.exe`, acompanhado por um arquivo
 `.sha256` para verificar a integridade após a transferência. Para ajustes no
 instalador, o modo rápido evita a compressão e reduz o tempo de compilação:
 
 ```powershell
-.\deploy\windows\build-installer.ps1 -AppVersion "0.1.0" -Fast
+.\deploy\windows\build-installer.ps1 -Fast
 ```
 
 O instalador normal solicita permissão administrativa, sugere `Arquivos de
 Programas\Global Voice`, permite alterar o destino, cria um atalho no menu Iniciar
-e oferece um atalho opcional na área de trabalho. Português do Brasil e inglês
-estão incluídos.
-
-Na mesma tela de componentes, português do Brasil aparece como idioma base,
-inglês é selecionado por padrão e espanhol permanece opcional. Cada idioma
-adicional inclui os dois sentidos de tradução. Os modelos atuais ocupam cerca de
-157 MB para inglês e 139 MB para espanhol antes da compactação final. Depois da
-instalação, a tela `Configurações > Idiomas`
-permite baixar, instalar ou remover esses pacotes sem reinstalar a aplicação; o
-tamanho é informado e o download sempre exige confirmação.
+e oferece um atalho opcional na área de trabalho. Uma página reúne o idioma
+base (português do Brasil por padrão, inglês ou espanhol) e os pares diretos para
+download. A escolha inicializa o idioma principal e o primeiro par escolhido
+na primeira abertura após cada instalação; mudanças posteriores nas
+configurações continuam salvas. Em
+`Configurações > Idiomas`, o usuário pode mudar o idioma principal, ver os dois pares
+correspondentes e adicionar outros. Pacotes compartilhados pela instalação são
+exibidos como **Na instalação**; pacotes adicionados pelo usuário podem ser
+removidos. O par EN ↔ ES é direto, sem passar pelo português. Para espanhol ↔
+português, o pacote oficial usa português genérico (`pt`).
 
 Uma consulta ao Registro do Windows procura um dispositivo PCI NVIDIA da classe
 de adaptadores de vídeo. Quando ele existe, o componente CUDA 12/cuBLAS é
@@ -165,6 +191,22 @@ perfil NVIDIA não foi incluído, inicia o aplicativo e executa a desinstalaçã
 ```powershell
 .\deploy\windows\test-installer.ps1
 ```
+
+Em um PC onde o VB-CABLE já esteja instalado, a atualização pode ser verificada
+sem executar o instalador do driver:
+
+```powershell
+.\deploy\windows\test-installer.ps1 -IncludeVBCable `
+  -InstallPath .build\installer-smoke\base-cabo
+```
+
+Desde a versão 0.3.6, os pacotes Argos são baixados do espelho oficial antes da
+cópia do aplicativo. Uma falha de rede mantém o instalador na página de
+preparação com opção de repetir, sem anunciar instalação concluída. Falhas
+posteriores na instalação dos idiomas ou do VB-CABLE são exibidas como
+instalação incompleta na tela final, sem abrir o aplicativo automaticamente.
+O diagnóstico e a validação manual estão em
+[`docs/entrega-3-cabo-virtual.md`](../../docs/entrega-3-cabo-virtual.md).
 
 Para verificar também os arquivos do perfil NVIDIA:
 

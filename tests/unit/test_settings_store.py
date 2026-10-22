@@ -33,6 +33,87 @@ class SettingsStoreTests(unittest.TestCase):
         self.assertEqual(values["device"], "cpu")
         self.assertEqual(values["vad_type"], "energy")
 
+    def test_voice_options_saved_as_strings_keep_their_boolean_values(self):
+        saved = FakeSettings({
+            "voice_output_enabled": "false",
+            "meeting_voice_enabled": "0",
+        })
+        with patch.object(settings_store, "QSettings", return_value=saved):
+            values = settings_store.load_settings()
+        self.assertFalse(values["voice_output_enabled"])
+        self.assertFalse(values["meeting_voice_enabled"])
+
+        saved.values.update({
+            "voice_output_enabled": "true",
+            "meeting_voice_enabled": "1",
+        })
+        with patch.object(settings_store, "QSettings", return_value=saved):
+            values = settings_store.load_settings()
+        self.assertTrue(values["voice_output_enabled"])
+        self.assertTrue(values["meeting_voice_enabled"])
+
+    def test_installer_language_initializes_only_new_profile(self):
+        class WritableSettings(FakeSettings):
+            def contains(self, key):
+                return key in self.values
+
+            def setValue(self, key, value):
+                self.values[key] = value
+
+            def sync(self):
+                pass
+
+        saved = WritableSettings()
+        with patch.object(settings_store, "QSettings", return_value=saved):
+            self.assertTrue(settings_store.set_initial_base_language("es"))
+            self.assertEqual(saved.values["user_language"], "es")
+            self.assertEqual(saved.values["meeting_language"], "pt-br")
+            self.assertFalse(settings_store.set_initial_base_language("en"))
+            self.assertEqual(saved.values["user_language"], "es")
+
+    def test_installation_manifest_applies_selected_pair_once_per_installation(self):
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            manifest = Path(temporary_directory) / "installation.ini"
+            manifest.write_text(
+                "[App]\nInstallId=first\n[Language]\nBase=pt-br\nPairs=es\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                settings_store._installation_language_selection(manifest),
+                ("pt-br", "es", "first"),
+            )
+            manifest.write_text("[Language]\nBase=es\n", encoding="utf-8")
+            self.assertEqual(settings_store._installation_base_language(manifest), "es")
+
+        class WritableSettings(FakeSettings):
+            def contains(self, key):
+                return key in self.values
+
+            def setValue(self, key, value):
+                self.values[key] = value
+
+            def sync(self):
+                pass
+
+        saved = WritableSettings()
+        with (
+            patch.object(settings_store, "QSettings", return_value=saved),
+            patch.object(
+                settings_store, "_installation_language_selection",
+                side_effect=[("pt-br", "es", "first"), ("pt-br", "es", "first"),
+                             ("en", "pt-br", "second")],
+            ),
+        ):
+            self.assertEqual(settings_store.load_settings()["user_language"], "pt-br")
+            self.assertEqual(saved.values["meeting_language"], "es")
+            saved.values["user_language"] = "en"
+            self.assertEqual(settings_store.load_settings()["user_language"], "en")
+            self.assertEqual(settings_store.load_settings()["meeting_language"], "pt-br")
+            self.assertEqual(saved.values["user_language"], "en")
+
     def test_previous_default_silence_is_migrated_to_longer_grouping(self):
         saved = FakeSettings({"min_silence_window_s": 0.4})
 

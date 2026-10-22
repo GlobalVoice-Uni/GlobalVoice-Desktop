@@ -12,6 +12,11 @@ from ..ports import AudioSourcePort, SpeechDetectorPort, TranscriberPort
 from ..detectors.speech_detectors import EnergySpeechDetector
 
 
+_RAMP_START_UTTERANCE_S = 1.8
+_RAMP_STEP_UTTERANCE_S = 0.2
+_STEADY_MAX_UTTERANCE_S = 2.4
+
+
 @dataclass(frozen=True)
 class TranscriptionTiming:
     """Mede espera e processamento de um trecho enviado ao STT."""
@@ -28,6 +33,7 @@ class _TranscriptionJob:
     min_utt_samples: int
     forced_split: bool
     begins_visual_speech: bool
+    guard_words_override: Optional[int]
     queued_at: float
 
 
@@ -79,18 +85,21 @@ class _TranscriptionWorker:
         min_utt_samples: int,
         forced_split: bool,
         begins_visual_speech: bool = False,
-    ) -> None:
+        guard_words_override: Optional[int] = None,
+    ) -> bool:
         if len(utter) < min_utt_samples:
-            return
+            return False
         self._jobs.put(
             _TranscriptionJob(
                 utter=utter,
                 min_utt_samples=min_utt_samples,
                 forced_split=forced_split,
                 begins_visual_speech=begins_visual_speech,
+                guard_words_override=guard_words_override,
                 queued_at=time.perf_counter(),
             )
         )
+        return True
 
     def flush_pending_tail(self) -> None:
         self._jobs.put(_FlushPendingTail())
@@ -115,6 +124,7 @@ class _TranscriptionWorker:
                     min_utt_samples=job.min_utt_samples,
                     forced_split=job.forced_split,
                     on_text=self._on_text,
+                    guard_words_override=job.guard_words_override,
                 )
                 audio_duration_s = (
                     len(job.utter) / self._session.audio_source.target_sample_rate
@@ -286,11 +296,13 @@ class RealtimeTranscriptionSession:
         idle_silence_steps = 0
         silence_before_candidate_steps = 0
         carryover_audio = np.zeros(0, dtype=np.float32)
+        carryover_silence_buffers = []
         talk_was_active = False
         visual_speech_started = False
         voice_was_active = False
         microphone_was_muted = False
         utterance_starts_visual_speech = False
+        completed_chunks_in_speech = 0
 
         def publish_voice_activity(active: bool) -> None:
             nonlocal voice_was_active
@@ -329,7 +341,6 @@ class RealtimeTranscriptionSession:
                     )
                 ),
             )
-            max_utt_samples = int(self.max_utterance_s * self.audio_source.target_sample_rate)
             min_utt_samples = int(self.min_utterance_s * self.audio_source.target_sample_rate)
             overlap_samples = int(self.boundary_overlap_s * self.audio_source.target_sample_rate)
 
@@ -352,19 +363,21 @@ class RealtimeTranscriptionSession:
                         if not talk_was_active:
                             speech_buffers = []
                             carryover_audio = np.zeros(0, dtype=np.float32)
+                            carryover_silence_buffers = []
                             utterance_starts_visual_speech = True
+                            completed_chunks_in_speech = 0
                         talk_was_active = True
                         speech_buffers.append(audio)
 
                         utter_len = sum(len(chunk) for chunk in speech_buffers)
-                        if utter_len >= max_utt_samples:
+                        if utter_len >= self._max_utterance_samples(completed_chunks_in_speech):
                             utter = np.concatenate(speech_buffers).astype(np.float32)
                             protect_boundary = self._should_protect_forced_split_boundary()
                             if protect_boundary and overlap_samples > 0 and len(utter) > overlap_samples:
                                 speech_buffers = [utter[-overlap_samples:].copy()]
                             else:
                                 speech_buffers = []
-                            transcription_worker.submit(
+                            submitted = transcription_worker.submit(
                                 utter=utter,
                                 min_utt_samples=max(
                                     1,
@@ -375,7 +388,12 @@ class RealtimeTranscriptionSession:
                                 ),
                                 forced_split=protect_boundary,
                                 begins_visual_speech=utterance_starts_visual_speech,
+                                guard_words_override=self._responsive_tail_guard_words(
+                                    completed_chunks_in_speech
+                                ),
                             )
+                            if submitted:
+                                completed_chunks_in_speech += 1
                             utterance_starts_visual_speech = False
                     else:
                         if talk_was_active and speech_buffers:
@@ -412,8 +430,10 @@ class RealtimeTranscriptionSession:
                         idle_silence_steps = 0
                         silence_before_candidate_steps = 0
                         carryover_audio = np.zeros(0, dtype=np.float32)
+                        carryover_silence_buffers = []
                         visual_speech_started = False
                         utterance_starts_visual_speech = False
+                        completed_chunks_in_speech = 0
                     microphone_was_muted = True
                     continue
 
@@ -426,6 +446,7 @@ class RealtimeTranscriptionSession:
 
                 if speech_active:
                     idle_silence_steps = 0
+                    carryover_silence_buffers = []
                     speech_buffers.append(audio)
                     if has_speech:
                         silence_steps = 0
@@ -433,6 +454,7 @@ class RealtimeTranscriptionSession:
                         silence_steps += 1
                 else:
                     if has_speech:
+                        carryover_silence_buffers = []
                         if speech_candidate_steps == 0:
                             silence_before_candidate_steps = idle_silence_steps
                             idle_silence_steps = 0
@@ -450,6 +472,8 @@ class RealtimeTranscriptionSession:
                                 >= new_speech_silence_steps
                             )
                             utterance_starts_visual_speech = starts_visual_speech
+                            if starts_visual_speech:
+                                completed_chunks_in_speech = 0
                             visual_speech_started = True
                             silence_steps = 0
                             silence_before_candidate_steps = 0
@@ -457,17 +481,38 @@ class RealtimeTranscriptionSession:
                             speech_candidate_steps = 0
                     else:
                         idle_silence_steps += 1
+                        if len(carryover_audio) > 0:
+                            carryover_silence_buffers.append(audio)
                         silence_before_candidate_steps = 0
                         speech_candidate_buffers = []
                         speech_candidate_steps = 0
 
                     if idle_silence_steps == min_silence_steps:
-                        # Se houve pausa real apos corte forcado, publica a cauda sem esperar nova fala.
+                        if len(carryover_audio) > 0:
+                            # O resto de um corte forcado precisa de sua propria
+                            # janela de STT quando a fala termina logo depois.
+                            tail = np.concatenate(
+                                [carryover_audio, *carryover_silence_buffers]
+                            ).astype(np.float32)
+                            submitted = transcription_worker.submit(
+                                utter=tail,
+                                min_utt_samples=max(
+                                    1, int(self.min_speech_window_s * self.audio_source.target_sample_rate),
+                                ),
+                                forced_split=False,
+                            )
+                            if submitted:
+                                completed_chunks_in_speech += 1
+                            carryover_audio = np.zeros(0, dtype=np.float32)
+                            carryover_silence_buffers = []
                         transcription_worker.flush_pending_tail()
 
                 utter_len = sum(len(x) for x in speech_buffers) if speech_buffers else 0
                 natural_split = speech_active and silence_steps >= min_silence_steps
-                forced_by_time = speech_active and utter_len >= max_utt_samples
+                forced_by_time = (
+                    speech_active
+                    and utter_len >= self._max_utterance_samples(completed_chunks_in_speech)
+                )
                 should_finalize = natural_split or forced_by_time
 
                 if should_finalize:
@@ -486,14 +531,37 @@ class RealtimeTranscriptionSession:
                         carryover_audio = utter[-overlap_samples:].copy()
                     else:
                         carryover_audio = np.zeros(0, dtype=np.float32)
+                    carryover_silence_buffers = []
 
-                    transcription_worker.submit(
+                    submitted = transcription_worker.submit(
                         utter=utter,
                         min_utt_samples=min_utt_samples,
                         forced_split=apply_boundary_protection,
                         begins_visual_speech=utterance_starts_visual_speech,
+                        guard_words_override=self._responsive_tail_guard_words(
+                            completed_chunks_in_speech
+                        ),
                     )
+                    if submitted:
+                        completed_chunks_in_speech += 1
+                    if natural_split:
+                        # A pausa ja atingiu o limite neste passo; aguardar o
+                        # proximo bloco deixava o ultimo texto preso no worker.
+                        transcription_worker.flush_pending_tail()
                     utterance_starts_visual_speech = False
+
+            if len(carryover_audio) > 0 and not speech_buffers:
+                tail = np.concatenate(
+                    [carryover_audio, *carryover_silence_buffers, *speech_candidate_buffers]
+                ).astype(np.float32)
+                transcription_worker.submit(
+                    utter=tail,
+                    min_utt_samples=max(
+                        1, int(self.min_speech_window_s * self.audio_source.target_sample_rate),
+                    ),
+                    forced_split=False,
+                )
+                speech_candidate_buffers = []
 
             remaining_buffers = speech_buffers if speech_buffers else speech_candidate_buffers
             if remaining_buffers:
@@ -532,12 +600,33 @@ class RealtimeTranscriptionSession:
         """Define se corte forcado aplica overlap + tail guard."""
         return self.forced_split_policy not in {"hard_cut", "none", "disabled"}
 
+    def _max_utterance_samples(self, completed_chunks: int) -> int:
+        """Aumenta suavemente o trecho inicial e mantém um teto responsivo."""
+        responsive_limit_s = min(
+            _STEADY_MAX_UTTERANCE_S,
+            _RAMP_START_UTTERANCE_S
+            + completed_chunks * _RAMP_STEP_UTTERANCE_S,
+        )
+        responsive_limit_s = max(
+            responsive_limit_s,
+            self.min_utterance_s + self.audio_source.step_duration_s,
+        )
+        limit_s = min(self.max_utterance_s, responsive_limit_s)
+        return max(1, round(limit_s * self.audio_source.target_sample_rate))
+
+    def _responsive_tail_guard_words(self, completed_chunks: int) -> int:
+        """Publica texto progressivamente também após os primeiros cortes."""
+        configured_guard = self.tail_guard_words + self.forced_split_extra_tail_words
+        responsive_guard = 1 if completed_chunks == 0 else 2
+        return min(configured_guard, responsive_guard)
+
     def _process_utterance(
         self,
         utter: np.ndarray,
         min_utt_samples: int,
         forced_split: bool,
         on_text: Callable[[str], None],
+        guard_words_override: Optional[int] = None,
     ) -> float:
         """Transcreve um enunciado completo e aplica regras de commit."""
         if len(utter) < min_utt_samples:
@@ -552,7 +641,10 @@ class RealtimeTranscriptionSession:
         )
         transcription_processing_s = time.perf_counter() - transcription_started
         if text:
-            self._commit_transcribed_text(text, forced_split=forced_split, on_text=on_text)
+            self._commit_transcribed_text(
+                text, forced_split=forced_split, on_text=on_text,
+                guard_words_override=guard_words_override,
+            )
         return transcription_processing_s
 
     def _flush_pending_tail(self, on_text: Callable[[str], None]) -> None:
@@ -643,7 +735,10 @@ class RealtimeTranscriptionSession:
         self._pending_tail_overlap_limit = self.tail_guard_words
         return merged
 
-    def _commit_transcribed_text(self, text: str, forced_split: bool, on_text: Callable[[str], None]) -> None:
+    def _commit_transcribed_text(
+        self, text: str, forced_split: bool, on_text: Callable[[str], None],
+        guard_words_override: Optional[int] = None,
+    ) -> None:
         """Aplica dedupe e tail guard antes de publicar texto."""
         words = [w for w in text.split() if w.strip()]
         if not words:
@@ -652,7 +747,10 @@ class RealtimeTranscriptionSession:
         words = self._merge_with_pending_tail(words)
 
         if forced_split:
-            guard_words = self.tail_guard_words + self.forced_split_extra_tail_words
+            guard_words = (
+                self.tail_guard_words + self.forced_split_extra_tail_words
+                if guard_words_override is None else max(0, guard_words_override)
+            )
             if guard_words <= 0:
                 commit_words = words
                 self._pending_tail_words = []

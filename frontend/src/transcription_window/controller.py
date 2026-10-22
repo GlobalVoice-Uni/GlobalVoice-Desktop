@@ -36,6 +36,7 @@ class RealtimeController(QObject):
         self._worker_thread: Optional[threading.Thread] = None
         self._running = False
         self._runtime_status: Optional[RuntimeStatus] = None
+        self._meeting_audio_muted = False
 
     @property
     def is_running(self) -> bool:
@@ -85,10 +86,19 @@ class RealtimeController(QObject):
         if self._active_bridge is not None:
             self._active_bridge.set_microphone_muted(muted)
 
+    def set_meeting_audio_muted(self, muted: bool) -> None:
+        """Silencia somente a voz traduzida reproduzida nos fones."""
+        self._meeting_audio_muted = bool(muted)
+        if self._active_bridge is not None:
+            self._active_bridge.set_meeting_audio_muted(muted)
+
     def _run_worker(self, request: SessionRequest) -> None:
         """Executa sessao e publica eventos de sucesso/erro para a UI."""
         bridge = self._bridge_factory()
         self._active_bridge = bridge
+        set_audio_muted = getattr(bridge, "set_meeting_audio_muted", None)
+        if callable(set_audio_muted):
+            set_audio_muted(self._meeting_audio_muted)
 
         try:
             final_text = bridge.run(

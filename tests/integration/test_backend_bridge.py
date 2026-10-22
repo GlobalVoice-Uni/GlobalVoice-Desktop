@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import ANY, MagicMock, patch
 
+from backend.app.audio.devices import AudioDeviceCatalog, AudioDeviceInfo, AudioDeviceKind
 from backend.app.runtime_status import (
     ActiveDevice,
     DevicePreference,
@@ -11,6 +12,62 @@ from frontend.src.transcription_window import backend_bridge as bridge_module
 
 
 class LocalBackendBridgeTests(unittest.TestCase):
+    def setUp(self):
+        catalog = AudioDeviceCatalog((
+            AudioDeviceInfo("headphones", "Headphones", AudioDeviceKind.LOOPBACK, 2, is_default=True),
+            AudioDeviceInfo("speaker", "Speaker", AudioDeviceKind.OUTPUT, 2, is_default=True),
+        ))
+        devices = patch.object(bridge_module, "enumerate_audio_devices", return_value=catalog)
+        cable_status = patch.object(bridge_module, "vb_cable_status", return_value="not_installed")
+        devices.start()
+        cable_status.start()
+        self.addCleanup(devices.stop)
+        self.addCleanup(cable_status.stop)
+
+    def test_disabled_voice_keeps_text_but_does_not_create_tts(self):
+        runtime = RuntimeStatus(
+            preference=DevicePreference.CPU, active_device=ActiveDevice.CPU,
+            engine="faster-whisper", provider=RuntimeProvider.CPU, compute_type="int8",
+        )
+        for source, language, target in (
+            ("microphone", "pt-br", "en"),
+            ("loopback", "en", "pt-br"),
+        ):
+            with self.subTest(source=source):
+                request = bridge_module.SessionRequest(
+                    audio_source=source, language=language, target_language=target,
+                    display_mode="both", voice_output_enabled=False,
+                    meeting_voice_enabled=False,
+                )
+                session = MagicMock()
+                session.run.side_effect = lambda *, on_text, **kwargs: on_text("frase")
+                translator = MagicMock()
+                translator.translate.return_value = "translated"
+                synth_factory = MagicMock()
+                sink_factory = MagicMock()
+                chunks = []
+                with (
+                    patch.object(bridge_module, "find_vb_cable", return_value=None),
+                    patch.object(bridge_module, "MicrophoneAudioSource", return_value=object()),
+                    patch.object(bridge_module, "create_audio_source", return_value=object()),
+                    patch.object(bridge_module, "LocalFasterWhisperTranscriber", return_value=MagicMock(runtime_status=runtime)),
+                    patch.object(bridge_module, "build_speech_detector", return_value=(object(), "energy")),
+                    patch.object(bridge_module, "RealtimeTranscriptionSession", return_value=session),
+                    patch.object(bridge_module, "SpeechOutputQueue") as output_queue,
+                ):
+                    bridge_module.LocalBackendBridge(
+                        translator_factory=lambda: translator,
+                        synthesizer_factory=synth_factory,
+                        sink_factory=sink_factory,
+                    ).run(request, chunks.append)
+                self.assertEqual(
+                    chunks[0].translated_text,
+                    "translated" if source == "loopback" else "",
+                )
+                synth_factory.assert_not_called()
+                sink_factory.assert_not_called()
+                output_queue.assert_not_called()
+
     def test_maps_request_to_local_session(self):
         request = bridge_module.SessionRequest(
             model_size="base",
@@ -50,6 +107,7 @@ class LocalBackendBridgeTests(unittest.TestCase):
         on_voice_activity = MagicMock()
 
         with (
+            patch.object(bridge_module, "find_vb_cable", return_value=None),
             patch.object(
                 bridge_module,
                 "MicrophoneAudioSource",
@@ -194,6 +252,76 @@ class LocalBackendBridgeTests(unittest.TestCase):
 
         self.assertTrue(bridge._microphone_muted)
         bridge._session.set_microphone_muted.assert_called_once_with(True)
+
+    def test_both_sources_translate_independently_and_send_user_voice(self):
+        request = bridge_module.SessionRequest(
+            audio_source="both", language="pt-br", target_language="en",
+            user_language="pt-br", meeting_language="en",
+            audio_device_id="microphone", meeting_device_id="headphones",
+            voice_output_enabled=True, voice_output_device_id="virtual",
+            display_mode="both",
+        )
+        runtime_status = RuntimeStatus(
+            preference=DevicePreference.CPU, active_device=ActiveDevice.CPU,
+            engine="faster-whisper", provider=RuntimeProvider.CPU,
+            compute_type="int8",
+        )
+        sessions = [MagicMock(), MagicMock()]
+        emitted = []
+        for session, text in zip(sessions, ("bom dia", "good morning")):
+            def run(*, on_text, text=text, **kwargs):
+                on_text(text)
+                return text
+            session.run.side_effect = run
+        translator = MagicMock()
+        translator.translate.side_effect = lambda text, source, target: f"{target}:{text}"
+        output = MagicMock()
+        with (
+            patch.object(bridge_module, "MicrophoneAudioSource", return_value=object()),
+            patch.object(bridge_module, "create_audio_source", return_value=object()),
+            patch.object(bridge_module, "LocalFasterWhisperTranscriber", return_value=MagicMock(runtime_status=runtime_status)),
+            patch.object(bridge_module, "build_speech_detector", return_value=(object(), "silero")),
+            patch.object(bridge_module, "RealtimeTranscriptionSession", side_effect=sessions),
+            patch.object(bridge_module, "SpeechOutputQueue", return_value=output),
+        ):
+            bridge_module.LocalBackendBridge(
+                translator_factory=lambda: translator,
+                synthesizer_factory=MagicMock(), sink_factory=MagicMock(),
+            ).run(request, emitted.append)
+        self.assertEqual({chunk.channel for chunk in emitted}, {"user", "meeting"})
+        self.assertEqual(translator.ensure_available.call_count, 2)
+        output.enqueue.assert_called_once_with("en:bom dia")
+        output.stop.assert_called_once()
+        sessions[0].run.assert_called_once()
+        sessions[1].run.assert_called_once()
+
+    def test_feedback_route_matches_physical_endpoint_across_backend_ids(self):
+        from backend.app.audio.devices import AudioDeviceCatalog, AudioDeviceInfo, AudioDeviceKind
+        catalog = AudioDeviceCatalog((
+            AudioDeviceInfo("25", "HeadSet Realtek", AudioDeviceKind.OUTPUT, 2),
+            AudioDeviceInfo("{wasapi-guid}", "HeadSet Realtek", AudioDeviceKind.LOOPBACK, 2),
+        ))
+        request = bridge_module.SessionRequest(
+            audio_source="both", meeting_device_id="{wasapi-guid}",
+            voice_output_enabled=True, voice_output_device_id="25",
+        )
+        with (
+            patch.object(bridge_module, "enumerate_audio_devices", return_value=catalog),
+            patch.object(bridge_module, "LocalFasterWhisperTranscriber") as transcriber,
+        ):
+            with self.assertRaisesRegex(ValueError, "mesma saída"):
+                bridge_module.LocalBackendBridge().run(request, lambda chunk: None)
+        transcriber.assert_not_called()
+
+    def test_both_sources_reject_feedback_route_before_loading_models(self):
+        request = bridge_module.SessionRequest(
+            audio_source="both", meeting_device_id="speaker",
+            voice_output_enabled=True, voice_output_device_id="speaker",
+        )
+        with patch.object(bridge_module, "LocalFasterWhisperTranscriber") as transcriber:
+            with self.assertRaisesRegex(ValueError, "mesma saída"):
+                bridge_module.LocalBackendBridge().run(request, lambda chunk: None)
+        transcriber.assert_not_called()
 
 
 if __name__ == "__main__":

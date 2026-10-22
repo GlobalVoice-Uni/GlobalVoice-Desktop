@@ -30,7 +30,7 @@ def prepare(output: Path, languages: list[str]) -> None:
             pack = next(
                 item for item in manager.language_packs() if item.code == language
             )
-            print(f"Baixando {pack.label} ({pack.download_size_mb:.2f} MB)...")
+            print(f"Baixando {pack.label} ({pack.download_size_mb:.2f} MiB)...")
             manager.install(language)
             if not manager.is_installed(language):
                 raise RuntimeError(f"O pacote {language} não foi instalado por completo.")

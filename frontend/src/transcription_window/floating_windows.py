@@ -23,7 +23,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QSizeGrip,
     QSizePolicy,
     QStyle,
     QTextEdit,
@@ -123,6 +122,7 @@ class LanguageComboBox(QComboBox):
             line_edit.setReadOnly(True)
             line_edit.setAlignment(Qt.AlignCenter)
             line_edit.setFocusPolicy(Qt.NoFocus)
+            line_edit.setStyleSheet("background: transparent; border: none;")
             # O espaço inferior desloca o texto visualmente 2 px para cima.
             line_edit.setTextMargins(0, 0, 0, 4)
             line_edit.installEventFilter(self)
@@ -131,6 +131,26 @@ class LanguageComboBox(QComboBox):
         self._popup_buttons: list[QToolButton] = []
         self._popup_open = False
         self._close_popup_on_release = False
+        self._popup_cleanup_timer = QTimer(self)
+        self._popup_cleanup_timer.setSingleShot(True)
+        self._popup_cleanup_timer.timeout.connect(self._release_auto_hidden_popup)
+        self.setProperty("hovered", False)
+
+    def _set_hovered(self, hovered: bool) -> None:
+        if self.property("hovered") == hovered:
+            return
+        self.setProperty("hovered", hovered)
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()
+
+    def enterEvent(self, event) -> None:
+        self._set_hovered(True)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event) -> None:
+        self._set_hovered(False)
+        super().leaveEvent(event)
 
     def add_language(self, abbreviation: str, name: str, code: str) -> None:
         self.addItem(abbreviation, code)
@@ -152,11 +172,10 @@ class LanguageComboBox(QComboBox):
                     QTimer.singleShot(0, self.showPopup)
                 return True
         if watched is self._language_popup and event.type() == QEvent.Hide:
-            popup = watched
             # Em Windows, Qt.Popup pode ser ocultado automaticamente antes de
             # o seletor receber o clique. O pequeno atraso preserva o estado
             # necessário para interpretar esse clique como "recolher".
-            QTimer.singleShot(150, lambda: self._release_auto_hidden_popup(popup))
+            self._popup_cleanup_timer.start(150)
         return super().eventFilter(watched, event)
 
     def showPopup(self) -> None:
@@ -175,6 +194,7 @@ class LanguageComboBox(QComboBox):
         self._popup_open = False
         if self._language_popup is not None:
             self._language_popup.hide()
+        self._set_hovered(False)
 
     def _build_language_popup(self) -> None:
         if self._language_popup is not None:
@@ -190,7 +210,7 @@ class LanguageComboBox(QComboBox):
             """
             QFrame#languagePopupPanel {
                 background: #0F172A;
-                border: 1px solid rgba(70, 73, 251, 0.55);
+                border: 1px solid rgba(148, 163, 184, 0.28);
                 border-radius: 10px;
             }
             QToolButton {
@@ -225,6 +245,7 @@ class LanguageComboBox(QComboBox):
             option.setText(self.itemText(index))
             option.setToolTip(str(self.itemData(index, Qt.ToolTipRole) or ""))
             option.setFixedHeight(24)
+            option.setFixedWidth(self.width() - 2)
             option.setCursor(Qt.PointingHandCursor)
             option.clicked.connect(
                 lambda checked=False, selected=index: self._select_popup_language(
@@ -238,8 +259,9 @@ class LanguageComboBox(QComboBox):
         self._language_popup = popup
         popup.installEventFilter(self)
 
-    def _release_auto_hidden_popup(self, popup: QWidget) -> None:
-        if self._language_popup is not popup:
+    def _release_auto_hidden_popup(self) -> None:
+        popup = self._language_popup
+        if popup is None:
             return
         try:
             popup_visible = popup.isVisible()
@@ -249,6 +271,7 @@ class LanguageComboBox(QComboBox):
             popup_visible = False
         if not popup_visible:
             self._popup_open = False
+            self._set_hovered(False)
 
     def _select_popup_language(self, index: int) -> None:
         self.setCurrentIndex(index)
@@ -279,6 +302,9 @@ class FloatingTranscriptionWindow(QWidget):
         self.setMinimumSize(360, 240)
 
         self.drag_position = QPoint()
+        self._resize_edges = Qt.Edges()
+        self._resize_start_pos = QPoint()
+        self._resize_start_geometry = self.geometry()
         self._new_speech_pending = True
         self._active_channel: str | None = None
         self._group_chunk_count = 0
@@ -300,13 +326,14 @@ class FloatingTranscriptionWindow(QWidget):
 
     def _build_ui(self) -> None:
         main_widget = QFrame()
+        self._frame = main_widget
         main_widget.setObjectName("transcriptionFrame")
         main_widget.setStyleSheet(
             """
             #transcriptionFrame {
-                background: rgba(15, 23, 42, 0.94);
+                background: rgba(19, 27, 51, 0.96);
                 border-radius: 16px;
-                border: 1px solid rgba(70, 73, 251, 0.4);
+                border: 1px solid rgba(148, 163, 184, 0.24);
             }
             """
         )
@@ -371,27 +398,34 @@ class FloatingTranscriptionWindow(QWidget):
         self.transcription_area.setStyleSheet(
             """
             QTextEdit {
-                background: rgba(10, 15, 29, 0.85);
-                border: 1px solid rgba(255, 255, 255, 0.05);
+                background: rgba(30, 41, 59, 0.72);
+                border: 1px solid rgba(148, 163, 184, 0.12);
                 border-radius: 12px;
                 color: #F8FAFC;
                 padding: 10px;
             }
             QScrollBar:vertical {
-                background: transparent;
-                width: 8px;
-                margin: 4px 0 4px 0;
+                background: #27364B;
+                border: none;
+                border-radius: 4px;
+                width: 7px;
+                margin: 4px 0px 4px 1px;
             }
             QScrollBar::handle:vertical {
-                background: rgba(70, 73, 251, 0.4);
+                background: #66758E;
                 min-height: 24px;
                 border-radius: 4px;
             }
             QScrollBar::handle:vertical:hover {
-                background: rgba(70, 73, 251, 0.8);
+                background: #929FB4;
             }
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
                 height: 0px;
+                border: none;
+                background: transparent;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: transparent;
             }
             """
         )
@@ -400,30 +434,102 @@ class FloatingTranscriptionWindow(QWidget):
         )
         layout.addWidget(self.transcription_area)
 
-        # Grip para redimensionamento
-        grip_row = QHBoxLayout()
-        grip_row.setContentsMargins(0, 0, 0, 0)
-        grip_row.addStretch(1)
-        self.size_grip = QSizeGrip(main_widget)
-        self.size_grip.setFixedSize(16, 16)
-        grip_row.addWidget(self.size_grip)
-        layout.addLayout(grip_row)
-
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(main_widget)
+        main_widget.setMouseTracking(True)
+        main_widget.installEventFilter(self)
+        self.setMouseTracking(True)
+
+    def _edges_at(self, position: QPoint) -> Qt.Edges:
+        edge = 9
+        edges = Qt.Edges()
+        if position.x() < edge:
+            edges |= Qt.LeftEdge
+        elif position.x() >= self.width() - edge:
+            edges |= Qt.RightEdge
+        if position.y() < edge:
+            edges |= Qt.TopEdge
+        elif position.y() >= self.height() - edge:
+            edges |= Qt.BottomEdge
+        return edges
+
+    def _handle_border_mouse(self, event: QMouseEvent) -> bool:
+        position = self.mapFromGlobal(event.globalPosition().toPoint())
+        if event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
+            edges = self._edges_at(position)
+            if edges:
+                self._resize_edges = edges
+                self._resize_start_pos = event.globalPosition().toPoint()
+                self._resize_start_geometry = self.geometry()
+                return True
+        elif event.type() == QEvent.MouseMove:
+            edges = self._resize_edges or self._edges_at(position)
+            diagonal_a = Qt.TopEdge | Qt.LeftEdge
+            diagonal_b = Qt.BottomEdge | Qt.RightEdge
+            diagonal_c = Qt.TopEdge | Qt.RightEdge
+            diagonal_d = Qt.BottomEdge | Qt.LeftEdge
+            if edges in (diagonal_a, diagonal_b):
+                self.setCursor(Qt.SizeFDiagCursor)
+            elif edges in (diagonal_c, diagonal_d):
+                self.setCursor(Qt.SizeBDiagCursor)
+            elif edges & (Qt.LeftEdge | Qt.RightEdge):
+                self.setCursor(Qt.SizeHorCursor)
+            elif edges & (Qt.TopEdge | Qt.BottomEdge):
+                self.setCursor(Qt.SizeVerCursor)
+            else:
+                self.unsetCursor()
+            if self._resize_edges and event.buttons() & Qt.LeftButton:
+                delta = event.globalPosition().toPoint() - self._resize_start_pos
+                original = self._resize_start_geometry
+                left, top, right, bottom = original.left(), original.top(), original.right(), original.bottom()
+                if self._resize_edges & Qt.LeftEdge:
+                    left = min(left + delta.x(), right - self.minimumWidth() + 1)
+                if self._resize_edges & Qt.RightEdge:
+                    right = max(right + delta.x(), left + self.minimumWidth() - 1)
+                if self._resize_edges & Qt.TopEdge:
+                    top = min(top + delta.y(), bottom - self.minimumHeight() + 1)
+                if self._resize_edges & Qt.BottomEdge:
+                    bottom = max(bottom + delta.y(), top + self.minimumHeight() - 1)
+                self.setGeometry(left, top, right - left + 1, bottom - top + 1)
+                return True
+        elif event.type() == QEvent.MouseButtonRelease and self._resize_edges:
+            self._resize_edges = Qt.Edges()
+            save_settings({
+                "ui_transcription_window_x": self.x(),
+                "ui_transcription_window_y": self.y(),
+            })
+            return True
+        return False
+
+    def eventFilter(self, watched, event) -> bool:
+        if watched is self._frame and event.type() in (
+            QEvent.MouseButtonPress, QEvent.MouseMove, QEvent.MouseButtonRelease
+        ):
+            if self._handle_border_mouse(event):
+                return True
+        return super().eventFilter(watched, event)
 
     def mousePressEvent(self, event: QMouseEvent):
+        if self._handle_border_mouse(event):
+            event.accept()
+            return
         if event.button() == Qt.LeftButton:
             self.drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
             event.accept()
 
     def mouseMoveEvent(self, event: QMouseEvent):
+        if self._handle_border_mouse(event):
+            event.accept()
+            return
         if event.buttons() == Qt.LeftButton and self.drag_position is not None:
             self.move(event.globalPosition().toPoint() - self.drag_position)
             event.accept()
 
     def mouseReleaseEvent(self, event: QMouseEvent):
+        if self._handle_border_mouse(event):
+            event.accept()
+            return
         if event.button() == Qt.LeftButton:
             pos = self.pos()
             save_settings(
@@ -619,6 +725,38 @@ def _build_chat_icon(size: int = 16, color: str = "#CBD5E1") -> QIcon:
     return QIcon(pixmap)
 
 
+def _build_speaker_icon(size: int = 16, muted: bool = False) -> QIcon:
+    """Ícone de áudio com o mesmo traço dos demais controles da toolbar."""
+    pixmap = QPixmap(size, size)
+    pixmap.fill(Qt.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.Antialiasing)
+    pen = QPen(QColor("#CBD5E1"), max(1.4, size * 0.1))
+    pen.setCapStyle(Qt.RoundCap)
+    pen.setJoinStyle(Qt.RoundJoin)
+    painter.setPen(pen)
+    painter.setBrush(Qt.NoBrush)
+    speaker = QPainterPath()
+    speaker.moveTo(size * 0.12, size * 0.38)
+    speaker.lineTo(size * 0.36, size * 0.38)
+    speaker.lineTo(size * 0.62, size * 0.16)
+    speaker.lineTo(size * 0.62, size * 0.84)
+    speaker.lineTo(size * 0.36, size * 0.62)
+    speaker.lineTo(size * 0.12, size * 0.62)
+    speaker.closeSubpath()
+    painter.drawPath(speaker)
+    if muted:
+        painter.drawLine(QPointF(size * 0.72, size * 0.34), QPointF(size * 0.94, size * 0.66))
+        painter.drawLine(QPointF(size * 0.94, size * 0.34), QPointF(size * 0.72, size * 0.66))
+    else:
+        wave = QPainterPath()
+        wave.moveTo(size * 0.73, size * 0.32)
+        wave.cubicTo(size * 0.9, size * 0.42, size * 0.9, size * 0.58, size * 0.73, size * 0.68)
+        painter.drawPath(wave)
+    painter.end()
+    return QIcon(pixmap)
+
+
 def _build_trash_icon(size: int = 16, color: str = "#CBD5E1") -> QIcon:
     """Desenha um icone vetorial de lixeira."""
     pixmap = QPixmap(size, size)
@@ -754,16 +892,18 @@ class FloatingToolbar(QWidget):
     ptt_pressed = Signal()
     ptt_released = Signal()
     microphone_mute_changed = Signal(bool)
+    audio_mute_changed = Signal(bool)
     source_language_changed = Signal(str)
     target_language_changed = Signal(str)
     toggle_chat_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Window)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setFixedHeight(52)
-        self.setMinimumWidth(590)
+        self.setFixedHeight(56)
+        self.setMinimumWidth(0)
+        self.before_close = None
 
         self.drag_position = QPoint()
         self._is_active = False
@@ -789,13 +929,13 @@ class FloatingToolbar(QWidget):
         main_widget.setStyleSheet(
             """
             #toolbarFrame {
-                background: rgba(15, 23, 42, 0.94);
+                background: rgba(19, 27, 51, 0.96);
                 border-radius: 16px;
-                border: 1px solid rgba(70, 73, 251, 0.35);
+                border: 1px solid rgba(148, 163, 184, 0.26);
             }
             #toolbarFrame QPushButton {
                 border-radius: 10px;
-                padding: 6px 12px;
+                padding: 0px;
                 font-weight: 600;
                 font-size: 12px;
                 color: #FFFFFF;
@@ -803,16 +943,12 @@ class FloatingToolbar(QWidget):
             }
             #toolbarFrame QPushButton#actionBtn[active="false"] {
                 background: rgba(70, 73, 251, 0.95);
-                padding-left: 8px;
-                padding-right: 12px;
             }
             #toolbarFrame QPushButton#actionBtn[active="false"]:hover {
                 background: rgba(70, 73, 251, 1);
             }
             #toolbarFrame QPushButton#actionBtn[active="true"] {
                 background: rgba(220, 38, 38, 0.95);
-                padding-left: 8px;
-                padding-right: 12px;
             }
             #toolbarFrame QPushButton#actionBtn[active="true"]:hover {
                 background: rgba(220, 38, 38, 1);
@@ -823,7 +959,7 @@ class FloatingToolbar(QWidget):
             }
             #toolbarFrame QPushButton#pttBtn {
                 background: rgba(30, 41, 59, 0.85);
-                border: 1px solid rgba(70, 73, 251, 0.4);
+                border: 1px solid rgba(148, 163, 184, 0.3);
                 color: #CBD5E1;
             }
             #toolbarFrame QPushButton#pttBtn:hover {
@@ -853,7 +989,7 @@ class FloatingToolbar(QWidget):
             #toolbarFrame QToolButton {
                 background: rgba(255, 255, 255, 0.06);
                 border-radius: 10px;
-                border: 1px solid rgba(70, 73, 251, 0.25);
+                border: 1px solid rgba(148, 163, 184, 0.25);
                 padding: 4px;
             }
             #toolbarFrame QToolButton:hover {
@@ -866,15 +1002,15 @@ class FloatingToolbar(QWidget):
             """
         )
         layout = QHBoxLayout(main_widget)
-        layout.setContentsMargins(18, 6, 18, 6)
-        layout.setSpacing(10)
+        layout.setContentsMargins(16, 8, 16, 8)
+        layout.setSpacing(8)
 
         # 1. Opcoes / Configuracoes
         self.settings_btn = QToolButton()
         self.settings_btn.setObjectName("settingsToolbarButton")
         self.settings_btn.setIcon(_build_gear_icon(16))
-        self.settings_btn.setIconSize(QSize(16, 16))
-        self.settings_btn.setFixedSize(28, 28)
+        self.settings_btn.setIconSize(QSize(18, 18))
+        self.settings_btn.setFixedSize(32, 32)
         self.settings_btn.setToolTip("Configurações")
         self.settings_btn.setCursor(Qt.PointingHandCursor)
         self.settings_btn.setAutoRaise(True)
@@ -890,7 +1026,7 @@ class FloatingToolbar(QWidget):
             """
             QFrame#languageGroup {
                 background: rgba(30, 41, 59, 0.7);
-                border: 1px solid rgba(70, 73, 251, 0.35);
+                border: 1px solid rgba(148, 163, 184, 0.28);
                 border-radius: 10px;
             }
             QComboBox {
@@ -902,8 +1038,20 @@ class FloatingToolbar(QWidget):
                 padding: 0px;
                 border-radius: 10px;
             }
-            QComboBox:hover {
+            QComboBox[hovered="true"] {
                 background: rgba(255, 255, 255, 0.05);
+            }
+            QComboBox#sourceLanguageCombo[hovered="true"] {
+                border-top-left-radius: 9px;
+                border-bottom-left-radius: 9px;
+                border-top-right-radius: 0px;
+                border-bottom-right-radius: 0px;
+            }
+            QComboBox#targetLanguageCombo[hovered="true"] {
+                border-top-left-radius: 0px;
+                border-bottom-left-radius: 0px;
+                border-top-right-radius: 9px;
+                border-bottom-right-radius: 9px;
             }
             QComboBox::drop-down {
                 border: none;
@@ -914,7 +1062,7 @@ class FloatingToolbar(QWidget):
                 color: #FFFFFF;
                 selection-background-color: #4338CA;
                 selection-color: #FFFFFF;
-                border: 1px solid rgba(70, 73, 251, 0.5);
+                border: 1px solid rgba(148, 163, 184, 0.5);
                 border-radius: 10px;
                 padding: 4px;
                 outline: none;
@@ -937,10 +1085,12 @@ class FloatingToolbar(QWidget):
         lang_layout = QHBoxLayout(lang_group)
         lang_layout.setContentsMargins(1, 1, 1, 1)
         lang_layout.setSpacing(2)
-        lang_group.setFixedHeight(28)
+        lang_group.setFixedHeight(32)
+        lang_group.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.language_group = lang_group
 
         self.source_combo = LanguageComboBox()
+        self.source_combo.setObjectName("sourceLanguageCombo")
         self.source_combo.add_language("PT", "Português", "pt-br")
         self.source_combo.add_language("EN", "Inglês", "en")
         self.source_combo.add_language("ES", "Espanhol", "es")
@@ -950,12 +1100,13 @@ class FloatingToolbar(QWidget):
         self.swap_btn.setObjectName("swapLangBtn")
         self.swap_btn.setIcon(_build_swap_icon(14))
         self.swap_btn.setIconSize(QSize(14, 14))
-        self.swap_btn.setFixedSize(26, 26)
+        self.swap_btn.setFixedSize(28, 28)
         self.swap_btn.setToolTip("Inverter idiomas")
         self.swap_btn.setCursor(Qt.PointingHandCursor)
         self.swap_btn.clicked.connect(self._swap_languages)
 
         self.target_combo = LanguageComboBox()
+        self.target_combo.setObjectName("targetLanguageCombo")
         self.target_combo.add_language("EN", "Inglês", "en")
         self.target_combo.add_language("PT", "Português", "pt-br")
         self.target_combo.add_language("ES", "Espanhol", "es")
@@ -984,7 +1135,8 @@ class FloatingToolbar(QWidget):
         self.action_btn.setProperty("active", "false")
         self.action_btn.setIcon(_build_play_icon(15))
         self.action_btn.setIconSize(QSize(15, 15))
-        self.action_btn.setFixedSize(92, 28)
+        self.action_btn.setFixedSize(100, 32)
+        self.action_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.action_btn.setCursor(Qt.PointingHandCursor)
         self.action_btn.clicked.connect(self._on_action_clicked)
         layout.addWidget(self.action_btn)
@@ -998,7 +1150,7 @@ class FloatingToolbar(QWidget):
         )
         self.ptt_btn.setCursor(Qt.PointingHandCursor)
         self.ptt_btn.setEnabled(False)
-        self.ptt_btn.setFixedSize(76, 28)
+        self.ptt_btn.setFixedSize(84, 32)
         self.ptt_btn.setProperty("voiceActive", "false")
         self.ptt_btn.setProperty("muted", "false")
         self.ptt_btn.pressed.connect(self._on_microphone_pressed)
@@ -1008,12 +1160,24 @@ class FloatingToolbar(QWidget):
 
         layout.addWidget(self._create_separator())
 
-        # 4. Utilitarios (Toggle Chat + Limpar)
+        # 4. Utilitarios (áudio local, chat e limpar)
+        self.audio_btn = QToolButton()
+        self.audio_btn.setObjectName("audioMuteBtn")
+        self.audio_btn.setIcon(_build_speaker_icon(16))
+        self.audio_btn.setIconSize(QSize(16, 16))
+        self.audio_btn.setFixedSize(32, 32)
+        self.audio_btn.setToolTip("Silenciar a tradução ouvida por você")
+        self.audio_btn.setCursor(Qt.PointingHandCursor)
+        self.audio_btn.setCheckable(True)
+        self.audio_btn.setEnabled(False)
+        self.audio_btn.toggled.connect(self._on_audio_mute_toggled)
+        layout.addWidget(self.audio_btn)
+
         self.toggle_chat_btn = QToolButton()
         self.toggle_chat_btn.setObjectName("toggleChatBtn")
         self.toggle_chat_btn.setIcon(_build_chat_icon(16))
         self.toggle_chat_btn.setIconSize(QSize(16, 16))
-        self.toggle_chat_btn.setFixedSize(28, 28)
+        self.toggle_chat_btn.setFixedSize(32, 32)
         self.toggle_chat_btn.setToolTip("Mostrar ou ocultar janela de mensagens")
         self.toggle_chat_btn.setCursor(Qt.PointingHandCursor)
         self.toggle_chat_btn.clicked.connect(self.toggle_chat_requested.emit)
@@ -1023,7 +1187,7 @@ class FloatingToolbar(QWidget):
         self.clear_btn.setObjectName("clearBtn")
         self.clear_btn.setIcon(_build_trash_icon(16))
         self.clear_btn.setIconSize(QSize(16, 16))
-        self.clear_btn.setFixedSize(28, 28)
+        self.clear_btn.setFixedSize(32, 32)
         self.clear_btn.setToolTip("Limpar mensagens em tela")
         self.clear_btn.setCursor(Qt.PointingHandCursor)
         layout.addWidget(self.clear_btn)
@@ -1038,15 +1202,16 @@ class FloatingToolbar(QWidget):
         self.runtime_group.setObjectName("runtimeStatusGroup")
         status_layout = QHBoxLayout(self.runtime_group)
         status_layout.setContentsMargins(8, 3, 8, 3)
-        status_layout.setSpacing(6)
+        status_layout.setSpacing(4)
         status_layout.addWidget(self.status_indicator)
 
-        self.runtime_badge = QLabel("Esperando iniciar...")
-        self.runtime_badge.setAlignment(Qt.AlignCenter)
-        self.runtime_badge.setMinimumWidth(105)
-        self.runtime_badge.setContentsMargins(0, 0, 14, 0)
+        self.runtime_badge = QLabel("Pronto")
+        self.runtime_badge.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.runtime_badge.setMinimumWidth(0)
+        self.runtime_badge.setContentsMargins(0, 0, 0, 0)
+        self.runtime_badge.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
         status_layout.addWidget(self.runtime_badge)
-        self.runtime_group.setFixedHeight(28)
+        self.runtime_group.setFixedHeight(32)
         layout.addWidget(self.runtime_group)
         self.reset_runtime_status()
 
@@ -1055,7 +1220,7 @@ class FloatingToolbar(QWidget):
         self.close_btn.setObjectName("closeToolbarButton")
         self.close_btn.setIcon(self.style().standardIcon(QStyle.SP_TitleBarCloseButton))
         self.close_btn.setIconSize(QSize(14, 14))
-        self.close_btn.setFixedSize(28, 28)
+        self.close_btn.setFixedSize(32, 32)
         self.close_btn.setToolTip("Fechar")
         self.close_btn.setCursor(Qt.PointingHandCursor)
         self.close_btn.setAutoRaise(True)
@@ -1066,10 +1231,11 @@ class FloatingToolbar(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(main_widget)
         self.adjustSize()
+        self.setFixedWidth(self.sizeHint().width())
 
     @staticmethod
     def _configure_language_combo(combo: QComboBox) -> None:
-        combo.setFixedSize(26, 26)
+        combo.setFixedSize(30, 30)
 
     @staticmethod
     def _set_combo_language(combo: QComboBox, language: str) -> None:
@@ -1151,6 +1317,19 @@ class FloatingToolbar(QWidget):
         self._microphone_muted = False
         self._voice_active = False
         self._refresh_ptt_state()
+
+    def set_audio_available(self, available: bool) -> None:
+        self.audio_btn.setEnabled(bool(available))
+        if not available:
+            self.audio_btn.setChecked(False)
+
+    def _on_audio_mute_toggled(self, muted: bool) -> None:
+        self.audio_btn.setIcon(_build_speaker_icon(16, muted))
+        self.audio_btn.setToolTip(
+            "Reativar a tradução ouvida por você" if muted
+            else "Silenciar a tradução ouvida por você"
+        )
+        self.audio_mute_changed.emit(muted)
 
     def _refresh_ptt_state(self) -> None:
         push_to_talk = self._capture_mode == "push_to_talk"
@@ -1253,6 +1432,9 @@ class FloatingToolbar(QWidget):
         super().mouseReleaseEvent(event)
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        if self.before_close is not None and not self.before_close():
+            event.ignore()
+            return
         self.closed.emit()
         event.accept()
 
@@ -1287,6 +1469,7 @@ class FloatingToolbar(QWidget):
             "transparent",
         )
         self.set_status_message("Aguardando início")
+        self.runtime_badge.setText("Pronto")
 
     def set_active(self, message: str | None = None) -> None:
         self._set_runtime_visual_state(
@@ -1296,6 +1479,7 @@ class FloatingToolbar(QWidget):
             "rgba(34, 197, 94, 0.20)",
         )
         self.set_status_message(message or "Transcrição ativa")
+        self.runtime_badge.setText("Ativo")
 
     def set_connecting(self, message: str | None = None) -> None:
         self._set_runtime_visual_state(
@@ -1305,9 +1489,10 @@ class FloatingToolbar(QWidget):
             "rgba(245, 158, 11, 0.20)",
         )
         self.set_status_message(message or "Carregando...")
+        self.runtime_badge.setText("Iniciando")
 
     def set_runtime_pending(self) -> None:
-        self.runtime_badge.setText("Verificando...")
+        self.runtime_badge.setText("Iniciando")
         self.runtime_badge.setToolTip("Verificando o dispositivo solicitado.")
         self._set_runtime_visual_state(
             "loading",
@@ -1317,7 +1502,7 @@ class FloatingToolbar(QWidget):
         )
 
     def reset_runtime_status(self) -> None:
-        self.runtime_badge.setText("Esperando iniciar...")
+        self.runtime_badge.setText("Pronto")
         self.runtime_badge.setToolTip("Dispositivo em uso durante a sessão.")
         self._set_runtime_visual_state(
             "idle",
@@ -1327,13 +1512,16 @@ class FloatingToolbar(QWidget):
         )
 
     def set_runtime_status(self, status: RuntimeStatus) -> None:
-        self.runtime_badge.setText(status.display_label)
+        self.runtime_badge.setText(status.active_device.value.upper())
         self.runtime_badge.setToolTip(status.tooltip)
+        color = "#F59E0B" if status.is_fallback else "#22C55E"
+        border = "rgba(245, 158, 11, 0.75)" if status.is_fallback else "rgba(34, 197, 94, 0.75)"
+        background = "rgba(245, 158, 11, 0.20)" if status.is_fallback else "rgba(34, 197, 94, 0.20)"
         self._set_runtime_visual_state(
             "active",
-            "#22C55E",
-            "rgba(34, 197, 94, 0.75)",
-            "rgba(34, 197, 94, 0.20)",
+            color,
+            border,
+            background,
         )
 
     def get_language_code(self, combo_text: str) -> str:

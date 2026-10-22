@@ -1,4 +1,6 @@
 import unittest
+from contextlib import contextmanager
+from unittest.mock import patch
 
 import numpy as np
 
@@ -96,6 +98,31 @@ class LoopbackAudioSourceTests(unittest.TestCase):
 
         with self.assertRaisesRegex(AudioSourceError, "Não foi possível iniciar"):
             source.open()
+
+    def test_wasapi_keeps_com_initialized_until_capture_closes(self):
+        active = False
+
+        @contextmanager
+        def com_context():
+            nonlocal active
+            active = True
+            try:
+                yield
+            finally:
+                active = False
+
+        class GuardedSoundCard(FakeSoundCard):
+            @classmethod
+            def get_microphone(cls, identifier, include_loopback=False):
+                self.assertTrue(active)
+                return super().get_microphone(identifier, include_loopback)
+
+        source = WasapiLoopbackAudioSource(soundcard_module=GuardedSoundCard)
+        with patch("backend.app.audio.audio_capture.windows_com_initialized", com_context):
+            with source:
+                self.assertTrue(active)
+                source.read_step()
+        self.assertFalse(active)
 
     def test_factory_keeps_microphone_as_default(self):
         self.assertIsInstance(create_audio_source("microphone"), MicrophoneAudioSource)

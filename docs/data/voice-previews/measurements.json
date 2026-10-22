@@ -1,0 +1,72 @@
+[
+  {
+    "language": "pt-br",
+    "voice": "faber",
+    "model_mib": 60.27,
+    "load_s": 3.158,
+    "first_s": 0.297,
+    "warm_s": 0.239,
+    "audio_s": 4.83,
+    "preview": "D:\\CODE\\PROJETO - GLOBALVOICE\\Desktop\\.build\\voice-previews\\pt-br-faber.wav"
+  },
+  {
+    "language": "pt-br",
+    "voice": "cadu",
+    "model_mib": 60.03,
+    "load_s": 2.095,
+    "first_s": 0.308,
+    "warm_s": 0.279,
+    "audio_s": 5.689,
+    "preview": "D:\\CODE\\PROJETO - GLOBALVOICE\\Desktop\\.build\\voice-previews\\pt-br-cadu.wav"
+  },
+  {
+    "language": "pt-br",
+    "voice": "jeff",
+    "model_mib": 60.03,
+    "load_s": 2.082,
+    "first_s": 0.307,
+    "warm_s": 0.486,
+    "audio_s": 6.06,
+    "preview": "D:\\CODE\\PROJETO - GLOBALVOICE\\Desktop\\.build\\voice-previews\\pt-br-jeff.wav"
+  },
+  {
+    "language": "en",
+    "voice": "ljspeech",
+    "model_mib": 60.59,
+    "load_s": 3.337,
+    "first_s": 0.23,
+    "warm_s": 0.238,
+    "audio_s": 4.609,
+    "preview": "D:\\CODE\\PROJETO - GLOBALVOICE\\Desktop\\.build\\voice-previews\\en-ljspeech.wav"
+  },
+  {
+    "language": "en",
+    "voice": "lessac",
+    "model_mib": 60.27,
+    "load_s": 3.498,
+    "first_s": 0.229,
+    "warm_s": 0.309,
+    "audio_s": 4.423,
+    "preview": "D:\\CODE\\PROJETO - GLOBALVOICE\\Desktop\\.build\\voice-previews\\en-lessac.wav"
+  },
+  {
+    "language": "es",
+    "voice": "sharvard",
+    "model_mib": 73.18,
+    "load_s": 3.184,
+    "first_s": 0.264,
+    "warm_s": 0.242,
+    "audio_s": 5.166,
+    "preview": "D:\\CODE\\PROJETO - GLOBALVOICE\\Desktop\\.build\\voice-previews\\es-sharvard.wav"
+  },
+  {
+    "language": "es",
+    "voice": "davefx",
+    "model_mib": 60.27,
+    "load_s": 3.184,
+    "first_s": 0.35,
+    "warm_s": 0.246,
+    "audio_s": 5.12,
+    "preview": "D:\\CODE\\PROJETO - GLOBALVOICE\\Desktop\\.build\\voice-previews\\es-davefx.wav"
+  }
+]
